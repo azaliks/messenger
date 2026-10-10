@@ -2,55 +2,109 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Вход</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход — Чат банды</title>
     <style>
+        * { box-sizing: border-box; }
+
         body {
-            font-family: "Times New Roman", Times, serif;
-            background: #ffffff;
+            font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: #313338;
+            color: #dbdee1;
+            margin: 0;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            padding: 20px;
         }
+
         form {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            width: 300px;
+            background: #313338;
+            padding: 32px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 420px;
             text-align: center;
         }
-        h2 { color: blue; }
+
+        h2 {
+            color: #f2f3f5;
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 8px;
+        }
+
+        .sub {
+            color: #b5bac1;
+            font-size: 15px;
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            color: #b5bac1;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+            margin-top: 16px;
+        }
+
         input {
             width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
+            padding: 12px;
+            background: #1e1f22;
+            border: none;
+            border-radius: 4px;
+            color: #dbdee1;
             font-family: inherit;
+            font-size: 15px;
+            outline: none;
         }
+        input:focus {
+            outline: 2px solid #5865f2;
+        }
+        input::placeholder { color: #6d6f78; }
+
         button {
             width: 100%;
-            padding: 10px;
-            background: blue;
+            padding: 12px;
+            margin-top: 24px;
+            background: #5865f2;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
             font-family: inherit;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.15s;
         }
-        button:hover { background: darkblue; }
-        .error { color: red; font-size: 14px; }
+        button:hover { background: #4752c4; }
+        button:active { background: #3c45a5; }
+
+        .error {
+            color: #fa777c;
+            font-size: 14px;
+            margin-top: 12px;
+            min-height: 20px;
+        }
     </style>
 </head>
 <body>
     <form method="POST" action="/login">
-        <h2>Вход для своих</h2>
-        <input type="text" name="login" placeholder="Логин" required>
-        <input type="password" name="password" placeholder="Пароль" required>
+        <h2>С возвращением!</h2>
+        <p class="sub">Вход только для своих</p>
+
+        <label for="login">Логин</label>
+        <input type="text" id="login" name="login" placeholder="Введи логин" required autofocus>
+
+        <label for="password">Пароль</label>
+        <input type="password" id="password" name="password" placeholder="Введи пароль" required>
+
         <button type="submit">Войти</button>
         <p class="error" id="err"></p>
     </form>

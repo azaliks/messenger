@@ -2,138 +2,391 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Чат</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат банды</title>
     <style>
+        * { box-sizing: border-box; }
+
         body {
-            font-family: "Times New Roman", Times, serif;
-            background: #ffffff;
+            font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: #313338;
+            color: #dbdee1;
             margin: 0;
             height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
+
         header {
-            text-align: center;
-            padding: 15px;
-            color: blue;
+            background: #2b2d31;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #f2f3f5;
+            border-bottom: 1px solid #1e1f22;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        header::before {
+            content: "#";
+            color: #80848e;
             font-size: 22px;
-            border-bottom: 1px solid #eee;
         }
-        #messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .msg {
-            max-width: 60%;
-            padding: 10px 14px;
-            border-radius: 12px;
-            word-wrap: break-word;
-        }
-        .own {
-            align-self: flex-end;
-            background: #d6e4ff;
-        }
-        .other {
-            align-self: flex-start;
-            background: #f0f0f0;
-        }
-        .author {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 4px;
-        }
-        .time {
-            font-size: 11px;
-            color: #999;
-            text-align: right;
-            margin-top: 4px;
-        }
-        .del {
-            font-size: 11px;
-            color: red;
-            cursor: pointer;
-            margin-left: 8px;
-        }
-        form {
-            display: flex;
-            padding: 15px;
-            border-top: 1px solid #eee;
-            gap: 10px;
-        }
-        input[type=text] {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 15px;
-        }
-        button {
-            padding: 10px 20px;
-            background: blue;
+        header .spacer { flex: 1; }
+        header .btn-call {
+            background: #23a55a;
             color: white;
             border: none;
             border-radius: 6px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        header .btn-call:hover { background: #1e8a4a; }
+        header .profile-link {
+            color: #00a8fc;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        header .profile-link:hover { text-decoration: underline; }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .date-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 20px;
+            color: #949ba4;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .date-divider::before,
+        .date-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #3f4147;
+        }
+
+        .msg {
+            display: flex;
+            gap: 14px;
+            padding: 4px 20px;
+            margin-top: 10px;
+            position: relative;
+        }
+        .msg:hover { background: #2e3035; }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #5865f2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            flex-shrink: 0;
+            user-select: none;
+            object-fit: cover;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .avatar:hover { opacity: 0.85; }
+        img.avatar { display: block; }
+
+        .body { flex: 1; min-width: 0; }
+
+        .head {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+        .author {
+            color: #f2f3f5;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+        .author:hover { color: #00a8fc; text-decoration: underline; }
+        .time { color: #949ba4; font-size: 12px; }
+
+        .text {
+            color: #dbdee1;
+            font-size: 15px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .del {
+            position: absolute;
+            right: 20px;
+            top: 6px;
+            color: #f23f43;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s;
+            background: #2e3035;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .msg:hover .del { opacity: 1; }
+        .del:hover { background: #3a1a1b; }
+
+        form { display: flex; padding: 0 16px 20px; gap: 10px; }
+        input[type=text] {
+            flex: 1;
+            padding: 12px 16px;
+            background: #383a40;
+            border: none;
+            border-radius: 8px;
+            color: #dbdee1;
+            font-family: inherit;
+            font-size: 15px;
+            outline: none;
+        }
+        input[type=text]::placeholder { color: #6d6f78; }
+        input[type=text]:focus { background: #404249; }
+
+        button {
+            padding: 12px 20px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 8px;
             cursor: pointer;
             font-family: inherit;
             font-size: 15px;
+            font-weight: 600;
         }
-        button:hover { background: darkblue; }
+        button:hover { background: #4752c4; }
+
+        /* ==== Модалка выбора кому звонить ==== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #313338;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 360px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .modal h3 {
+            margin: 0 0 16px;
+            color: #f2f3f5;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .user-item:hover { background: #3a3c42; }
+        .user-item .avatar-sm {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: #5865f2; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 15px; object-fit: cover; flex-shrink: 0;
+        }
+        .user-item .u-name { color: #f2f3f5; font-size: 15px; font-weight: 500; }
+        .user-item .u-status {
+            margin-left: auto;
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #80848e;
+        }
+        .user-item .u-status.online { background: #23a55a; }
+        .modal .cancel {
+            margin-top: 16px; width: 100%;
+            background: #4e5058; color: #fff;
+        }
+        .modal .cancel:hover { background: #5d6069; }
+
+        /* ==== Экран звонка ==== */
+        .call-screen {
+            position: fixed;
+            inset: 0;
+            background: #1e1f22;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            gap: 24px;
+        }
+        .call-screen.active { display: flex; }
+        .call-avatar {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: #5865f2; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 56px; object-fit: cover;
+            box-shadow: 0 0 0 0 rgba(88,101,242,0.7);
+            animation: pulse 1.6s infinite;
+        }
+        img.call-avatar { display: block; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(88,101,242,0.5); }
+            70% { box-shadow: 0 0 0 30px rgba(88,101,242,0); }
+            100% { box-shadow: 0 0 0 0 rgba(88,101,242,0); }
+        }
+        .call-name {
+            color: #f2f3f5; font-size: 24px; font-weight: 600;
+        }
+        .call-status {
+            color: #949ba4; font-size: 15px; margin-top: -14px;
+        }
+        .call-actions { display: flex; gap: 20px; }
+        .call-btn {
+            width: 64px; height: 64px; border-radius: 50%;
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px;
+            transition: transform 0.1s, background 0.15s;
+        }
+        .call-btn:hover { transform: scale(1.08); }
+        .call-btn.accept { background: #23a55a; color: white; }
+        .call-btn.reject { background: #f23f43; color: white; }
+        .call-btn.mute { background: #4e5058; color: white; }
+        .call-btn.mute.muted { background: #f23f43; }
     </style>
 </head>
 <body>
-    <header>Чат банды</header>
+    <header>
+        Чат банды
+        <span class="spacer"></span>
+        <button class="btn-call" id="callBtn" title="Позвонить">📞 Позвонить</button>
+        <a href="/profile" class="profile-link">Мой профиль</a>
+    </header>
     <div id="messages"></div>
     <form id="form">
-        <input type="text" id="text" placeholder="Напиши что-нибудь..." autocomplete="off" required>
+        <input type="text" id="text" placeholder="Написать сообщение..." autocomplete="off" required>
         <button type="submit">Отправить</button>
     </form>
 
+    <!-- Модалка выбора кому звонить -->
+    <div class="modal-overlay" id="callModal">
+        <div class="modal">
+            <h3>Кому звонить?</h3>
+            <div id="userList"></div>
+            <button class="cancel" onclick="closeCallModal()">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Экран звонка -->
+    <div class="call-screen" id="callScreen">
+        <div class="call-avatar" id="callAvatar">?</div>
+        <div class="call-name" id="callName">...</div>
+        <div class="call-status" id="callStatus">...</div>
+        <div class="call-actions" id="callActions"></div>
+    </div>
+
+    <audio id="remoteAudio" autoplay></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         const messagesEl = document.getElementById('messages');
         const form = document.getElementById('form');
         const textInput = document.getElementById('text');
 
         let myLogin = null;
+        let myName = null;
         let isAdmin = false;
+        let onlineList = [];
+
+        // ==== Чат ====
 
         function formatTime(iso) {
-            const d = new Date(iso);
-            return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         }
-
+        function formatDate(iso) {
+            const d = new Date(iso);
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+            const sameDay = (a, b) =>
+                a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+            if (sameDay(d, today)) return 'Сегодня';
+            if (sameDay(d, yesterday)) return 'Вчера';
+            return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
         function escapeHtml(s) {
-            return s.replace(/[&<>"']/g, c => ({
-                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-            })[c]);
+            return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
         }
 
         function render(messages) {
-            messagesEl.innerHTML = messages.map(m => {
-                const own = m.login === myLogin;
-                return `
-                    <div class="msg ${own ? 'own' : 'other'}">
-                        ${own ? '' : `<div class="author">${escapeHtml(m.name)}</div>`}
-                        <div>${escapeHtml(m.text)}</div>
-                        <div class="time">
-                            ${formatTime(m.time)}
-                            ${(own || isAdmin) ? `<span class="del" onclick="delMsg('${m.id}')">удалить</span>` : ''}
+            let html = '';
+            let lastDate = null;
+            messages.forEach(m => {
+                const dateKey = new Date(m.time).toDateString();
+                if (dateKey !== lastDate) {
+                    html += `<div class="date-divider">${formatDate(m.time)}</div>`;
+                    lastDate = dateKey;
+                }
+                const initial = (m.name || '?').charAt(0).toUpperCase();
+                const avatarHtml = m.avatar
+                    ? `<img class="avatar" src="${m.avatar}" alt="" onclick="openProfile('${m.login}')">`
+                    : `<div class="avatar" onclick="openProfile('${m.login}')">${escapeHtml(initial)}</div>`;
+                const canDelete = (m.login === myLogin) || isAdmin;
+                html += `
+                    <div class="msg">
+                        ${avatarHtml}
+                        <div class="body">
+                            <div class="head">
+                                <span class="author" onclick="openProfile('${m.login}')">${escapeHtml(m.name)}</span>
+                                <span class="time">${formatTime(m.time)}</span>
+                            </div>
+                            <div class="text">${escapeHtml(m.text)}</div>
                         </div>
+                        ${canDelete ? `<span class="del" onclick="delMsg('${m.id}')">удалить</span>` : ''}
                     </div>
                 `;
-            }).join('');
+            });
+            messagesEl.innerHTML = html;
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
-        async function load() {
+        function openProfile(login) {
+            location.href = '/profile?user=' + encodeURIComponent(login);
+        }
+
+        async function loadMessages() {
             const r = await fetch('/api/messages');
             if (!r.ok) return;
-            const data = await r.json();
-            render(data);
+            render(await r.json());
         }
 
         form.addEventListener('submit', async e => {
@@ -146,21 +399,270 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text })
             });
-            load();
+            loadMessages();
         });
 
         async function delMsg(id) {
             await fetch('/api/messages/' + id, { method: 'DELETE' });
-            load();
+            loadMessages();
         }
 
+        // ==== Инициализация ====
         fetch('/api/me').then(r => r.json()).then(u => {
             isAdmin = u.role === 'admin';
             myLogin = u.login;
-            load();
+            myName = u.name;
+            loadMessages();
+            initSocket();
         });
 
-        setInterval(load, 3000);
+        setInterval(loadMessages, 3000);
+        fetch('/api/ping', { method: 'POST' });
+        setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
+
+        // ==== Звонки ====
+
+        const socket = io();
+        let currentCall = null;
+        let peerConnection = null;
+        let localStream = null;
+        let remoteLogin = null;
+        let isCaller = false;
+
+        const callModal = document.getElementById('callModal');
+        const callScreen = document.getElementById('callScreen');
+        const callAvatar = document.getElementById('callAvatar');
+        const callName = document.getElementById('callName');
+        const callStatus = document.getElementById('callStatus');
+        const callActions = document.getElementById('callActions');
+        const remoteAudio = document.getElementById('remoteAudio');
+
+        function initSocket() {
+            socket.on('online', (list) => {
+                onlineList = list;
+                if (callModal.classList.contains('active')) renderUserList();
+            });
+
+            socket.on('call:incoming', async ({ from, fromName, offer }) => {
+                if (currentCall) {
+                    socket.emit('call:reject', { to: from });
+                    return;
+                }
+                isCaller = false;
+                remoteLogin = from;
+                currentCall = { from, offer };
+
+                showCallScreen(fromName, from, 'Входящий звонок', [
+                    { label: '📞', cls: 'accept', action: () => acceptCall(offer, from) },
+                    { label: '✕', cls: 'reject', action: () => rejectCall(from) }
+                ]);
+            });
+
+            socket.on('call:answered', async ({ answer }) => {
+                if (!peerConnection) return;
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                setCallStatus('Разговор');
+            });
+
+            socket.on('call:ice', async ({ candidate }) => {
+                if (peerConnection && candidate) {
+                    try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); }
+                    catch (e) { console.error('ICE error', e); }
+                }
+            });
+
+            socket.on('call:rejected', () => {
+                endCallLocal();
+                alert('Звонок отклонён');
+            });
+
+            socket.on('call:ended', () => {
+                endCallLocal();
+            });
+
+            socket.on('call:offline', ({ to }) => {
+                alert('Этот пацан сейчас не в сети');
+                endCallLocal();
+            });
+        }
+
+        async function getIceServers() {
+            const r = await fetch('/api/turn');
+            const data = await r.json();
+            return data.iceServers;
+        }
+
+        async function getLocalStream() {
+            if (localStream) return localStream;
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            return localStream;
+        }
+
+        function createPeerConnection(iceServers) {
+            const pc = new RTCPeerConnection({ iceServers });
+
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+            pc.ontrack = (e) => {
+                remoteAudio.srcObject = e.streams[0];
+            };
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate && remoteLogin) {
+                    socket.emit('call:ice', { to: remoteLogin, candidate: e.candidate });
+                }
+            };
+
+            return pc;
+        }
+
+        document.getElementById('callBtn').addEventListener('click', openCallModal);
+
+        async function openCallModal() {
+            const r = await fetch('/api/users');
+            const users = await r.json();
+            window._allUsers = users.filter(u => u.login !== myLogin);
+            renderUserList();
+            callModal.classList.add('active');
+        }
+
+        function renderUserList() {
+            const list = document.getElementById('userList');
+            list.innerHTML = window._allUsers.map(u => {
+                const initial = (u.name || '?').charAt(0).toUpperCase();
+                const avatarHtml = u.avatar
+                    ? `<img class="avatar-sm" src="${u.avatar}" alt="">`
+                    : `<div class="avatar-sm">${escapeHtml(initial)}</div>`;
+                const isOnline = onlineList.includes(u.login);
+                return `
+                    <div class="user-item" onclick="startCall('${u.login}', '${escapeHtml(u.name)}')">
+                        ${avatarHtml}
+                        <span class="u-name">${escapeHtml(u.name)}</span>
+                        <span class="u-status ${isOnline ? 'online' : ''}"></span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function closeCallModal() {
+            callModal.classList.remove('active');
+        }
+
+        async function startCall(login, name) {
+            closeCallModal();
+            isCaller = true;
+            remoteLogin = login;
+
+            try {
+                await getLocalStream();
+            } catch (e) {
+                alert('Нет доступа к микрофону');
+                return;
+            }
+
+            const iceServers = await getIceServers();
+            peerConnection = createPeerConnection(iceServers);
+
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            socket.emit('call:offer', { to: login, offer });
+
+            showCallScreen(name, login, 'Звоним...', [
+                { label: '✕', cls: 'reject', action: () => rejectCall(login) }
+            ]);
+        }
+
+        async function acceptCall(offer, from) {
+            try {
+                await getLocalStream();
+            } catch (e) {
+                alert('Нет доступа к микрофону');
+                return;
+            }
+
+            const iceServers = await getIceServers();
+            peerConnection = createPeerConnection(iceServers);
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+
+            socket.emit('call:answer', { to: from, answer });
+
+            setCallStatus('Разговор');
+            showCallControls();
+        }
+
+        function rejectCall(to) {
+            socket.emit('call:reject', { to });
+            endCallLocal();
+        }
+
+        function endCallLocal() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(t => t.stop());
+                localStream = null;
+            }
+            remoteAudio.srcObject = null;
+            currentCall = null;
+            remoteLogin = null;
+            isCaller = false;
+            callScreen.classList.remove('active');
+        }
+
+        function showCallScreen(name, login, status, actions) {
+            callName.textContent = name;
+            callStatus.textContent = status;
+
+            // Аватарка
+            const user = (window._allUsers || []).find(u => u.login === login);
+            if (user && user.avatar) {
+                callAvatar.outerHTML = `<img id="callAvatar" class="call-avatar" src="${user.avatar}" alt="">`;
+            } else {
+                const initial = (name || '?').charAt(0).toUpperCase();
+                callAvatar.outerHTML = `<div id="callAvatar" class="call-avatar">${escapeHtml(initial)}</div>`;
+            }
+
+            renderCallActions(actions);
+            callScreen.classList.add('active');
+        }
+
+        function showCallControls() {
+            renderCallActions([
+                { label: '🎙️', cls: 'mute', action: toggleMute, id: 'muteBtn' },
+                { label: '✕', cls: 'reject', action: () => { socket.emit('call:end', { to: remoteLogin }); endCallLocal(); } }
+            ]);
+        }
+
+        function renderCallActions(actions) {
+            callActions.innerHTML = '';
+            actions.forEach(a => {
+                const btn = document.createElement('button');
+                btn.className = 'call-btn ' + a.cls;
+                btn.textContent = a.label;
+                if (a.id) btn.id = a.id;
+                btn.onclick = a.action;
+                callActions.appendChild(btn);
+            });
+        }
+
+        function setCallStatus(text) {
+            callStatus.textContent = text;
+        }
+
+        let muted = false;
+        function toggleMute() {
+            if (!localStream) return;
+            muted = !muted;
+            localStream.getAudioTracks().forEach(t => t.enabled = !muted);
+            const btn = document.getElementById('muteBtn');
+            if (btn) btn.classList.toggle('muted', muted);
+        }
     </script>
 </body>
 </html>

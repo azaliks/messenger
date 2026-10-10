@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: #313338;
+            color: #dbdee1;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .card {
+            background: #2b2d31;
+            border-radius: 12px;
+            padding: 32px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.24);
+            text-align: center;
+        }
+
+        .avatar-wrap {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+        }
+        .avatar-big {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: #5865f2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 600;
+            object-fit: cover;
+        }
+        img.avatar-big { display: block; }
+
+        .upload-btn {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #5865f2;
+            color: white;
+            border: 3px solid #2b2d31;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        .upload-btn:hover { background: #4752c4; }
+        .upload-btn input { display: none; }
+
+        h1 {
+            color: #f2f3f5;
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0 0 4px;
+        }
+        .login-sub {
+            color: #949ba4;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .phrase-block {
+            text-align: left;
+            margin-top: 24px;
+            background: #1e1f22;
+            padding: 16px;
+            border-radius: 8px;
+        }
+        .phrase-label {
+            color: #b5bac1;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+        }
+        .phrase-text {
+            color: #dbdee1;
+            font-size: 15px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .phrase-empty {
+            color: #6d6f78;
+            font-style: italic;
+        }
+
+        .section {
+            text-align: left;
+            margin-top: 24px;
+        }
+        .section label {
+            display: block;
+            color: #b5bac1;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+        }
+        .section textarea {
+            width: 100%;
+            padding: 12px;
+            background: #1e1f22;
+            border: none;
+            border-radius: 4px;
+            color: #dbdee1;
+            font-family: inherit;
+            font-size: 15px;
+            outline: none;
+            resize: vertical;
+            min-height: 70px;
+        }
+        .section textarea:focus { outline: 2px solid #5865f2; }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 12px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .btn:hover { background: #4752c4; }
+
+        .status-msg {
+            margin-top: 12px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+        .ok { color: #23a55a; }
+        .err { color: #fa777c; }
+
+        .back {
+            display: block;
+            margin-top: 24px;
+            color: #00a8fc;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="avatar-wrap" id="avatarWrap">
+            <div id="avatarBox" class="avatar-big">?</div>
+        </div>
+
+        <h1 id="name">...</h1>
+        <div class="login-sub" id="loginLabel"></div>
+
+        <div id="phraseView" style="display:none;">
+            <div class="phrase-block">
+                <div class="phrase-label">Любимая фраза</div>
+                <div class="phrase-text" id="phraseText"></div>
+            </div>
+        </div>
+
+        <div id="editSection" style="display:none;">
+            <div class="section">
+                <label for="phrase">Любимая фраза</label>
+                <textarea id="phrase" placeholder="Напиши свою любимую фразу..."></textarea>
+                <button class="btn" id="savePhrase">Сохранить фразу</button>
+                <div class="status-msg" id="phraseStatus"></div>
+            </div>
+        </div>
+
+        <a href="/chat" class="back">← Вернуться в чат</a>
+    </div>
+
+    <script>
+        const avatarWrap = document.getElementById('avatarWrap');
+        const avatarBox = document.getElementById('avatarBox');
+        const nameEl = document.getElementById('name');
+        const loginLabel = document.getElementById('loginLabel');
+        const phraseView = document.getElementById('phraseView');
+        const phraseText = document.getElementById('phraseText');
+        const editSection = document.getElementById('editSection');
+        const phraseEl = document.getElementById('phrase');
+        const savePhraseBtn = document.getElementById('savePhrase');
+        const phraseStatus = document.getElementById('phraseStatus');
+
+        // Берём логин из адреса: /profile?user=lukash
+        const params = new URLSearchParams(location.search);
+        const requestedLogin = params.get('user');
+
+        let myLogin = null;
+
+        async function load() {
+            const me = await fetch('/api/me').then(r => r.json());
+            myLogin = me.login;
+
+            const targetLogin = requestedLogin || myLogin;
+            const p = await fetch('/api/profile/' + targetLogin).then(r => r.json());
+
+            if (p.error) {
+                nameEl.textContent = 'Профиль не найден';
+                return;
+            }
+
+            nameEl.textContent = p.name;
+            loginLabel.textContent = '@' + p.login;
+
+            if (p.avatar) {
+                avatarBox.outerHTML = `<img id="avatarBox" class="avatar-big" src="${p.avatar}" alt="">`;
+            } else {
+                avatarBox.textContent = (p.name || '?').charAt(0).toUpperCase();
+            }
+
+            if (p.isOwn) {
+                // Свой профиль — редактирование
+                editSection.style.display = 'block';
+                phraseView.style.display = 'none';
+                phraseEl.value = p.phrase || '';
+
+                // Плюсик для загрузки аватарки
+                const uploadLabel = document.createElement('label');
+                uploadLabel.className = 'upload-btn';
+                uploadLabel.title = 'Загрузить аватарку';
+                uploadLabel.innerHTML = '+<input type="file" id="avatarInput" accept="image/*">';
+                avatarWrap.appendChild(uploadLabel);
+
+                uploadLabel.querySelector('input').addEventListener('change', async e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const fd = new FormData();
+                    fd.append('avatar', file);
+
+                    const r = await fetch('/api/profile/avatar', {
+                        method: 'POST',
+                        body: fd
+                    });
+                    const data = await r.json();
+
+                    if (data.ok) {
+                        const img = document.getElementById('avatarBox');
+                        if (img.tagName === 'IMG') {
+                            img.src = data.avatar + '?t=' + Date.now();
+                        } else {
+                            img.outerHTML = `<img id="avatarBox" class="avatar-big" src="${data.avatar}" alt="">`;
+                        }
+                    } else {
+                        alert('Не удалось загрузить аватарку');
+                    }
+                });
+
+                savePhraseBtn.addEventListener('click', async () => {
+                    phraseStatus.textContent = '';
+                    phraseStatus.className = 'status-msg';
+
+                    const r = await fetch('/api/profile/phrase', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phrase: phraseEl.value })
+                    });
+                    const data = await r.json();
+
+                    if (data.ok) {
+                        phraseStatus.textContent = 'Сохранено!';
+                        phraseStatus.classList.add('ok');
+                        setTimeout(() => { phraseStatus.textContent = ''; }, 2000);
+                    } else {
+                        phraseStatus.textContent = 'Ошибка';
+                        phraseStatus.classList.add('err');
+                    }
+                });
+            } else {
+                // Чужой профиль — только просмотр
+                editSection.style.display = 'none';
+                phraseView.style.display = 'block';
+
+                if (p.phrase) {
+                    phraseText.textContent = p.phrase;
+                    phraseText.classList.remove('phrase-empty');
+                } else {
+                    phraseText.textContent = 'Пока ничего не написал';
+                    phraseText.classList.add('phrase-empty');
+                }
+            }
+        }
+
+        load();
+    </script>
+</body>
+</html>
