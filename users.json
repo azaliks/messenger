@@ -1,0 +1,34 @@
+{
+  "users": [
+    {
+      "login": "azaliks",
+      "password": "admin123",
+      "name": "azaliks",
+      "nickname": "azaliks",
+      "role": "admin",
+      "lastLogin": "2026-10-10T19:11:18.942Z"
+    },
+    {
+      "login": "lukash",
+      "password": "lukash123",
+      "name": "Лукаш",
+      "nickname": "Лукаш",
+      "role": "user",
+      "lastLogin": "2026-10-10T19:12:08.073Z"
+    },
+    {
+      "login": "tarasenkov",
+      "password": "tarasenkov123",
+      "name": "Тарасенков",
+      "nickname": "Пенсия",
+      "role": "user"
+    },
+    {
+      "login": "tema",
+      "password": "tema123",
+      "name": "Тёма",
+      "nickname": "СУПЕР ПЕНСИЯ",
+      "role": "user"
+    }
+  ]
+}
