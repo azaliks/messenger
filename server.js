@@ -15,21 +15,31 @@ const PORT = process.env.PORT || 3000;
 const TURN_USERNAME = '07354b48071e5473f623d7a9';
 const TURN_CREDENTIAL = 'p9aioMeZ5mqY2lhl';
 
-// ==== Папка для аватарок ====
+// ==== Папки для файлов ====
 const AVATARS_DIR = path.join(__dirname, 'avatars');
-if (!fs.existsSync(AVATARS_DIR)) {
-    fs.mkdirSync(AVATARS_DIR, { recursive: true });
-}
+const VOICE_DIR = path.join(__dirname, 'voice');
+if (!fs.existsSync(AVATARS_DIR)) fs.mkdirSync(AVATARS_DIR, { recursive: true });
+if (!fs.existsSync(VOICE_DIR)) fs.mkdirSync(VOICE_DIR, { recursive: true });
 
-const storage = multer.diskStorage({
+// ==== Multer: аватарки ====
+const avatarStorage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, AVATARS_DIR),
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
-        const name = req.session.user.login + '-' + Date.now() + ext;
-        cb(null, name);
+        cb(null, req.session.user.login + '-' + Date.now() + ext);
     }
 });
-const upload = multer({ storage });
+const uploadAvatar = multer({ storage: avatarStorage });
+
+// ==== Multer: голосовые ====
+const voiceStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, VOICE_DIR),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname) || '.webm';
+        cb(null, 'voice-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + ext);
+    }
+});
+const uploadVoice = multer({ storage: voiceStorage });
 
 // ==== Чтение и запись ====
 function readUsers() {
@@ -56,50 +66,40 @@ const sessionMiddleware = session({
 app.use(sessionMiddleware);
 app.use(express.static(__dirname));
 app.use('/avatars', express.static(AVATARS_DIR));
+app.use('/voice', express.static(VOICE_DIR));
 
 io.engine.use(sessionMiddleware);
 
-// ==== Онлайн-пользователи ====
+// ==== Онлайн ====
 const onlineUsers = new Map();
 
-// ==== Socket.IO: сигналинг звонков ====
 io.on('connection', (socket) => {
     const user = socket.request.session && socket.request.session.user;
-    if (!user) {
-        socket.disconnect();
-        return;
-    }
+    if (!user) { socket.disconnect(); return; }
 
     onlineUsers.set(socket.id, user.login);
     io.emit('online', Array.from(onlineUsers.values()));
 
     socket.on('call:offer', ({ to, offer }) => {
         const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (targetSocketId) {
-            io.to(targetSocketId).emit('call:incoming', { from: user.login, fromName: user.name, offer });
-        } else {
-            socket.emit('call:offline', { to });
-        }
+        if (targetSocketId) io.to(targetSocketId).emit('call:incoming', { from: user.login, fromName: user.name, offer });
+        else socket.emit('call:offline', { to });
     });
-
     socket.on('call:answer', ({ to, answer }) => {
-        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (targetSocketId) io.to(targetSocketId).emit('call:answered', { answer });
+        const t = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (t) io.to(t).emit('call:answered', { answer });
     });
-
     socket.on('call:ice', ({ to, candidate }) => {
-        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (targetSocketId) io.to(targetSocketId).emit('call:ice', { candidate });
+        const t = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (t) io.to(t).emit('call:ice', { candidate });
     });
-
     socket.on('call:end', ({ to }) => {
-        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (targetSocketId) io.to(targetSocketId).emit('call:ended');
+        const t = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (t) io.to(t).emit('call:ended');
     });
-
     socket.on('call:reject', ({ to }) => {
-        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (targetSocketId) io.to(targetSocketId).emit('call:rejected');
+        const t = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (t) io.to(t).emit('call:rejected');
     });
 
     socket.on('disconnect', () => {
@@ -129,9 +129,7 @@ app.get('/api/turn', (req, res) => {
 });
 
 // ==== Вход ====
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
-});
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 
 app.post('/login', (req, res) => {
     const { login, password } = req.body;
@@ -204,7 +202,7 @@ app.get('/api/profile/:login', (req, res) => {
     });
 });
 
-app.post('/api/profile/avatar', upload.single('avatar'), (req, res) => {
+app.post('/api/profile/avatar', uploadAvatar.single('avatar'), (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     if (!req.file) return res.status(400).json({ error: 'no file' });
     const data = readUsers();
@@ -266,6 +264,29 @@ app.post('/api/messages', (req, res) => {
     res.json(message);
 });
 
+// ==== Голосовое сообщение ====
+app.post('/api/voice', uploadVoice.single('voice'), (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    if (!req.file) return res.status(400).json({ error: 'no file' });
+
+    const duration = req.body.duration || 0;
+
+    const data = readMessages();
+    const message = {
+        id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        login: req.session.user.login,
+        name: req.session.user.name,
+        text: '▶ Голосовое сообщение',
+        voice: '/voice/' + req.file.filename,
+        duration: parseInt(duration) || 0,
+        time: new Date().toISOString(),
+        reactions: {}
+    };
+    data.messages.push(message);
+    writeMessages(data);
+    res.json(message);
+});
+
 app.delete('/api/messages/:id', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const data = readMessages();
@@ -275,6 +296,13 @@ app.delete('/api/messages/:id', (req, res) => {
     const isOwn = msg.login === req.session.user.login;
     const isAdmin = req.session.user.role === 'admin';
     if (!isOwn && !isAdmin) return res.status(403).json({ error: 'no permission' });
+
+    // Удаляем файл голосового, если есть
+    if (msg.voice) {
+        const vPath = path.join(VOICE_DIR, path.basename(msg.voice));
+        if (fs.existsSync(vPath)) fs.unlinkSync(vPath);
+    }
+
     data.messages.splice(idx, 1);
     writeMessages(data);
     res.json({ ok: true });
@@ -296,41 +324,24 @@ app.post('/api/messages/:id/react', (req, res) => {
     if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
 
     const myLogin = req.session.user.login;
-    const isAdmin = req.session.user.role === 'admin';
     const list = msg.reactions[emoji];
 
     if (action === 'remove') {
-        // Убираем: автор реакции или админ
-        const idx = list.findIndex(l => l === myLogin);
-        if (idx !== -1) {
-            list.splice(idx, 1);
-        } else if (isAdmin) {
-            // Админ может убрать чужую реакцию — но мы не знаем, чью именно
-            // Поэтому убираем все, если админ нажал на счётчик
-            // Проще: админ убирает только свою. Для чужих — отдельная логика.
-            // Оставим: админ может убрать свою, как все.
-        }
+        const i = list.findIndex(l => l === myLogin);
+        if (i !== -1) list.splice(i, 1);
     } else {
-        // Ставим реакцию
-        // Убираем другие реакции этого юзера с этого сообщения
         Object.keys(msg.reactions).forEach(k => {
             msg.reactions[k] = msg.reactions[k].filter(l => l !== myLogin);
             if (msg.reactions[k].length === 0) delete msg.reactions[k];
         });
-        // Добавляем новую
         if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
         msg.reactions[emoji].push(myLogin);
     }
 
     writeMessages(data);
-
-    // Отдаём обновлённое сообщение
     const users = readUsers().users;
     const u = users.find(x => x.login === msg.login);
-    res.json({
-        ...msg,
-        avatar: u && u.avatar ? u.avatar : null
-    });
+    res.json({ ...msg, avatar: u && u.avatar ? u.avatar : null });
 });
 
 // ==== Админка ====
@@ -344,16 +355,10 @@ app.get('/admin', (req, res) => {
 
     const rows = data.users.map(u => {
         let status, statusColor;
-        if (!u.lastLogin) {
-            status = 'Не заходил на сайт';
-            statusColor = '#80848e';
-        } else if (u.lastPing && (now - new Date(u.lastPing).getTime() < ONE_MINUTE)) {
-            status = 'В сети';
-            statusColor = '#23a55a';
-        } else {
-            status = 'Заходил';
-            statusColor = '#949ba4';
-        }
+        if (!u.lastLogin) { status = 'Не заходил на сайт'; statusColor = '#80848e'; }
+        else if (u.lastPing && (now - new Date(u.lastPing).getTime() < ONE_MINUTE)) { status = 'В сети'; statusColor = '#23a55a'; }
+        else { status = 'Заходил'; statusColor = '#949ba4'; }
+
         const lastTime = u.lastLogin
             ? new Date(u.lastLogin).toLocaleString('ru-RU', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
@@ -368,19 +373,9 @@ app.get('/admin', (req, res) => {
 
         return `
             <tr>
-                <td>
-                    <div class="user-cell">
-                        ${avatarHtml}
-                        <span class="nickname">${u.nickname}</span>
-                    </div>
-                </td>
+                <td><div class="user-cell">${avatarHtml}<span class="nickname">${u.nickname}</span></div></td>
                 <td class="muted">${lastTime}</td>
-                <td>
-                    <span class="status" style="color: ${statusColor};">
-                        <span class="dot" style="background: ${statusColor};"></span>
-                        ${status}
-                    </span>
-                </td>
+                <td><span class="status" style="color:${statusColor};"><span class="dot" style="background:${statusColor};"></span>${status}</span></td>
             </tr>
         `;
     }).join('');
@@ -407,10 +402,7 @@ app.get('/admin', (req, res) => {
                 }
                 table { border-collapse: collapse; width: 100%; }
                 th, td { padding: 14px 20px; text-align: left; }
-                th {
-                    background: #1e1f22; color: #b5bac1; font-size: 12px;
-                    font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em;
-                }
+                th { background: #1e1f22; color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; }
                 tr { border-bottom: 1px solid #3f4147; }
                 tr:last-child { border-bottom: none; }
                 tr:hover td { background: #35373c; }
@@ -438,9 +430,7 @@ app.get('/admin', (req, res) => {
                     ${rows}
                 </table>
             </div>
-            <div class="footer">
-                <a href="/chat">→ Перейти в чат</a>
-            </div>
+            <div class="footer"><a href="/chat">→ Перейти в чат</a></div>
             <script>
                 fetch('/api/ping', { method: 'POST' });
                 setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
@@ -450,7 +440,4 @@ app.get('/admin', (req, res) => {
     `);
 });
 
-// ==== Запуск ====
-server.listen(PORT, () => {
-    console.log(`Сервер запущен: http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`Сервер запущен: http://localhost:${PORT}`));

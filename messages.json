@@ -21,7 +21,7 @@
       "text": "a",
       "time": "2026-10-10T20:09:14.370Z",
       "reactions": {
-        "😂": [
+        "🔥": [
           "azaliks"
         ]
       }
@@ -37,6 +37,16 @@
           "azaliks"
         ]
       }
+    },
+    {
+      "id": "1791738437622-brkx2m",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "▶ Голосовое сообщение",
+      "voice": "/voice/voice-1791738437590-q9aa.webm",
+      "duration": 10,
+      "time": "2026-10-11T17:07:17.625Z",
+      "reactions": {}
     }
   ]
 }
