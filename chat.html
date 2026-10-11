@@ -182,7 +182,7 @@
         }
         button:hover { background: #4752c4; }
 
-        /* ==== Модалка выбора кому звонить ==== */
+        /* Модалка выбора */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -201,20 +201,11 @@
             max-width: 360px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         }
-        .modal h3 {
-            margin: 0 0 16px;
-            color: #f2f3f5;
-            font-size: 18px;
-            font-weight: 600;
-        }
+        .modal h3 { margin: 0 0 16px; color: #f2f3f5; font-size: 18px; font-weight: 600; }
         .user-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.15s;
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; border-radius: 8px;
+            cursor: pointer; transition: background 0.15s;
         }
         .user-item:hover { background: #3a3c42; }
         .user-item .avatar-sm {
@@ -225,9 +216,8 @@
         }
         .user-item .u-name { color: #f2f3f5; font-size: 15px; font-weight: 500; }
         .user-item .u-status {
-            margin-left: auto;
-            width: 10px; height: 10px; border-radius: 50%;
-            background: #80848e;
+            margin-left: auto; width: 10px; height: 10px;
+            border-radius: 50%; background: #80848e;
         }
         .user-item .u-status.online { background: #23a55a; }
         .modal .cancel {
@@ -236,7 +226,7 @@
         }
         .modal .cancel:hover { background: #5d6069; }
 
-        /* ==== Экран звонка ==== */
+        /* Экран звонка */
         .call-screen {
             position: fixed;
             inset: 0;
@@ -263,12 +253,8 @@
             70% { box-shadow: 0 0 0 30px rgba(88,101,242,0); }
             100% { box-shadow: 0 0 0 0 rgba(88,101,242,0); }
         }
-        .call-name {
-            color: #f2f3f5; font-size: 24px; font-weight: 600;
-        }
-        .call-status {
-            color: #949ba4; font-size: 15px; margin-top: -14px;
-        }
+        .call-name { color: #f2f3f5; font-size: 24px; font-weight: 600; }
+        .call-status { color: #949ba4; font-size: 15px; margin-top: -14px; }
         .call-actions { display: flex; gap: 20px; }
         .call-btn {
             width: 64px; height: 64px; border-radius: 50%;
@@ -288,7 +274,7 @@
     <header>
         Чат банды
         <span class="spacer"></span>
-        <button class="btn-call" id="callBtn" title="Позвонить">📞 Позвонить</button>
+        <button class="btn-call" id="callBtn">📞 Позвонить</button>
         <a href="/profile" class="profile-link">Мой профиль</a>
     </header>
     <div id="messages"></div>
@@ -297,7 +283,6 @@
         <button type="submit">Отправить</button>
     </form>
 
-    <!-- Модалка выбора кому звонить -->
     <div class="modal-overlay" id="callModal">
         <div class="modal">
             <h3>Кому звонить?</h3>
@@ -306,7 +291,6 @@
         </div>
     </div>
 
-    <!-- Экран звонка -->
     <div class="call-screen" id="callScreen">
         <div class="call-avatar" id="callAvatar">?</div>
         <div class="call-name" id="callName">...</div>
@@ -326,9 +310,9 @@
         let myName = null;
         let isAdmin = false;
         let onlineList = [];
+        let allUsers = [];
 
-        // ==== Чат ====
-
+        // ==== ЧАТ ====
         function formatTime(iso) {
             return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         }
@@ -344,7 +328,7 @@
             return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
         }
         function escapeHtml(s) {
-            return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
         }
 
         function render(messages) {
@@ -407,27 +391,18 @@
             loadMessages();
         }
 
-        // ==== Инициализация ====
-        fetch('/api/me').then(r => r.json()).then(u => {
-            isAdmin = u.role === 'admin';
-            myLogin = u.login;
-            myName = u.name;
-            loadMessages();
-            initSocket();
+        // ==== ЗВОНКИ ====
+        const socket = io({
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: Infinity
         });
 
-        setInterval(loadMessages, 3000);
-        fetch('/api/ping', { method: 'POST' });
-        setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
-
-        // ==== Звонки ====
-
-        const socket = io();
-        let currentCall = null;
         let peerConnection = null;
         let localStream = null;
         let remoteLogin = null;
-        let isCaller = false;
+        let currentCall = null;
+        let callTimeout = null;
 
         const callModal = document.getElementById('callModal');
         const callScreen = document.getElementById('callScreen');
@@ -437,54 +412,68 @@
         const callActions = document.getElementById('callActions');
         const remoteAudio = document.getElementById('remoteAudio');
 
-        function initSocket() {
-            socket.on('online', (list) => {
-                onlineList = list;
-                if (callModal.classList.contains('active')) renderUserList();
-            });
+        // Логи переподключения
+        socket.on('connect', () => {
+            console.log('✅ Socket подключён:', socket.id);
+        });
+        socket.on('disconnect', (reason) => {
+            console.log('❌ Socket отключён:', reason);
+        });
+        socket.on('reconnect', () => {
+            console.log('🔄 Socket переподключён');
+        });
+        socket.on('connect_error', (err) => {
+            console.log('⚠️ Ошибка подключения:', err.message);
+        });
 
-            socket.on('call:incoming', async ({ from, fromName, offer }) => {
-                if (currentCall) {
-                    socket.emit('call:reject', { to: from });
-                    return;
-                }
-                isCaller = false;
-                remoteLogin = from;
-                currentCall = { from, offer };
+        socket.on('online', (list) => {
+            onlineList = list;
+            console.log('👥 Онлайн:', list);
+            if (callModal.classList.contains('active')) renderUserList();
+        });
 
-                showCallScreen(fromName, from, 'Входящий звонок', [
-                    { label: '📞', cls: 'accept', action: () => acceptCall(offer, from) },
-                    { label: '✕', cls: 'reject', action: () => rejectCall(from) }
-                ]);
-            });
+        socket.on('call:incoming', async ({ from, fromName, offer }) => {
+            if (currentCall) {
+                socket.emit('call:reject', { to: from });
+                return;
+            }
+            currentCall = { from, offer };
+            remoteLogin = from;
 
-            socket.on('call:answered', async ({ answer }) => {
-                if (!peerConnection) return;
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                setCallStatus('Разговор');
-            });
+            showCallScreen(fromName, from, 'Входящий звонок', [
+                { label: '📞', cls: 'accept', action: () => acceptCall(offer, from) },
+                { label: '✕', cls: 'reject', action: () => rejectCall(from) }
+            ]);
+        });
 
-            socket.on('call:ice', async ({ candidate }) => {
-                if (peerConnection && candidate) {
-                    try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); }
-                    catch (e) { console.error('ICE error', e); }
-                }
-            });
+        socket.on('call:answered', async ({ answer }) => {
+            clearTimeout(callTimeout);
+            if (!peerConnection) return;
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+            setCallStatus('Разговор');
+            showCallControls();
+        });
 
-            socket.on('call:rejected', () => {
-                endCallLocal();
-                alert('Звонок отклонён');
-            });
+        socket.on('call:ice', async ({ candidate }) => {
+            if (peerConnection && candidate) {
+                try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); }
+                catch (e) { console.error('ICE error', e); }
+            }
+        });
 
-            socket.on('call:ended', () => {
-                endCallLocal();
-            });
+        socket.on('call:rejected', () => {
+            endCallLocal();
+            alert('Звонок отклонён');
+        });
 
-            socket.on('call:offline', ({ to }) => {
-                alert('Этот пацан сейчас не в сети');
-                endCallLocal();
-            });
-        }
+        socket.on('call:ended', () => {
+            endCallLocal();
+        });
+
+        socket.on('call:offline', () => {
+            alert('Этот пацан сейчас не в сети');
+            endCallLocal();
+        });
 
         async function getIceServers() {
             const r = await fetch('/api/turn');
@@ -500,19 +489,23 @@
 
         function createPeerConnection(iceServers) {
             const pc = new RTCPeerConnection({ iceServers });
-
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
             pc.ontrack = (e) => {
+                console.log('🎧 Получен трек');
                 remoteAudio.srcObject = e.streams[0];
             };
-
             pc.onicecandidate = (e) => {
                 if (e.candidate && remoteLogin) {
                     socket.emit('call:ice', { to: remoteLogin, candidate: e.candidate });
                 }
             };
-
+            pc.onconnectionstatechange = () => {
+                console.log('🔗 Состояние соединения:', pc.connectionState);
+                if (pc.connectionState === 'failed') {
+                    setCallStatus('Ошибка соединения');
+                    setTimeout(endCallLocal, 1500);
+                }
+            };
             return pc;
         }
 
@@ -520,15 +513,15 @@
 
         async function openCallModal() {
             const r = await fetch('/api/users');
-            const users = await r.json();
-            window._allUsers = users.filter(u => u.login !== myLogin);
+            allUsers = await r.json();
             renderUserList();
             callModal.classList.add('active');
         }
 
         function renderUserList() {
             const list = document.getElementById('userList');
-            list.innerHTML = window._allUsers.map(u => {
+            const others = allUsers.filter(u => u.login !== myLogin);
+            list.innerHTML = others.map(u => {
                 const initial = (u.name || '?').charAt(0).toUpperCase();
                 const avatarHtml = u.avatar
                     ? `<img class="avatar-sm" src="${u.avatar}" alt="">`
@@ -550,7 +543,6 @@
 
         async function startCall(login, name) {
             closeCallModal();
-            isCaller = true;
             remoteLogin = login;
 
             try {
@@ -571,6 +563,15 @@
             showCallScreen(name, login, 'Звоним...', [
                 { label: '✕', cls: 'reject', action: () => rejectCall(login) }
             ]);
+
+            // Таймаут: если за 30 сек не ответили — отмена
+            callTimeout = setTimeout(() => {
+                if (peerConnection && peerConnection.connectionState !== 'connected') {
+                    socket.emit('call:end', { to: login });
+                    endCallLocal();
+                    alert('Никто не ответил');
+                }
+            }, 30000);
         }
 
         async function acceptCall(offer, from) {
@@ -600,6 +601,7 @@
         }
 
         function endCallLocal() {
+            clearTimeout(callTimeout);
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
@@ -611,22 +613,51 @@
             remoteAudio.srcObject = null;
             currentCall = null;
             remoteLogin = null;
-            isCaller = false;
             callScreen.classList.remove('active');
+            resetCallAvatar();
+        }
+
+        // ==== Безопасная установка аватарки ====
+        function setCallAvatar(user, fallbackName) {
+            const parent = callAvatar.parentNode;
+            let newEl;
+
+            if (user && user.avatar) {
+                newEl = document.createElement('img');
+                newEl.id = 'callAvatar';
+                newEl.className = 'call-avatar';
+                newEl.src = user.avatar;
+                newEl.alt = '';
+            } else {
+                newEl = document.createElement('div');
+                newEl.id = 'callAvatar';
+                newEl.className = 'call-avatar';
+                newEl.textContent = (fallbackName || '?').charAt(0).toUpperCase();
+            }
+
+            // Заменяем только если родитель есть
+            if (parent) {
+                parent.replaceChild(newEl, document.getElementById('callAvatar'));
+            }
+        }
+
+        function resetCallAvatar() {
+            // Всегда возвращаем div, чтобы при следующем звонке не было бага
+            const parent = document.getElementById('callAvatar').parentNode;
+            if (!parent) return;
+            const div = document.createElement('div');
+            div.id = 'callAvatar';
+            div.className = 'call-avatar';
+            div.textContent = '?';
+            parent.replaceChild(div, document.getElementById('callAvatar'));
         }
 
         function showCallScreen(name, login, status, actions) {
             callName.textContent = name;
             callStatus.textContent = status;
 
-            // Аватарка
-            const user = (window._allUsers || []).find(u => u.login === login);
-            if (user && user.avatar) {
-                callAvatar.outerHTML = `<img id="callAvatar" class="call-avatar" src="${user.avatar}" alt="">`;
-            } else {
-                const initial = (name || '?').charAt(0).toUpperCase();
-                callAvatar.outerHTML = `<div id="callAvatar" class="call-avatar">${escapeHtml(initial)}</div>`;
-            }
+            const user = allUsers.find(u => u.login === login);
+            setCallAvatar(user, name);
 
             renderCallActions(actions);
             callScreen.classList.add('active');
@@ -663,6 +694,18 @@
             const btn = document.getElementById('muteBtn');
             if (btn) btn.classList.toggle('muted', muted);
         }
+
+        // ==== Инициализация ====
+        fetch('/api/me').then(r => r.json()).then(u => {
+            isAdmin = u.role === 'admin';
+            myLogin = u.login;
+            myName = u.name;
+            loadMessages();
+        });
+
+        setInterval(loadMessages, 3000);
+        fetch('/api/ping', { method: 'POST' });
+        setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
     </script>
 </body>
 </html>
