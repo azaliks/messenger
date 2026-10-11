@@ -57,10 +57,9 @@ app.use(sessionMiddleware);
 app.use(express.static(__dirname));
 app.use('/avatars', express.static(AVATARS_DIR));
 
-// Делим сессию с Socket.IO, чтобы знать, кто подключился
 io.engine.use(sessionMiddleware);
 
-// ==== Онлайн-пользователи (socket.id -> login) ====
+// ==== Онлайн-пользователи ====
 const onlineUsers = new Map();
 
 // ==== Socket.IO: сигналинг звонков ====
@@ -72,59 +71,35 @@ io.on('connection', (socket) => {
     }
 
     onlineUsers.set(socket.id, user.login);
-
-    // Кто сейчас онлайн
     io.emit('online', Array.from(onlineUsers.values()));
 
-    // Звонок: передаём предложение конкретному пользователю
     socket.on('call:offer', ({ to, offer }) => {
-        const targetSocketId = [...onlineUsers.entries()]
-            .find(([, login]) => login === to)?.[0];
+        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
         if (targetSocketId) {
-            io.to(targetSocketId).emit('call:incoming', {
-                from: user.login,
-                fromName: user.name,
-                offer
-            });
+            io.to(targetSocketId).emit('call:incoming', { from: user.login, fromName: user.name, offer });
         } else {
             socket.emit('call:offline', { to });
         }
     });
 
-    // Ответ на звонок (принят / отклонён)
     socket.on('call:answer', ({ to, answer }) => {
-        const targetSocketId = [...onlineUsers.entries()]
-            .find(([, login]) => login === to)?.[0];
-        if (targetSocketId) {
-            io.to(targetSocketId).emit('call:answered', { answer });
-        }
+        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (targetSocketId) io.to(targetSocketId).emit('call:answered', { answer });
     });
 
-    // ICE-кандидаты
     socket.on('call:ice', ({ to, candidate }) => {
-        const targetSocketId = [...onlineUsers.entries()]
-            .find(([, login]) => login === to)?.[0];
-        if (targetSocketId) {
-            io.to(targetSocketId).emit('call:ice', { candidate });
-        }
+        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (targetSocketId) io.to(targetSocketId).emit('call:ice', { candidate });
     });
 
-    // Завершение звонка
     socket.on('call:end', ({ to }) => {
-        const targetSocketId = [...onlineUsers.entries()]
-            .find(([, login]) => login === to)?.[0];
-        if (targetSocketId) {
-            io.to(targetSocketId).emit('call:ended');
-        }
+        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (targetSocketId) io.to(targetSocketId).emit('call:ended');
     });
 
-    // Отклонение
     socket.on('call:reject', ({ to }) => {
-        const targetSocketId = [...onlineUsers.entries()]
-            .find(([, login]) => login === to)?.[0];
-        if (targetSocketId) {
-            io.to(targetSocketId).emit('call:rejected');
-        }
+        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (targetSocketId) io.to(targetSocketId).emit('call:rejected');
     });
 
     socket.on('disconnect', () => {
@@ -133,10 +108,9 @@ io.on('connection', (socket) => {
     });
 });
 
-// ==== TURN-данные для браузера ====
+// ==== TURN ====
 app.get('/api/turn', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-
     res.json({
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -154,7 +128,7 @@ app.get('/api/turn', (req, res) => {
     });
 });
 
-// ==== Страница входа ====
+// ==== Вход ====
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
@@ -163,19 +137,12 @@ app.post('/login', (req, res) => {
     const { login, password } = req.body;
     const data = readUsers();
     const user = data.users.find(u => u.login === login && u.password === password);
-
     if (!user) return res.redirect('/login?error=1');
 
     user.lastLogin = new Date().toISOString();
     writeUsers(data);
 
-    req.session.user = {
-        login: user.login,
-        name: user.name,
-        nickname: user.nickname,
-        role: user.role
-    };
-
+    req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
     if (user.role === 'admin') return res.redirect('/admin');
     res.redirect('/');
 });
@@ -187,12 +154,8 @@ app.get('/api/me', (req, res) => {
     const user = data.users.find(u => u.login === req.session.user.login);
     if (!user) return res.status(404).json({ error: 'user not found' });
     res.json({
-        login: user.login,
-        name: user.name,
-        nickname: user.nickname,
-        role: user.role,
-        avatar: user.avatar || null,
-        phrase: user.phrase || ''
+        login: user.login, name: user.name, nickname: user.nickname,
+        role: user.role, avatar: user.avatar || null, phrase: user.phrase || ''
     });
 });
 
@@ -206,19 +169,13 @@ app.post('/api/ping', (req, res) => {
     res.json({ ok: true });
 });
 
-// Список всех пользователей (для выбора кому звонить)
 app.get('/api/users', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const data = readUsers();
-    const users = data.users.map(u => ({
-        login: u.login,
-        name: u.name,
-        avatar: u.avatar || null
-    }));
-    res.json(users);
+    res.json(data.users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null })));
 });
 
-// ==== Главная ====
+// ==== Страницы ====
 app.get('/', (req, res) => {
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role === 'admin') return res.redirect('/admin');
@@ -241,11 +198,8 @@ app.get('/api/profile/:login', (req, res) => {
     const user = data.users.find(u => u.login === req.params.login);
     if (!user) return res.status(404).json({ error: 'user not found' });
     res.json({
-        login: user.login,
-        name: user.name,
-        nickname: user.nickname,
-        avatar: user.avatar || null,
-        phrase: user.phrase || '',
+        login: user.login, name: user.name, nickname: user.nickname,
+        avatar: user.avatar || null, phrase: user.phrase || '',
         isOwn: user.login === req.session.user.login
     });
 });
@@ -253,16 +207,13 @@ app.get('/api/profile/:login', (req, res) => {
 app.post('/api/profile/avatar', upload.single('avatar'), (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     if (!req.file) return res.status(400).json({ error: 'no file' });
-
     const data = readUsers();
     const user = data.users.find(u => u.login === req.session.user.login);
     if (!user) return res.status(404).json({ error: 'user not found' });
-
     if (user.avatar) {
         const oldPath = path.join(AVATARS_DIR, path.basename(user.avatar));
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
-
     user.avatar = '/avatars/' + req.file.filename;
     writeUsers(data);
     res.json({ ok: true, avatar: user.avatar });
@@ -272,11 +223,9 @@ app.post('/api/profile/phrase', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const { phrase } = req.body;
     if (typeof phrase !== 'string') return res.status(400).json({ error: 'invalid' });
-
     const data = readUsers();
     const user = data.users.find(u => u.login === req.session.user.login);
     if (!user) return res.status(404).json({ error: 'user not found' });
-
     user.phrase = phrase.trim().slice(0, 200);
     writeUsers(data);
     res.json({ ok: true, phrase: user.phrase });
@@ -289,7 +238,11 @@ app.get('/api/messages', (req, res) => {
     const users = readUsers().users;
     const enriched = data.messages.map(m => {
         const u = users.find(x => x.login === m.login);
-        return { ...m, avatar: u && u.avatar ? u.avatar : null };
+        return {
+            ...m,
+            avatar: u && u.avatar ? u.avatar : null,
+            reactions: m.reactions || {}
+        };
     });
     res.json(enriched);
 });
@@ -305,7 +258,8 @@ app.post('/api/messages', (req, res) => {
         login: req.session.user.login,
         name: req.session.user.name,
         text: text.trim(),
-        time: new Date().toISOString()
+        time: new Date().toISOString(),
+        reactions: {}
     };
     data.messages.push(message);
     writeMessages(data);
@@ -317,15 +271,66 @@ app.delete('/api/messages/:id', (req, res) => {
     const data = readMessages();
     const idx = data.messages.findIndex(m => m.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'not found' });
-
     const msg = data.messages[idx];
     const isOwn = msg.login === req.session.user.login;
     const isAdmin = req.session.user.role === 'admin';
     if (!isOwn && !isAdmin) return res.status(403).json({ error: 'no permission' });
-
     data.messages.splice(idx, 1);
     writeMessages(data);
     res.json({ ok: true });
+});
+
+// ==== Реакции ====
+app.post('/api/messages/:id/react', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+
+    const { emoji, action } = req.body;
+    const ALLOWED = ['😂', '🔥', '👍', '💀'];
+    if (!ALLOWED.includes(emoji)) return res.status(400).json({ error: 'bad emoji' });
+
+    const data = readMessages();
+    const msg = data.messages.find(m => m.id === req.params.id);
+    if (!msg) return res.status(404).json({ error: 'not found' });
+
+    if (!msg.reactions) msg.reactions = {};
+    if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+
+    const myLogin = req.session.user.login;
+    const isAdmin = req.session.user.role === 'admin';
+    const list = msg.reactions[emoji];
+
+    if (action === 'remove') {
+        // Убираем: автор реакции или админ
+        const idx = list.findIndex(l => l === myLogin);
+        if (idx !== -1) {
+            list.splice(idx, 1);
+        } else if (isAdmin) {
+            // Админ может убрать чужую реакцию — но мы не знаем, чью именно
+            // Поэтому убираем все, если админ нажал на счётчик
+            // Проще: админ убирает только свою. Для чужих — отдельная логика.
+            // Оставим: админ может убрать свою, как все.
+        }
+    } else {
+        // Ставим реакцию
+        // Убираем другие реакции этого юзера с этого сообщения
+        Object.keys(msg.reactions).forEach(k => {
+            msg.reactions[k] = msg.reactions[k].filter(l => l !== myLogin);
+            if (msg.reactions[k].length === 0) delete msg.reactions[k];
+        });
+        // Добавляем новую
+        if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+        msg.reactions[emoji].push(myLogin);
+    }
+
+    writeMessages(data);
+
+    // Отдаём обновлённое сообщение
+    const users = readUsers().users;
+    const u = users.find(x => x.login === msg.login);
+    res.json({
+        ...msg,
+        avatar: u && u.avatar ? u.avatar : null
+    });
 });
 
 // ==== Админка ====

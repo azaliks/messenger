@@ -19,14 +19,24 @@
       "login": "lukash",
       "name": "Лукаш",
       "text": "a",
-      "time": "2026-10-10T20:09:14.370Z"
+      "time": "2026-10-10T20:09:14.370Z",
+      "reactions": {
+        "😂": [
+          "azaliks"
+        ]
+      }
     },
     {
       "id": "1791662965957-e3s2yx",
       "login": "azaliks",
       "name": "azaliks",
       "text": "a",
-      "time": "2026-10-10T20:09:25.957Z"
+      "time": "2026-10-10T20:09:25.957Z",
+      "reactions": {
+        "👍": [
+          "azaliks"
+        ]
+      }
     }
   ]
 }
