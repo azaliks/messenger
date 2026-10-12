@@ -141,6 +141,12 @@
             else avatarBox.textContent = (p.name || '?').charAt(0).toUpperCase();
             renderStats(p.stats);
             renderAchievements(p.achievements);
+                        if (p.warnings && p.warnings.length) {
+                const warnHtml = `<div class="section" style="background:#2a2a1a;border-radius:8px;padding:12px;margin-top:16px;">
+                    <div style="color:#f0d030;font-weight:700;font-size:13px;">⚠️ Варны: ${p.warnings.length}</div>
+                </div>`;
+                document.querySelector('.card').insertAdjacentHTML('beforeend', warnHtml);
+            }
 
             if (p.isOwn) {
                 editSection.style.display = 'block';
