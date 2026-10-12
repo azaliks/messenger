@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Журнал изменений</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #313338; color: #dbdee1; margin: 0; padding: 40px 20px; min-height: 100vh; }
+        h1 { color: #f2f3f5; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 8px; }
+        .sub { text-align: center; color: #b5bac1; font-size: 14px; margin-bottom: 32px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .entry { background: #2b2d31; border-radius: 8px; padding: 16px 20px; margin-bottom: 10px; border-left: 4px solid #5865f2; }
+        .entry.login { border-left-color: #23a55a; }
+        .entry.password { border-left-color: #f23f43; }
+        .head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+        .who { color: #f2f3f5; font-weight: 600; font-size: 15px; }
+        .when { color: #80848e; font-size: 12px; }
+        .what { color: #b5bac1; font-size: 13px; font-weight: 600; text-transform: uppercase; }
+        .change-row { display: flex; align-items: center; gap: 10px; font-size: 14px; margin-top: 6px; flex-wrap: wrap; }
+        .val { background: #1e1f22; padding: 4px 10px; border-radius: 4px; font-family: monospace; color: #dbdee1; }
+        .val.old { color: #f23f43; text-decoration: line-through; }
+        .val.new { color: #23a55a; }
+        .arrow { color: #80848e; }
+        .empty { text-align: center; color: #6d6f78; font-style: italic; padding: 40px 0; }
+        .back { display: block; text-align: center; margin-top: 24px; color: #00a8fc; text-decoration: none; font-size: 15px; }
+        .back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>📋 Журнал изменений</h1>
+    <p class="sub">Кто, когда и что менял — логины и пароли</p>
+    <div class="container" id="container">Загрузка...</div>
+    <a href="/admin" class="back">← В админку</a>
+    <script>
+        function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+        async function load() {
+            const r = await fetch('/api/changelog');
+            if (!r.ok) { document.getElementById('container').innerHTML = 'Доступ запрещён'; return; }
+            const changes = await r.json();
+            const c = document.getElementById('container');
+            if (!changes.length) { c.innerHTML = `<div class="empty">Пока никто ничего не менял</div>`; return; }
+            c.innerHTML = changes.map(ch => {
+                const d = new Date(ch.time).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                const fieldName = ch.field === 'login' ? 'Логин' : 'Пароль';
+                return `<div class="entry ${ch.field}"><div class="head"><span class="who">${escapeHtml(ch.user)}</span><span class="what">${fieldName}</span><span class="when">${d}</span></div><div class="change-row"><span class="val old">${escapeHtml(ch.from)}</span><span class="arrow">→</span><span class="val new">${escapeHtml(ch.to)}</span></div></div>`;
+            }).join('');
+        }
+        load();
+        fetch('/api/ping', { method: 'POST' });
+    </script>
+</body>
+</html>

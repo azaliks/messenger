@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цитатник</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #313338; color: #dbdee1; margin: 0; padding: 40px 20px; min-height: 100vh; }
+        h1 { color: #f2f3f5; font-size: 28px; font-weight: 700; text-align: center; margin: 0 0 8px; }
+        .sub { text-align: center; color: #b5bac1; font-size: 14px; margin-bottom: 32px; }
+        .container { max-width: 640px; margin: 0 auto; }
+        .quote { background: #2b2d31; border-left: 4px solid #5865f2; border-radius: 8px; padding: 18px 22px; margin-bottom: 14px; position: relative; }
+        .quote .text { color: #dbdee1; font-size: 16px; line-height: 1.5; font-style: italic; margin-bottom: 8px; word-wrap: break-word; }
+        .quote .author { color: #f2f3f5; font-size: 13px; font-weight: 600; }
+        .quote .date { color: #80848e; font-size: 11px; margin-left: 8px; }
+        .quote .del { position: absolute; top: 12px; right: 12px; color: #f23f43; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+        .quote:hover .del { opacity: 1; }
+        .empty { text-align: center; color: #6d6f78; font-style: italic; padding: 40px 0; }
+        .back { display: block; text-align: center; margin-top: 24px; color: #00a8fc; text-decoration: none; font-size: 15px; }
+        .back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>💬 Цитатник</h1>
+    <p class="sub">Перлы банды — сохраняются навсегда</p>
+    <div class="container" id="container">Загрузка...</div>
+    <a href="/chat" class="back">← Вернуться в чат</a>
+
+    <script>
+        let isAdmin = false;
+        function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+        async function load() {
+            const me = await fetch('/api/me').then(r => r.json());
+            isAdmin = me.role === 'admin';
+            const r = await fetch('/api/quotes');
+            const quotes = await r.json();
+            const container = document.getElementById('container');
+
+            if (!quotes.length) {
+                container.innerHTML = `<div class="empty">Пока ни одной цитаты. Наведи на сообщение в чате и нажми 💬, чтобы сохранить.</div>`;
+                return;
+            }
+
+            container.innerHTML = quotes.slice().reverse().map(q => {
+                const d = new Date(q.savedAt).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+                return `
+                    <div class="quote">
+                        <div class="text">«${escapeHtml(q.text)}»</div>
+                        <div><span class="author">— ${escapeHtml(q.author)}</span><span class="date">${d}</span></div>
+                        ${isAdmin ? `<span class="del" onclick="delQuote('${q.id}')">удалить</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function delQuote(id) {
+            if (!confirm('Удалить цитату?')) return;
+            await fetch('/api/quotes/' + id, { method: 'DELETE' });
+            load();
+        }
+        load();
+        fetch('/api/ping', { method: 'POST' });
+    </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рейтинг</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #313338; color: #dbdee1; margin: 0; padding: 40px 20px; min-height: 100vh; }
+        h1 { color: #f2f3f5; font-size: 28px; font-weight: 700; text-align: center; margin: 0 0 8px; }
+        .sub { text-align: center; color: #b5bac1; font-size: 14px; margin-bottom: 32px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .row { background: #2b2d31; border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 16px; transition: transform 0.15s; }
+        .row:hover { transform: translateX(4px); }
+        .row.top1 { background: linear-gradient(135deg, #4a3a1a, #2b2d31); border: 1px solid #c89c3f; }
+        .row.top2 { background: linear-gradient(135deg, #3a3a3a, #2b2d31); border: 1px solid #a0a0a0; }
+        .row.top3 { background: linear-gradient(135deg, #3a2a1a, #2b2d31); border: 1px solid #a06432; }
+        .place { font-size: 24px; font-weight: 700; color: #949ba4; width: 40px; text-align: center; flex-shrink: 0; }
+        .row.top1 .place { color: #ffd700; }
+        .row.top2 .place { color: #c0c0c0; }
+        .row.top3 .place { color: #cd7f32; }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 20px; flex-shrink: 0; object-fit: cover; }
+        img.avatar { display: block; }
+        .info { flex: 1; min-width: 0; }
+        .name { color: #f2f3f5; font-size: 17px; font-weight: 600; }
+        .stats { color: #949ba4; font-size: 13px; margin-top: 2px; }
+        .score { color: #5865f2; font-size: 20px; font-weight: 700; flex-shrink: 0; }
+        .back { display: block; text-align: center; margin-top: 24px; color: #00a8fc; text-decoration: none; font-size: 15px; }
+        .back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>🏆 Рейтинг банды</h1>
+    <p class="sub">Кто активнее всех — по сообщениям, голосовым и картинкам</p>
+    <div class="container" id="container">Загрузка...</div>
+    <a href="/chat" class="back">← Вернуться в чат</a>
+
+    <script>
+        function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+        async function load() {
+            const r = await fetch('/api/rating');
+            const data = await r.json();
+            const container = document.getElementById('container');
+
+            container.innerHTML = data.map((u, i) => {
+                const place = i + 1;
+                const topClass = place <= 3 ? 'top' + place : '';
+                const initial = (u.name || '?').charAt(0).toUpperCase();
+                const avatarHtml = u.avatar
+                    ? `<img class="avatar" src="${u.avatar}" alt="">`
+                    : `<div class="avatar">${escapeHtml(initial)}</div>`;
+                const score = u.messages + u.voices * 2 + u.images * 2;
+                return `
+                    <div class="row ${topClass}">
+                        <div class="place">${place}</div>
+                        ${avatarHtml}
+                        <div class="info">
+                            <div class="name">${escapeHtml(u.name)}</div>
+                            <div class="stats">
+                                💬 ${u.messages} · 🎤 ${u.voices} · 📷 ${u.images} · 😂 ${u.reactions} · 🏆 ${u.achievements}
+                            </div>
+                        </div>
+                        <div class="score">${score}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        load();
+        fetch('/api/ping', { method: 'POST' });
+    </script>
+</body>
+</html>

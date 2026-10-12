@@ -11,150 +11,131 @@ const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
-// ==== TURN-сервер (Metered) ====
 const TURN_USERNAME = '07354b48071e5473f623d7a9';
 const TURN_CREDENTIAL = 'p9aioMeZ5mqY2lhl';
 
-// ==== Папки для файлов ====
 const AVATARS_DIR = path.join(__dirname, 'avatars');
 const VOICE_DIR = path.join(__dirname, 'voice');
-if (!fs.existsSync(AVATARS_DIR)) fs.mkdirSync(AVATARS_DIR, { recursive: true });
-if (!fs.existsSync(VOICE_DIR)) fs.mkdirSync(VOICE_DIR, { recursive: true });
-
-// ==== Multer: аватарки ====
-const avatarStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, AVATARS_DIR),
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, req.session.user.login + '-' + Date.now() + ext);
-    }
+const IMAGES_DIR = path.join(__dirname, 'images');
+[AVATARS_DIR, VOICE_DIR, IMAGES_DIR].forEach(d => {
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 });
-const uploadAvatar = multer({ storage: avatarStorage });
 
-// ==== Multer: голосовые ====
-const voiceStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, VOICE_DIR),
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname) || '.webm';
-        cb(null, 'voice-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + ext);
-    }
+const uploadAvatar = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, AVATARS_DIR),
+        filename: (req, file, cb) => cb(null, req.session.user.login + '-' + Date.now() + path.extname(file.originalname).toLowerCase())
+    })
 });
-const uploadVoice = multer({ storage: voiceStorage });
+const uploadVoice = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, VOICE_DIR),
+        filename: (req, file, cb) => cb(null, 'voice-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + (path.extname(file.originalname) || '.webm'))
+    })
+});
+const uploadImage = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, IMAGES_DIR),
+        filename: (req, file, cb) => cb(null, 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + path.extname(file.originalname).toLowerCase())
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => cb(null, ['image/jpeg','image/png','image/gif','image/webp'].includes(file.mimetype))
+});
 
-// ==== Чтение и запись ====
-function readUsers() {
-    return JSON.parse(fs.readFileSync('users.json', 'utf-8'));
-}
-function writeUsers(data) {
-    fs.writeFileSync('users.json', JSON.stringify(data, null, 2), 'utf-8');
-}
-function readMessages() {
-    return JSON.parse(fs.readFileSync('messages.json', 'utf-8'));
-}
-function writeMessages(data) {
-    fs.writeFileSync('messages.json', JSON.stringify(data, null, 2), 'utf-8');
+function readUsers() { return JSON.parse(fs.readFileSync('users.json', 'utf-8')); }
+function writeUsers(d) { fs.writeFileSync('users.json', JSON.stringify(d, null, 2), 'utf-8'); }
+function readMessages() { return JSON.parse(fs.readFileSync('messages.json', 'utf-8')); }
+function writeMessages(d) { fs.writeFileSync('messages.json', JSON.stringify(d, null, 2), 'utf-8'); }
+function readChangelog() { return JSON.parse(fs.readFileSync('changelog.json', 'utf-8')); }
+function writeChangelog(d) { fs.writeFileSync('changelog.json', JSON.stringify(d, null, 2), 'utf-8'); }
+
+const ACHIEVEMENTS = {
+    first_message: { name: 'Первое слово' }, ten_messages: { name: 'Разговорчивый' },
+    hundred_messages: { name: 'Флудер' }, first_voice: { name: 'Голос' },
+    ten_voices: { name: 'Болтун' }, first_image: { name: 'Фотограф' },
+    ten_images: { name: 'Галерея' }, first_reaction: { name: 'Реакция' },
+    hundred_reactions: { name: 'Реактор' }, first_call: { name: 'Дозвонился' },
+    ten_calls: { name: 'Телефонист' }, night_owl: { name: 'Ночной житель' },
+    early_bird: { name: 'Ранняя пташка' }, week_streak: { name: 'Неделя в чате' }
+};
+
+function checkAchievements(login) {
+    const users = readUsers();
+    const user = users.users.find(u => u.login === login);
+    if (!user) return [];
+    if (!user.achievements) user.achievements = [];
+    if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    const newOnes = [];
+    const add = (k) => { if (!user.achievements.includes(k)) { user.achievements.push(k); newOnes.push(k); } };
+    const s = user.stats;
+    if (s.messages >= 1) add('first_message');
+    if (s.messages >= 10) add('ten_messages');
+    if (s.messages >= 100) add('hundred_messages');
+    if (s.voices >= 1) add('first_voice');
+    if (s.voices >= 10) add('ten_voices');
+    if (s.images >= 1) add('first_image');
+    if (s.images >= 10) add('ten_images');
+    if (s.reactions >= 1) add('first_reaction');
+    if (s.reactions >= 100) add('hundred_reactions');
+    if (s.calls >= 1) add('first_call');
+    if (s.calls >= 10) add('ten_calls');
+    const hour = new Date().getHours();
+    if (hour >= 3 && hour < 5) add('night_owl');
+    if (hour >= 5 && hour < 7) add('early_bird');
+    writeUsers(users);
+    return newOnes;
 }
 
-// ==== Настройки ====
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-const sessionMiddleware = session({
-    secret: 'pacan-secret-key',
-    resave: false,
-    saveUninitialized: false
-});
+const sessionMiddleware = session({ secret: 'pacan-secret-key', resave: false, saveUninitialized: false });
 app.use(sessionMiddleware);
 app.use(express.static(__dirname));
 app.use('/avatars', express.static(AVATARS_DIR));
 app.use('/voice', express.static(VOICE_DIR));
-
+app.use('/images', express.static(IMAGES_DIR));
 io.engine.use(sessionMiddleware);
 
-// ==== Онлайн ====
 const onlineUsers = new Map();
-
 io.on('connection', (socket) => {
     const user = socket.request.session && socket.request.session.user;
     if (!user) { socket.disconnect(); return; }
-
     onlineUsers.set(socket.id, user.login);
     io.emit('online', Array.from(onlineUsers.values()));
-
-    socket.on('call:offer', ({ to, offer }) => {
-        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (targetSocketId) io.to(targetSocketId).emit('call:incoming', { from: user.login, fromName: user.name, offer });
-        else socket.emit('call:offline', { to });
-    });
-    socket.on('call:answer', ({ to, answer }) => {
-        const t = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (t) io.to(t).emit('call:answered', { answer });
-    });
-    socket.on('call:ice', ({ to, candidate }) => {
-        const t = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (t) io.to(t).emit('call:ice', { candidate });
-    });
-    socket.on('call:end', ({ to }) => {
-        const t = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (t) io.to(t).emit('call:ended');
-    });
-    socket.on('call:reject', ({ to }) => {
-        const t = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (t) io.to(t).emit('call:rejected');
-    });
-
-    socket.on('disconnect', () => {
-        onlineUsers.delete(socket.id);
-        io.emit('online', Array.from(onlineUsers.values()));
-    });
+    socket.on('call:offer', ({ to, offer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:incoming', { from: user.login, fromName: user.name, offer }); else socket.emit('call:offline', { to }); });
+    socket.on('call:answer', ({ to, answer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:answered', { answer }); });
+    socket.on('call:ice', ({ to, candidate }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ice', { candidate }); });
+    socket.on('call:end', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ended'); });
+    socket.on('call:reject', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:rejected'); });
+    socket.on('disconnect', () => { onlineUsers.delete(socket.id); io.emit('online', Array.from(onlineUsers.values())); });
 });
 
-// ==== TURN ====
 app.get('/api/turn', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    res.json({
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            {
-                urls: [
-                    'turn:global.relay.metered.ca:80',
-                    'turn:global.relay.metered.ca:80?transport=tcp',
-                    'turn:global.relay.metered.ca:443',
-                    'turns:global.relay.metered.ca:443?transport=tcp'
-                ],
-                username: TURN_USERNAME,
-                credential: TURN_CREDENTIAL
-            }
-        ]
-    });
+    res.json({ iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: ['turn:global.relay.metered.ca:80','turn:global.relay.metered.ca:80?transport=tcp','turn:global.relay.metered.ca:443','turns:global.relay.metered.ca:443?transport=tcp'], username: TURN_USERNAME, credential: TURN_CREDENTIAL }
+    ]});
 });
 
-// ==== Вход ====
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-
 app.post('/login', (req, res) => {
     const { login, password } = req.body;
     const data = readUsers();
     const user = data.users.find(u => u.login === login && u.password === password);
     if (!user) return res.redirect('/login?error=1');
-
     user.lastLogin = new Date().toISOString();
     writeUsers(data);
-
     req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
     if (user.role === 'admin') return res.redirect('/admin');
     res.redirect('/');
 });
 
-// ==== API ====
 app.get('/api/me', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = readUsers();
-    const user = data.users.find(u => u.login === req.session.user.login);
+    const user = readUsers().users.find(u => u.login === req.session.user.login);
     if (!user) return res.status(404).json({ error: 'user not found' });
-    res.json({
-        login: user.login, name: user.name, nickname: user.nickname,
-        role: user.role, avatar: user.avatar || null, phrase: user.phrase || ''
-    });
+    res.json({ login: user.login, name: user.name, nickname: user.nickname, role: user.role, avatar: user.avatar || null, phrase: user.phrase || '', achievements: user.achievements || [], stats: user.stats || {} });
 });
 
 app.post('/api/ping', (req, res) => {
@@ -169,35 +150,85 @@ app.post('/api/ping', (req, res) => {
 
 app.get('/api/users', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = readUsers();
-    res.json(data.users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null })));
+    res.json(readUsers().users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null })));
 });
 
-// ==== Страницы ====
+app.get('/api/rating', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const users = readUsers().users;
+    const rating = users.map(u => ({
+        login: u.login, name: u.name, avatar: u.avatar || null,
+        messages: (u.stats && u.stats.messages) || 0,
+        voices: (u.stats && u.stats.voices) || 0,
+        images: (u.stats && u.stats.images) || 0,
+        reactions: (u.stats && u.stats.reactions) || 0,
+        calls: (u.stats && u.stats.calls) || 0,
+        achievements: (u.achievements || []).length
+    })).sort((a, b) => (b.messages + b.voices * 2 + b.images * 2) - (a.messages + a.voices * 2 + a.images * 2));
+    res.json(rating);
+});
+
+app.get('/api/quotes', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = JSON.parse(fs.readFileSync('quotes.json', 'utf-8'));
+    res.json(data.quotes);
+});
+
+app.post('/api/quotes', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { messageId } = req.body;
+    const msg = readMessages().messages.find(m => m.id === messageId);
+    if (!msg) return res.status(404).json({ error: 'message not found' });
+    const quotesData = JSON.parse(fs.readFileSync('quotes.json', 'utf-8'));
+    if (quotesData.quotes.find(q => q.messageId === messageId)) return res.json({ ok: true, already: true });
+    quotesData.quotes.push({
+        id: Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        messageId: msg.id, author: msg.name, authorLogin: msg.login,
+        text: msg.text, savedBy: req.session.user.login, savedAt: new Date().toISOString()
+    });
+    fs.writeFileSync('quotes.json', JSON.stringify(quotesData, null, 2), 'utf-8');
+    res.json({ ok: true });
+});
+
+app.delete('/api/quotes/:id', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    if (req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const quotesData = JSON.parse(fs.readFileSync('quotes.json', 'utf-8'));
+    quotesData.quotes = quotesData.quotes.filter(q => q.id !== req.params.id);
+    fs.writeFileSync('quotes.json', JSON.stringify(quotesData, null, 2), 'utf-8');
+    res.json({ ok: true });
+});
+
+app.get('/api/changelog', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    if (req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const log = readChangelog();
+    res.json(log.changes.slice().reverse());
+});
+
 app.get('/', (req, res) => {
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role === 'admin') return res.redirect('/admin');
     res.redirect('/chat');
 });
-
-app.get('/chat', (req, res) => {
+app.get('/chat', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'chat.html')); });
+app.get('/profile', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'profile.html')); });
+app.get('/rating', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'rating.html')); });
+app.get('/quotes', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'quotes.html')); });
+app.get('/changelog', (req, res) => {
     if (!req.session.user) return res.redirect('/login');
-    res.sendFile(path.join(__dirname, 'chat.html'));
-});
-
-app.get('/profile', (req, res) => {
-    if (!req.session.user) return res.redirect('/login');
-    res.sendFile(path.join(__dirname, 'profile.html'));
+    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
+    res.sendFile(path.join(__dirname, 'changelog.html'));
 });
 
 app.get('/api/profile/:login', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = readUsers();
-    const user = data.users.find(u => u.login === req.params.login);
+    const user = readUsers().users.find(u => u.login === req.params.login);
     if (!user) return res.status(404).json({ error: 'user not found' });
     res.json({
         login: user.login, name: user.name, nickname: user.nickname,
         avatar: user.avatar || null, phrase: user.phrase || '',
+        achievements: user.achievements || [], stats: user.stats || {},
         isOwn: user.login === req.session.user.login
     });
 });
@@ -207,11 +238,7 @@ app.post('/api/profile/avatar', uploadAvatar.single('avatar'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no file' });
     const data = readUsers();
     const user = data.users.find(u => u.login === req.session.user.login);
-    if (!user) return res.status(404).json({ error: 'user not found' });
-    if (user.avatar) {
-        const oldPath = path.join(AVATARS_DIR, path.basename(user.avatar));
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
+    if (user.avatar) { const old = path.join(AVATARS_DIR, path.basename(user.avatar)); if (fs.existsSync(old)) fs.unlinkSync(old); }
     user.avatar = '/avatars/' + req.file.filename;
     writeUsers(data);
     res.json({ ok: true, avatar: user.avatar });
@@ -223,68 +250,121 @@ app.post('/api/profile/phrase', (req, res) => {
     if (typeof phrase !== 'string') return res.status(400).json({ error: 'invalid' });
     const data = readUsers();
     const user = data.users.find(u => u.login === req.session.user.login);
-    if (!user) return res.status(404).json({ error: 'user not found' });
     user.phrase = phrase.trim().slice(0, 200);
     writeUsers(data);
     res.json({ ok: true, phrase: user.phrase });
 });
 
-// ==== Чат ====
+app.post('/api/profile/credentials', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { newLogin, newPassword } = req.body;
+    if (!newLogin && !newPassword) return res.status(400).json({ error: 'nothing to change' });
+    const data = readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    const oldLogin = user.login;
+    const oldPassword = user.password;
+    const changes = [];
+
+    if (newLogin && newLogin.trim() && newLogin !== oldLogin) {
+        const trimmed = newLogin.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+        if (trimmed.length < 3) return res.status(400).json({ error: 'Логин минимум 3 символа' });
+        if (data.users.find(u => u.login === trimmed)) return res.status(400).json({ error: 'Такой логин уже занят' });
+        user.login = trimmed;
+        user.name = trimmed;
+        changes.push({ field: 'login', from: oldLogin, to: trimmed });
+        const msgs = readMessages();
+        msgs.messages.forEach(m => { if (m.login === oldLogin) m.login = trimmed; });
+        writeMessages(msgs);
+        const quotes = JSON.parse(fs.readFileSync('quotes.json', 'utf-8'));
+        quotes.quotes.forEach(q => { if (q.authorLogin === oldLogin) q.authorLogin = trimmed; });
+        fs.writeFileSync('quotes.json', JSON.stringify(quotes, null, 2), 'utf-8');
+    }
+
+    if (newPassword && newPassword !== oldPassword) {
+        if (newPassword.length < 3) return res.status(400).json({ error: 'Пароль минимум 3 символа' });
+        user.password = newPassword;
+        changes.push({ field: 'password', from: oldPassword, to: newPassword });
+    }
+
+    if (changes.length === 0) return res.json({ ok: true, changes: [] });
+    writeUsers(data);
+
+    const log = readChangelog();
+    changes.forEach(c => {
+        log.changes.push({
+            id: Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            user: user.login, oldLogin, field: c.field,
+            from: c.from, to: c.to, time: new Date().toISOString()
+        });
+    });
+    writeChangelog(log);
+
+    if (newLogin && newLogin.trim()) {
+        req.session.user.login = user.login;
+        req.session.user.name = user.name;
+    }
+    res.json({ ok: true, changes: changes.map(c => c.field), newLogin: user.login });
+});
+
 app.get('/api/messages', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const data = readMessages();
     const users = readUsers().users;
-    const enriched = data.messages.map(m => {
+    res.json(data.messages.map(m => {
         const u = users.find(x => x.login === m.login);
-        return {
-            ...m,
-            avatar: u && u.avatar ? u.avatar : null,
-            reactions: m.reactions || {}
-        };
-    });
-    res.json(enriched);
+        return { ...m, avatar: u && u.avatar ? u.avatar : null, reactions: m.reactions || {} };
+    }));
 });
 
 app.post('/api/messages', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const { text } = req.body;
     if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
-
     const data = readMessages();
-    const message = {
-        id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-        login: req.session.user.login,
-        name: req.session.user.name,
-        text: text.trim(),
-        time: new Date().toISOString(),
-        reactions: {}
-    };
-    data.messages.push(message);
+    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: text.trim(), time: new Date().toISOString(), reactions: {} };
+    data.messages.push(msg);
     writeMessages(data);
-    res.json(message);
+    const users = readUsers();
+    const u = users.users.find(x => x.login === req.session.user.login);
+    if (!u.stats) u.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    u.stats.messages = (u.stats.messages || 0) + 1;
+    writeUsers(users);
+    const newAch = checkAchievements(req.session.user.login);
+    res.json({ ...msg, newAchievements: newAch });
 });
 
-// ==== Голосовое сообщение ====
 app.post('/api/voice', uploadVoice.single('voice'), (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     if (!req.file) return res.status(400).json({ error: 'no file' });
-
     const duration = req.body.duration || 0;
-
     const data = readMessages();
-    const message = {
-        id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-        login: req.session.user.login,
-        name: req.session.user.name,
-        text: '▶ Голосовое сообщение',
-        voice: '/voice/' + req.file.filename,
-        duration: parseInt(duration) || 0,
-        time: new Date().toISOString(),
-        reactions: {}
-    };
-    data.messages.push(message);
+    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: '▶ Голосовое', voice: '/voice/' + req.file.filename, duration: parseInt(duration) || 0, time: new Date().toISOString(), reactions: {} };
+    data.messages.push(msg);
     writeMessages(data);
-    res.json(message);
+    const users = readUsers();
+    const u = users.users.find(x => x.login === req.session.user.login);
+    if (!u.stats) u.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    u.stats.voices = (u.stats.voices || 0) + 1;
+    writeUsers(users);
+    checkAchievements(req.session.user.login);
+    res.json(msg);
+});
+
+app.post('/api/image', uploadImage.single('image'), (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    if (!req.file) return res.status(400).json({ error: 'no file' });
+    const data = readMessages();
+    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: '📷 Картинка', image: '/images/' + req.file.filename, time: new Date().toISOString(), reactions: {} };
+    data.messages.push(msg);
+    writeMessages(data);
+    const users = readUsers();
+    const u = users.users.find(x => x.login === req.session.user.login);
+    if (!u.stats) u.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    u.stats.images = (u.stats.images || 0) + 1;
+    writeUsers(users);
+    checkAchievements(req.session.user.login);
+    res.json(msg);
 });
 
 app.delete('/api/messages/:id', (req, res) => {
@@ -296,39 +376,27 @@ app.delete('/api/messages/:id', (req, res) => {
     const isOwn = msg.login === req.session.user.login;
     const isAdmin = req.session.user.role === 'admin';
     if (!isOwn && !isAdmin) return res.status(403).json({ error: 'no permission' });
-
-    // Удаляем файл голосового, если есть
-    if (msg.voice) {
-        const vPath = path.join(VOICE_DIR, path.basename(msg.voice));
-        if (fs.existsSync(vPath)) fs.unlinkSync(vPath);
-    }
-
+    if (msg.voice) { const p = path.join(VOICE_DIR, path.basename(msg.voice)); if (fs.existsSync(p)) fs.unlinkSync(p); }
+    if (msg.image) { const p = path.join(IMAGES_DIR, path.basename(msg.image)); if (fs.existsSync(p)) fs.unlinkSync(p); }
     data.messages.splice(idx, 1);
     writeMessages(data);
     res.json({ ok: true });
 });
 
-// ==== Реакции ====
 app.post('/api/messages/:id/react', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-
     const { emoji, action } = req.body;
     const ALLOWED = ['😂', '🔥', '👍', '💀'];
     if (!ALLOWED.includes(emoji)) return res.status(400).json({ error: 'bad emoji' });
-
     const data = readMessages();
     const msg = data.messages.find(m => m.id === req.params.id);
     if (!msg) return res.status(404).json({ error: 'not found' });
-
     if (!msg.reactions) msg.reactions = {};
     if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
-
     const myLogin = req.session.user.login;
-    const list = msg.reactions[emoji];
-
     if (action === 'remove') {
-        const i = list.findIndex(l => l === myLogin);
-        if (i !== -1) list.splice(i, 1);
+        const i = msg.reactions[emoji].findIndex(l => l === myLogin);
+        if (i !== -1) msg.reactions[emoji].splice(i, 1);
     } else {
         Object.keys(msg.reactions).forEach(k => {
             msg.reactions[k] = msg.reactions[k].filter(l => l !== myLogin);
@@ -337,107 +405,119 @@ app.post('/api/messages/:id/react', (req, res) => {
         if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
         msg.reactions[emoji].push(myLogin);
     }
-
     writeMessages(data);
-    const users = readUsers().users;
-    const u = users.find(x => x.login === msg.login);
-    res.json({ ...msg, avatar: u && u.avatar ? u.avatar : null });
+    const users = readUsers();
+    const u = users.users.find(x => x.login === myLogin);
+    if (!u.stats) u.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    if (action !== 'remove') u.stats.reactions = (u.stats.reactions || 0) + 1;
+    writeUsers(users);
+    checkAchievements(myLogin);
+    const avatar = (users.users.find(x => x.login === msg.login) || {}).avatar || null;
+    res.json({ ...msg, avatar });
 });
 
-// ==== Админка ====
 app.get('/admin', (req, res) => {
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role !== 'admin') return res.status(403).send('Доступ только для админа');
-
     const data = readUsers();
+    const msgs = readMessages();
+    const quotes = JSON.parse(fs.readFileSync('quotes.json', 'utf-8'));
     const now = Date.now();
     const ONE_MINUTE = 60 * 1000;
+    const totalMessages = msgs.messages.length;
+    const totalVoice = msgs.messages.filter(m => m.voice).length;
+    const totalImages = msgs.messages.filter(m => m.image).length;
 
     const rows = data.users.map(u => {
         let status, statusColor;
-        if (!u.lastLogin) { status = 'Не заходил на сайт'; statusColor = '#80848e'; }
+        if (!u.lastLogin) { status = 'Не заходил'; statusColor = '#80848e'; }
         else if (u.lastPing && (now - new Date(u.lastPing).getTime() < ONE_MINUTE)) { status = 'В сети'; statusColor = '#23a55a'; }
         else { status = 'Заходил'; statusColor = '#949ba4'; }
-
-        const lastTime = u.lastLogin
-            ? new Date(u.lastLogin).toLocaleString('ru-RU', {
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            })
-            : '—';
-
+        const lastTime = u.lastLogin ? new Date(u.lastLogin).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
         const initial = (u.nickname || '?').charAt(0).toUpperCase();
-        const avatarHtml = u.avatar
-            ? `<img src="${u.avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
-            : `<div class="avatar">${initial}</div>`;
-
-        return `
-            <tr>
-                <td><div class="user-cell">${avatarHtml}<span class="nickname">${u.nickname}</span></div></td>
-                <td class="muted">${lastTime}</td>
-                <td><span class="status" style="color:${statusColor};"><span class="dot" style="background:${statusColor};"></span>${status}</span></td>
-            </tr>
-        `;
+        const avatarHtml = u.avatar ? `<img src="${u.avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">` : `<div class="avatar">${initial}</div>`;
+        const stats = u.stats || {};
+        const achCount = (u.achievements || []).length;
+        return `<tr>
+            <td><div class="user-cell">${avatarHtml}<span class="nickname">${u.nickname}</span></div></td>
+            <td class="muted">${u.login}</td>
+            <td class="muted">${lastTime}</td>
+            <td><span class="status" style="color:${statusColor};"><span class="dot" style="background:${statusColor};"></span>${status}</span></td>
+            <td class="muted">${stats.messages || 0}</td>
+            <td class="muted">${stats.voices || 0}</td>
+            <td class="muted">${stats.images || 0}</td>
+            <td class="muted">${achCount}</td>
+            <td><button class="reset-btn" onclick="resetStats('${u.login}')">Сброс</button></td>
+        </tr>`;
     }).join('');
 
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="ru">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Админка</title>
-            <style>
-                * { box-sizing: border-box; }
-                body {
-                    font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-                    background: #313338; color: #dbdee1;
-                    margin: 0; padding: 40px 20px; min-height: 100vh;
-                }
-                h1 { color: #f2f3f5; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 8px; }
-                .sub { text-align: center; color: #b5bac1; font-size: 14px; margin-bottom: 32px; }
-                .container {
-                    max-width: 800px; margin: 0 auto; background: #2b2d31;
-                    border-radius: 8px; overflow: hidden; box-shadow: 0 8px 16px rgba(0,0,0,0.24);
-                }
-                table { border-collapse: collapse; width: 100%; }
-                th, td { padding: 14px 20px; text-align: left; }
-                th { background: #1e1f22; color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-                tr { border-bottom: 1px solid #3f4147; }
-                tr:last-child { border-bottom: none; }
-                tr:hover td { background: #35373c; }
-                .user-cell { display: flex; align-items: center; gap: 12px; }
-                .avatar {
-                    width: 36px; height: 36px; border-radius: 50%; background: #5865f2;
-                    color: white; display: flex; align-items: center; justify-content: center;
-                    font-weight: 600; font-size: 15px; flex-shrink: 0;
-                }
-                .nickname { color: #f2f3f5; font-weight: 600; font-size: 15px; }
-                .muted { color: #949ba4; font-size: 14px; }
-                .status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; }
-                .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-                .footer { text-align: center; margin-top: 24px; }
-                .footer a { color: #00a8fc; text-decoration: none; font-size: 15px; }
-                .footer a:hover { text-decoration: underline; }
-            </style>
-        </head>
-        <body>
-            <h1>Кто заходил</h1>
-            <p class="sub">Статус «В сети» обновляется в реальном времени</p>
-            <div class="container">
-                <table>
-                    <tr><th>Кличка</th><th>Последний вход</th><th>Статус</th></tr>
-                    ${rows}
-                </table>
-            </div>
-            <div class="footer"><a href="/chat">→ Перейти в чат</a></div>
-            <script>
-                fetch('/api/ping', { method: 'POST' });
-                setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
-            </script>
-        </body>
-        </html>
-    `);
+    res.send(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Админка</title><style>
+        * { box-sizing: border-box; }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #313338; color: #dbdee1; margin: 0; padding: 40px 20px; min-height: 100vh; }
+        h1 { color: #f2f3f5; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 8px; }
+        .sub { text-align: center; color: #b5bac1; font-size: 14px; margin-bottom: 24px; }
+        .stats-grid { max-width: 1000px; margin: 0 auto 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+        .stat-card { background: #2b2d31; padding: 16px; border-radius: 8px; text-align: center; }
+        .stat-card .num { font-size: 28px; font-weight: 700; color: #5865f2; }
+        .stat-card .lbl { color: #949ba4; font-size: 13px; margin-top: 4px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #2b2d31; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 16px rgba(0,0,0,0.24); }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { padding: 12px 16px; text-align: left; font-size: 14px; }
+        th { background: #1e1f22; color: #b5bac1; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        tr { border-bottom: 1px solid #3f4147; }
+        tr:last-child { border-bottom: none; }
+        tr:hover td { background: #35373c; }
+        .user-cell { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; flex-shrink: 0; }
+        .nickname { color: #f2f3f5; font-weight: 600; }
+        .muted { color: #949ba4; }
+        .status { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .reset-btn { background: #4e5058; color: #fff; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+        .reset-btn:hover { background: #5d6069; }
+        .footer { text-align: center; margin-top: 24px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .footer a { color: #00a8fc; text-decoration: none; font-size: 15px; }
+        .footer a:hover { text-decoration: underline; }
+    </style></head><body>
+    <h1>Админка</h1>
+    <p class="sub">Полная статистика и управление</p>
+    <div class="stats-grid">
+        <div class="stat-card"><div class="num">${totalMessages}</div><div class="lbl">Сообщений</div></div>
+        <div class="stat-card"><div class="num">${totalVoice}</div><div class="lbl">Голосовых</div></div>
+        <div class="stat-card"><div class="num">${totalImages}</div><div class="lbl">Картинок</div></div>
+        <div class="stat-card"><div class="num">${quotes.quotes.length}</div><div class="lbl">В цитатнике</div></div>
+    </div>
+    <div class="container"><table>
+        <tr><th>Кличка</th><th>Логин</th><th>Последний вход</th><th>Статус</th><th>Сообщ.</th><th>Голос.</th><th>Карт.</th><th>Ачив.</th><th></th></tr>
+        ${rows}
+    </table></div>
+    <div class="footer">
+        <a href="/chat">→ В чат</a>
+        <a href="/rating">→ Рейтинг</a>
+        <a href="/quotes">→ Цитатник</a>
+        <a href="/changelog">→ Журнал изменений</a>
+    </div>
+    <script>
+        fetch('/api/ping', { method: 'POST' });
+        setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
+        async function resetStats(login) {
+            if (!confirm('Сбросить статистику ' + login + '?')) return;
+            const r = await fetch('/api/admin/reset/' + login, { method: 'POST' });
+            if (r.ok) location.reload(); else alert('Ошибка');
+        }
+    </script>
+    </body></html>`);
+});
+
+app.post('/api/admin/reset/:login', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const data = readUsers();
+    const user = data.users.find(u => u.login === req.params.login);
+    if (!user) return res.status(404).json({ error: 'not found' });
+    user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    user.achievements = [];
+    writeUsers(data);
+    res.json({ ok: true });
 });
 
 server.listen(PORT, () => console.log(`Сервер запущен: http://localhost:${PORT}`));

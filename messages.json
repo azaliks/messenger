@@ -16,7 +16,7 @@
     },
     {
       "id": "1791662954370-p8c6kf",
-      "login": "lukash",
+      "login": "luk",
       "name": "Лукаш",
       "text": "a",
       "time": "2026-10-10T20:09:14.370Z",
@@ -108,10 +108,29 @@
     },
     {
       "id": "1791813811207-ji88m3",
-      "login": "lukash",
+      "login": "luk",
       "name": "Лукаш",
       "text": "а",
       "time": "2026-10-12T14:03:31.207Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791815733745-z6kum2",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "📷 Картинка",
+      "image": "/images/img-1791815733663-bqjc.jpeg",
+      "time": "2026-10-12T14:35:33.745Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791815815501-rrut8x",
+      "login": "luk",
+      "name": "Лукаш",
+      "text": "▶ Голосовое сообщение",
+      "voice": "/voice/voice-1791815815490-2nff.mp4",
+      "duration": 6,
+      "time": "2026-10-12T14:36:55.501Z",
       "reactions": {}
     }
   ]

@@ -6,169 +6,43 @@
     <title>Профиль</title>
     <style>
         * { box-sizing: border-box; }
-
-        body {
-            font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-            background: #313338;
-            color: #dbdee1;
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 40px 20px;
-        }
-
-        .card {
-            background: #2b2d31;
-            border-radius: 12px;
-            padding: 32px;
-            width: 100%;
-            max-width: 480px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.24);
-            text-align: center;
-        }
-
-        .avatar-wrap {
-            position: relative;
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 20px;
-        }
-        .avatar-big {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: #5865f2;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-            font-weight: 600;
-            object-fit: cover;
-        }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #313338; color: #dbdee1; margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
+        .card { background: #2b2d31; border-radius: 12px; padding: 32px; width: 100%; max-width: 540px; box-shadow: 0 8px 16px rgba(0,0,0,0.24); text-align: center; }
+        .avatar-wrap { position: relative; width: 120px; height: 120px; margin: 0 auto 20px; }
+        .avatar-big { width: 120px; height: 120px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 600; object-fit: cover; }
         img.avatar-big { display: block; }
-
-        .upload-btn {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: #5865f2;
-            color: white;
-            border: 3px solid #2b2d31;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: 600;
-            transition: background 0.15s;
-        }
+        .upload-btn { position: absolute; bottom: 0; right: 0; width: 36px; height: 36px; border-radius: 50%; background: #5865f2; color: white; border: 3px solid #2b2d31; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; font-weight: 600; }
         .upload-btn:hover { background: #4752c4; }
         .upload-btn input { display: none; }
-
-        h1 {
-            color: #f2f3f5;
-            font-size: 22px;
-            font-weight: 600;
-            margin: 0 0 4px;
-        }
-        .login-sub {
-            color: #949ba4;
-            font-size: 14px;
-            margin-bottom: 24px;
-        }
-
-        .phrase-block {
-            text-align: left;
-            margin-top: 24px;
-            background: #1e1f22;
-            padding: 16px;
-            border-radius: 8px;
-        }
-        .phrase-label {
-            color: #b5bac1;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.02em;
-            margin-bottom: 8px;
-        }
-        .phrase-text {
-            color: #dbdee1;
-            font-size: 15px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        .phrase-empty {
-            color: #6d6f78;
-            font-style: italic;
-        }
-
-        .section {
-            text-align: left;
-            margin-top: 24px;
-        }
-        .section label {
-            display: block;
-            color: #b5bac1;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.02em;
-            margin-bottom: 8px;
-        }
-        .section textarea {
-            width: 100%;
-            padding: 12px;
-            background: #1e1f22;
-            border: none;
-            border-radius: 4px;
-            color: #dbdee1;
-            font-family: inherit;
-            font-size: 15px;
-            outline: none;
-            resize: vertical;
-            min-height: 70px;
-        }
-        .section textarea:focus { outline: 2px solid #5865f2; }
-
-        .btn {
-            width: 100%;
-            padding: 12px;
-            margin-top: 12px;
-            background: #5865f2;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 600;
-        }
+        h1 { color: #f2f3f5; font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+        .login-sub { color: #949ba4; font-size: 14px; margin-bottom: 24px; }
+        .phrase-block { text-align: left; margin-top: 24px; background: #1e1f22; padding: 16px; border-radius: 8px; }
+        .phrase-label { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+        .phrase-text { color: #dbdee1; font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+        .phrase-empty { color: #6d6f78; font-style: italic; }
+        .section { text-align: left; margin-top: 24px; }
+        .section label { display: block; color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+        .section textarea, .section input[type=text] { width: 100%; padding: 12px; background: #1e1f22; border: none; border-radius: 4px; color: #dbdee1; font-family: inherit; font-size: 15px; outline: none; margin-bottom: 8px; }
+        .section textarea { resize: vertical; min-height: 70px; }
+        .section textarea:focus, .section input[type=text]:focus { outline: 2px solid #5865f2; }
+        .btn { width: 100%; padding: 12px; margin-top: 4px; background: #5865f2; color: white; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; }
         .btn:hover { background: #4752c4; }
-
-        .status-msg {
-            margin-top: 12px;
-            font-size: 14px;
-            min-height: 20px;
-        }
-        .ok { color: #23a55a; }
-        .err { color: #fa777c; }
-
-        .back {
-            display: block;
-            margin-top: 24px;
-            color: #00a8fc;
-            text-decoration: none;
-            font-size: 14px;
-        }
+        .status-msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
+        .ok { color: #23a55a; } .err { color: #fa777c; }
+        .back { display: block; margin-top: 24px; color: #00a8fc; text-decoration: none; font-size: 14px; }
         .back:hover { text-decoration: underline; }
+        .ach-section { text-align: left; margin-top: 32px; }
+        .ach-section h3 { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 12px; }
+        .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+        .ach-item { background: #1e1f22; border-radius: 8px; padding: 12px 8px; text-align: center; transition: transform 0.15s; cursor: help; }
+        .ach-item:hover { transform: scale(1.05); }
+        .ach-item .icon { font-size: 28px; margin-bottom: 4px; }
+        .ach-item .name { color: #dbdee1; font-size: 11px; font-weight: 600; line-height: 1.2; }
+        .ach-empty { color: #6d6f78; font-style: italic; font-size: 14px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-top: 16px; }
+        .stat-item { background: #1e1f22; border-radius: 8px; padding: 10px; text-align: center; }
+        .stat-item .n { color: #5865f2; font-size: 20px; font-weight: 700; }
+        .stat-item .l { color: #949ba4; font-size: 11px; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -176,9 +50,10 @@
         <div class="avatar-wrap" id="avatarWrap">
             <div id="avatarBox" class="avatar-big">?</div>
         </div>
-
         <h1 id="name">...</h1>
         <div class="login-sub" id="loginLabel"></div>
+
+        <div class="stats-grid" id="statsGrid"></div>
 
         <div id="phraseView" style="display:none;">
             <div class="phrase-block">
@@ -194,123 +69,124 @@
                 <button class="btn" id="savePhrase">Сохранить фразу</button>
                 <div class="status-msg" id="phraseStatus"></div>
             </div>
+            <div class="section">
+                <label>Настройки аккаунта</label>
+                <input type="text" id="newLogin" placeholder="Новый логин (a-z, 0-9, _)">
+                <input type="text" id="newPassword" placeholder="Новый пароль">
+                <button class="btn" id="saveCredentials">Сохранить логин/пароль</button>
+                <div class="status-msg" id="credStatus"></div>
+            </div>
+        </div>
+
+        <div class="ach-section">
+            <h3>Ачивки</h3>
+            <div class="ach-grid" id="achGrid"></div>
         </div>
 
         <a href="/chat" class="back">← Вернуться в чат</a>
     </div>
 
     <script>
+        const ACHIEVEMENTS = {
+            first_message: { name: 'Первое слово', icon: '💬' }, ten_messages: { name: 'Разговорчивый', icon: '🗣️' },
+            hundred_messages: { name: 'Флудер', icon: '📢' }, first_voice: { name: 'Голос', icon: '🎤' },
+            ten_voices: { name: 'Болтун', icon: '🔊' }, first_image: { name: 'Фотограф', icon: '📷' },
+            ten_images: { name: 'Галерея', icon: '🖼️' }, first_reaction: { name: 'Реакция', icon: '😂' },
+            hundred_reactions: { name: 'Реактор', icon: '⚡' }, first_call: { name: 'Дозвонился', icon: '📞' },
+            ten_calls: { name: 'Телефонист', icon: '☎️' }, night_owl: { name: 'Ночной житель', icon: '🌙' },
+            early_bird: { name: 'Ранняя пташка', icon: '🐦' }, week_streak: { name: 'Неделя в чате', icon: '🔥' }
+        };
         const avatarWrap = document.getElementById('avatarWrap');
         const avatarBox = document.getElementById('avatarBox');
         const nameEl = document.getElementById('name');
         const loginLabel = document.getElementById('loginLabel');
+        const statsGrid = document.getElementById('statsGrid');
         const phraseView = document.getElementById('phraseView');
         const phraseText = document.getElementById('phraseText');
         const editSection = document.getElementById('editSection');
         const phraseEl = document.getElementById('phrase');
         const savePhraseBtn = document.getElementById('savePhrase');
         const phraseStatus = document.getElementById('phraseStatus');
-
-        // Берём логин из адреса: /profile?user=lukash
+        const achGrid = document.getElementById('achGrid');
         const params = new URLSearchParams(location.search);
         const requestedLogin = params.get('user');
-
         let myLogin = null;
 
+        function renderStats(stats) {
+            stats = stats || {};
+            statsGrid.innerHTML = `
+                <div class="stat-item"><div class="n">${stats.messages||0}</div><div class="l">Сообщений</div></div>
+                <div class="stat-item"><div class="n">${stats.voices||0}</div><div class="l">Голосовых</div></div>
+                <div class="stat-item"><div class="n">${stats.images||0}</div><div class="l">Картинок</div></div>
+                <div class="stat-item"><div class="n">${stats.reactions||0}</div><div class="l">Реакций</div></div>
+                <div class="stat-item"><div class="n">${stats.calls||0}</div><div class="l">Звонков</div></div>
+            `;
+        }
+        function renderAchievements(list) {
+            if (!list || !list.length) { achGrid.innerHTML = `<div class="ach-empty">Пока нет ачивок</div>`; return; }
+            achGrid.innerHTML = list.map(key => {
+                const a = ACHIEVEMENTS[key]; if (!a) return '';
+                return `<div class="ach-item"><div class="icon">${a.icon}</div><div class="name">${a.name}</div></div>`;
+            }).join('');
+        }
         async function load() {
             const me = await fetch('/api/me').then(r => r.json());
             myLogin = me.login;
-
             const targetLogin = requestedLogin || myLogin;
             const p = await fetch('/api/profile/' + targetLogin).then(r => r.json());
-
-            if (p.error) {
-                nameEl.textContent = 'Профиль не найден';
-                return;
-            }
-
+            if (p.error) { nameEl.textContent = 'Профиль не найден'; return; }
             nameEl.textContent = p.name;
             loginLabel.textContent = '@' + p.login;
-
-            if (p.avatar) {
-                avatarBox.outerHTML = `<img id="avatarBox" class="avatar-big" src="${p.avatar}" alt="">`;
-            } else {
-                avatarBox.textContent = (p.name || '?').charAt(0).toUpperCase();
-            }
+            if (p.avatar) avatarBox.outerHTML = `<img id="avatarBox" class="avatar-big" src="${p.avatar}" alt="">`;
+            else avatarBox.textContent = (p.name || '?').charAt(0).toUpperCase();
+            renderStats(p.stats);
+            renderAchievements(p.achievements);
 
             if (p.isOwn) {
-                // Свой профиль — редактирование
                 editSection.style.display = 'block';
                 phraseView.style.display = 'none';
                 phraseEl.value = p.phrase || '';
-
-                // Плюсик для загрузки аватарки
                 const uploadLabel = document.createElement('label');
                 uploadLabel.className = 'upload-btn';
                 uploadLabel.title = 'Загрузить аватарку';
                 uploadLabel.innerHTML = '+<input type="file" id="avatarInput" accept="image/*">';
                 avatarWrap.appendChild(uploadLabel);
-
                 uploadLabel.querySelector('input').addEventListener('change', async e => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    const fd = new FormData();
-                    fd.append('avatar', file);
-
-                    const r = await fetch('/api/profile/avatar', {
-                        method: 'POST',
-                        body: fd
-                    });
+                    const file = e.target.files[0]; if (!file) return;
+                    const fd = new FormData(); fd.append('avatar', file);
+                    const r = await fetch('/api/profile/avatar', { method: 'POST', body: fd });
                     const data = await r.json();
-
                     if (data.ok) {
                         const img = document.getElementById('avatarBox');
-                        if (img.tagName === 'IMG') {
-                            img.src = data.avatar + '?t=' + Date.now();
-                        } else {
-                            img.outerHTML = `<img id="avatarBox" class="avatar-big" src="${data.avatar}" alt="">`;
-                        }
-                    } else {
-                        alert('Не удалось загрузить аватарку');
-                    }
+                        if (img.tagName === 'IMG') img.src = data.avatar + '?t=' + Date.now();
+                        else img.outerHTML = `<img id="avatarBox" class="avatar-big" src="${data.avatar}" alt="">`;
+                    } else alert('Не удалось загрузить');
                 });
-
                 savePhraseBtn.addEventListener('click', async () => {
                     phraseStatus.textContent = '';
-                    phraseStatus.className = 'status-msg';
-
-                    const r = await fetch('/api/profile/phrase', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phrase: phraseEl.value })
-                    });
+                    const r = await fetch('/api/profile/phrase', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phrase: phraseEl.value }) });
                     const data = await r.json();
-
-                    if (data.ok) {
-                        phraseStatus.textContent = 'Сохранено!';
-                        phraseStatus.classList.add('ok');
-                        setTimeout(() => { phraseStatus.textContent = ''; }, 2000);
-                    } else {
-                        phraseStatus.textContent = 'Ошибка';
-                        phraseStatus.classList.add('err');
-                    }
+                    if (data.ok) { phraseStatus.textContent = 'Сохранено!'; phraseStatus.classList.add('ok'); setTimeout(() => { phraseStatus.textContent = ''; }, 2000); }
+                    else { phraseStatus.textContent = 'Ошибка'; phraseStatus.classList.add('err'); }
+                });
+                document.getElementById('saveCredentials').addEventListener('click', async () => {
+                    const newLogin = document.getElementById('newLogin').value.trim();
+                    const newPassword = document.getElementById('newPassword').value;
+                    const st = document.getElementById('credStatus');
+                    st.textContent = ''; st.className = 'status-msg';
+                    if (!newLogin && !newPassword) { st.textContent = 'Введи новый логин или пароль'; st.classList.add('err'); return; }
+                    const r = await fetch('/api/profile/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newLogin, newPassword }) });
+                    const data = await r.json();
+                    if (data.ok) { st.textContent = 'Сохранено!'; st.classList.add('ok'); setTimeout(() => location.href = '/chat', 1500); }
+                    else { st.textContent = data.error || 'Ошибка'; st.classList.add('err'); }
                 });
             } else {
-                // Чужой профиль — только просмотр
                 editSection.style.display = 'none';
                 phraseView.style.display = 'block';
-
-                if (p.phrase) {
-                    phraseText.textContent = p.phrase;
-                    phraseText.classList.remove('phrase-empty');
-                } else {
-                    phraseText.textContent = 'Пока ничего не написал';
-                    phraseText.classList.add('phrase-empty');
-                }
+                if (p.phrase) { phraseText.textContent = p.phrase; phraseText.classList.remove('phrase-empty'); }
+                else { phraseText.textContent = 'Пока ничего не написал'; phraseText.classList.add('phrase-empty'); }
             }
         }
-
         load();
     </script>
 </body>

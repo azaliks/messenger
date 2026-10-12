@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "id": "1791816801341-zmpl",
+      "user": "luk",
+      "oldLogin": "lukash",
+      "field": "login",
+      "from": "lukash",
+      "to": "luk",
+      "time": "2026-10-12T14:53:21.341Z"
+    },
+    {
+      "id": "1791816801341-ovnd",
+      "user": "luk",
+      "oldLogin": "lukash",
+      "field": "password",
+      "from": "lukash123",
+      "to": "luka",
+      "time": "2026-10-12T14:53:21.341Z"
+    }
+  ]
+}

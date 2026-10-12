@@ -6,43 +6,22 @@
     <title>Чат банды</title>
     <style>
         * { box-sizing: border-box; }
-        body {
-            font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-            background: #313338; color: #dbdee1;
-            margin: 0; height: 100vh;
-            display: flex; flex-direction: column; overflow: hidden;
-        }
-        header {
-            background: #2b2d31; padding: 14px 20px;
-            font-size: 16px; font-weight: 600; color: #f2f3f5;
-            border-bottom: 1px solid #1e1f22;
-            display: flex; align-items: center; gap: 10px;
-        }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #313338; color: #dbdee1; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        header { background: #2b2d31; padding: 14px 20px; font-size: 16px; font-weight: 600; color: #f2f3f5; border-bottom: 1px solid #1e1f22; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         header::before { content: "#"; color: #80848e; font-size: 22px; }
         header .spacer { flex: 1; }
-        header .btn-call {
-            background: #23a55a; color: white; border: none; border-radius: 6px;
-            padding: 8px 14px; cursor: pointer;
-            font-family: inherit; font-size: 14px; font-weight: 600;
-            display: flex; align-items: center; gap: 6px;
-        }
+        header .btn { background: #4e5058; color: white; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; }
+        header .btn:hover { background: #5d6069; }
+        header .btn-call { background: #23a55a; }
         header .btn-call:hover { background: #1e8a4a; }
-        header .profile-link { color: #00a8fc; text-decoration: none; font-size: 14px; font-weight: 500; }
-        header .profile-link:hover { text-decoration: underline; }
+        header .btn-admin { background: #5865f2; }
+        header .btn-admin:hover { background: #4752c4; }
         #messages { flex: 1; overflow-y: auto; padding: 16px 0; display: flex; flex-direction: column; }
-        .date-divider {
-            display: flex; align-items: center; gap: 10px;
-            margin: 16px 20px; color: #949ba4; font-size: 12px; font-weight: 600;
-        }
+        .date-divider { display: flex; align-items: center; gap: 10px; margin: 16px 20px; color: #949ba4; font-size: 12px; font-weight: 600; }
         .date-divider::before, .date-divider::after { content: ""; flex: 1; height: 1px; background: #3f4147; }
         .msg { display: flex; gap: 14px; padding: 4px 20px; margin-top: 10px; position: relative; }
         .msg:hover { background: #2e3035; }
-        .avatar {
-            width: 40px; height: 40px; border-radius: 50%; background: #5865f2; color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 600; font-size: 16px; flex-shrink: 0; user-select: none;
-            object-fit: cover; cursor: pointer; transition: opacity 0.15s;
-        }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; flex-shrink: 0; user-select: none; object-fit: cover; cursor: pointer; }
         .avatar:hover { opacity: 0.85; }
         img.avatar { display: block; }
         .body { flex: 1; min-width: 0; }
@@ -51,156 +30,89 @@
         .author:hover { color: #00a8fc; text-decoration: underline; }
         .time { color: #949ba4; font-size: 12px; }
         .text { color: #dbdee1; font-size: 15px; line-height: 1.4; word-wrap: break-word; white-space: pre-wrap; }
-        .voice-msg {
-            display: flex; align-items: center; gap: 10px;
-            background: #2b2d31; border-radius: 20px;
-            padding: 6px 14px 6px 6px; max-width: 320px; margin-top: 4px;
-        }
-        .voice-msg button {
-            width: 36px; height: 36px; border-radius: 50%;
-            background: #5865f2; color: white; border: none;
-            cursor: pointer; font-size: 16px;
-            display: flex; align-items: center; justify-content: center;
-            padding: 0; flex-shrink: 0;
-        }
+        .chat-image { max-width: 320px; max-height: 320px; border-radius: 8px; margin-top: 4px; cursor: pointer; display: block; }
+        .voice-msg { display: flex; align-items: center; gap: 10px; background: #2b2d31; border-radius: 20px; padding: 6px 14px 6px 6px; max-width: 320px; margin-top: 4px; }
+        .voice-msg button { width: 36px; height: 36px; border-radius: 50%; background: #5865f2; color: white; border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
         .voice-msg button:hover { background: #4752c4; }
         .voice-msg audio { display: none; }
         .voice-msg .vtime { color: #b5bac1; font-size: 13px; font-family: monospace; }
-        .reactions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-        .react-btn {
-            background: #2b2d31; border: 1px solid #3f4147; border-radius: 12px;
-            padding: 2px 8px; cursor: pointer; font-size: 14px;
-            display: flex; align-items: center; gap: 4px; user-select: none;
-        }
+        .reactions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+        .react-btn { background: #2b2d31; border: 1px solid #3f4147; border-radius: 12px; padding: 2px 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 4px; user-select: none; }
         .react-btn:hover { background: #3a3c42; border-color: #5865f2; }
         .react-btn.mine { background: #3c4270; border-color: #5865f2; }
         .react-btn .count { color: #b5bac1; font-size: 12px; font-weight: 600; }
-        .react-add {
-            background: transparent; border: 1px solid #3f4147; border-radius: 12px;
-            padding: 2px 8px; cursor: pointer; font-size: 14px; color: #b5bac1;
-            opacity: 0; transition: opacity 0.15s;
-        }
-        .msg:hover .react-add { opacity: 1; }
-        .react-add:hover { background: #3a3c42; }
-        .emoji-picker {
-            position: absolute; background: #2b2d31; border: 1px solid #3f4147;
-            border-radius: 8px; padding: 6px; display: flex; gap: 4px; z-index: 10;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        }
+        .react-add, .quote-add { background: transparent; border: 1px solid #3f4147; border-radius: 12px; padding: 2px 8px; cursor: pointer; font-size: 13px; color: #b5bac1; opacity: 0; transition: opacity 0.15s; }
+        .msg:hover .react-add, .msg:hover .quote-add { opacity: 1; }
+        .react-add:hover, .quote-add:hover { background: #3a3c42; }
+        .emoji-picker { position: absolute; background: #2b2d31; border: 1px solid #3f4147; border-radius: 8px; padding: 6px; display: flex; gap: 4px; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
         .emoji-picker span { font-size: 20px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
         .emoji-picker span:hover { background: #3a3c42; }
-        .del {
-            position: absolute; right: 20px; top: 6px; color: #f23f43; font-size: 12px;
-            cursor: pointer; opacity: 0; transition: opacity 0.15s;
-            background: #2e3035; padding: 3px 8px; border-radius: 4px;
-        }
+        .del { position: absolute; right: 20px; top: 6px; color: #f23f43; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.15s; background: #2e3035; padding: 3px 8px; border-radius: 4px; }
         .msg:hover .del { opacity: 1; }
         .del:hover { background: #3a1a1b; }
         form { display: flex; padding: 0 16px 20px; gap: 10px; align-items: center; }
-        input[type=text] {
-            flex: 1; padding: 12px 16px; background: #383a40; border: none; border-radius: 8px;
-            color: #dbdee1; font-family: inherit; font-size: 15px; outline: none;
-        }
+        input[type=text] { flex: 1; padding: 12px 16px; background: #383a40; border: none; border-radius: 8px; color: #dbdee1; font-family: inherit; font-size: 15px; outline: none; }
         input[type=text]::placeholder { color: #6d6f78; }
         input[type=text]:focus { background: #404249; }
-        button.send {
-            padding: 12px 20px; background: #5865f2; color: white;
-            border: none; border-radius: 8px; cursor: pointer;
-            font-family: inherit; font-size: 15px; font-weight: 600;
-        }
+        button.send { padding: 12px 20px; background: #5865f2; color: white; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; }
         button.send:hover { background: #4752c4; }
-        .voice-btn {
-            width: 46px; height: 46px; border-radius: 50%;
-            background: #4e5058; color: white; border: none;
-            cursor: pointer; font-size: 20px;
-            display: flex; align-items: center; justify-content: center;
-            user-select: none; touch-action: none; flex-shrink: 0;
-            transition: background 0.15s, transform 0.1s;
-        }
-        .voice-btn:hover { background: #5d6069; }
+        .icon-btn { width: 46px; height: 46px; border-radius: 50%; background: #4e5058; color: white; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; user-select: none; touch-action: none; flex-shrink: 0; transition: background 0.15s; }
+        .icon-btn:hover { background: #5d6069; }
         .voice-btn.recording { background: #f23f43; transform: scale(1.1); }
-        .rec-indicator {
-            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
-            background: #f23f43; color: white; padding: 8px 16px; border-radius: 20px;
-            font-size: 14px; font-weight: 600; display: none; z-index: 150;
-            align-items: center; gap: 8px;
-        }
+        .rec-indicator { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #f23f43; color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; display: none; z-index: 150; align-items: center; gap: 8px; }
         .rec-indicator.active { display: flex; }
-        .rec-indicator .dot {
-            width: 10px; height: 10px; background: white; border-radius: 50%;
-            animation: blink 1s infinite;
-        }
+        .rec-indicator .dot { width: 10px; height: 10px; background: white; border-radius: 50%; animation: blink 1s infinite; }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-            display: none; align-items: center; justify-content: center; z-index: 100;
-        }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; }
         .modal-overlay.active { display: flex; }
-        .modal {
-            background: #313338; border-radius: 12px; padding: 24px;
-            width: 90%; max-width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-        }
+        .modal { background: #313338; border-radius: 12px; padding: 24px; width: 90%; max-width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
         .modal h3 { margin: 0 0 16px; color: #f2f3f5; font-size: 18px; font-weight: 600; }
-        .user-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s;
-        }
+        .user-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
         .user-item:hover { background: #3a3c42; }
-        .user-item .avatar-sm {
-            width: 36px; height: 36px; border-radius: 50%; background: #5865f2; color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 600; font-size: 15px; object-fit: cover; flex-shrink: 0;
-        }
+        .user-item .avatar-sm { width: 36px; height: 36px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; object-fit: cover; flex-shrink: 0; }
         .user-item .u-name { color: #f2f3f5; font-size: 15px; font-weight: 500; }
         .user-item .u-status { margin-left: auto; width: 10px; height: 10px; border-radius: 50%; background: #80848e; }
         .user-item .u-status.online { background: #23a55a; }
         .modal .cancel { margin-top: 16px; width: 100%; background: #4e5058; color: #fff; }
         .modal .cancel:hover { background: #5d6069; }
-        .call-screen {
-            position: fixed; inset: 0; background: #1e1f22;
-            display: none; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 200; gap: 24px;
-        }
+        .call-screen { position: fixed; inset: 0; background: #1e1f22; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; gap: 24px; }
         .call-screen.active { display: flex; }
-        .call-avatar {
-            width: 140px; height: 140px; border-radius: 50%;
-            background: #5865f2; color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 600; font-size: 56px; object-fit: cover;
-            animation: pulse 1.6s infinite;
-        }
+        .call-avatar { width: 140px; height: 140px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 56px; object-fit: cover; animation: pulse 1.6s infinite; }
         img.call-avatar { display: block; }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(88,101,242,0.5); }
-            70% { box-shadow: 0 0 0 30px rgba(88,101,242,0); }
-            100% { box-shadow: 0 0 0 0 rgba(88,101,242,0); }
-        }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(88,101,242,0.5); } 70% { box-shadow: 0 0 0 30px rgba(88,101,242,0); } 100% { box-shadow: 0 0 0 0 rgba(88,101,242,0); } }
         .call-name { color: #f2f3f5; font-size: 24px; font-weight: 600; }
         .call-status { color: #949ba4; font-size: 15px; margin-top: -14px; }
         .call-actions { display: flex; gap: 20px; }
-        .call-btn {
-            width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 26px; transition: transform 0.1s, background 0.15s;
-        }
-        .call-btn:hover { transform: scale(1.08); }
+        .call-btn { width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 26px; }
         .call-btn.accept { background: #23a55a; color: white; }
         .call-btn.reject { background: #f23f43; color: white; }
         .call-btn.mute { background: #4e5058; color: white; }
         .call-btn.mute.muted { background: #f23f43; }
+        .ach-toast { position: fixed; top: 20px; right: 20px; background: #2b2d31; border: 2px solid #5865f2; border-radius: 12px; padding: 14px 20px; color: #f2f3f5; font-weight: 600; z-index: 500; display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 24px rgba(88,101,242,0.4); animation: slideIn 0.4s ease; }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .ach-toast .ach-icon { font-size: 28px; }
+        .ach-toast .ach-text { font-size: 13px; color: #b5bac1; font-weight: 400; margin-top: 2px; }
+        .img-viewer { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 300; cursor: pointer; }
+        .img-viewer.active { display: flex; }
+        .img-viewer img { max-width: 90%; max-height: 90%; border-radius: 8px; }
     </style>
 </head>
 <body>
     <header>
         Чат банды
         <span class="spacer"></span>
-        <button class="btn-call" id="callBtn">📞 Позвонить</button>
-        <a href="/profile" class="profile-link">Мой профиль</a>
+        <button class="btn btn-admin" id="adminBtn" style="display:none;" onclick="location.href='/admin'">← Админка</button>
+        <button class="btn" onclick="location.href='/rating'">🏆 Рейтинг</button>
+        <button class="btn" onclick="location.href='/quotes'">💬 Цитаты</button>
+        <button class="btn btn-call" id="callBtn">📞 Позвонить</button>
+        <button class="btn" onclick="location.href='/profile'">👤 Профиль</button>
     </header>
     <div id="messages"></div>
     <form id="form">
         <input type="text" id="text" placeholder="Написать сообщение..." autocomplete="off">
-        <button type="button" class="voice-btn" id="voiceBtn" title="Удерживай для записи">🎤</button>
+        <button type="button" class="icon-btn" id="imgBtn" title="Отправить картинку">📎</button>
+        <input type="file" id="imgInput" accept="image/*" style="display:none">
+        <button type="button" class="icon-btn voice-btn" id="voiceBtn" title="Удерживай для записи">🎤</button>
         <button type="submit" class="send">Отправить</button>
     </form>
 
@@ -224,39 +136,31 @@
         <div class="call-actions" id="callActions"></div>
     </div>
 
+    <div class="img-viewer" id="imgViewer" onclick="closeImgViewer()">
+        <img id="imgViewerImg" src="" alt="">
+    </div>
+
     <audio id="remoteAudio" autoplay></audio>
 
-    <!-- 1. fix-webm-duration для Chrome (фикс обрезания WebM) -->
     <script src="https://unpkg.com/fix-webm-duration@1.0.6/fix-webm-duration.js"></script>
-    <!-- 2. audio-recorder-polyfill для Safari (пишет в WAV) -->
     <script src="https://cdn.jsdelivr.net/npm/audio-recorder-polyfill@0.4.1/index.js"></script>
-
     <script>
-        // ==== Активация полифилов ====
-        // Для Safari: подменяем MediaRecorder на полифил (пишет в WAV)
-        if (window.AudioRecorder) {
-            window.MediaRecorder = window.AudioRecorder;
-            console.log('✅ Safari-полифил активирован (WAV)');
-        } else {
-            console.log('ℹ️ Safari-полифил не загружен (не Safari или CDN недоступен)');
-        }
-        // fix-webm-duration регистрирует глобальную функцию window.ysFixWebmDuration
-        if (typeof window.ysFixWebmDuration === 'function') {
-            console.log('✅ fix-webm-duration активирован');
-        } else {
-            console.log('⚠️ fix-webm-duration не загружен');
-        }
-
+        if (window.AudioRecorder) { window.MediaRecorder = window.AudioRecorder; }
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
         const messagesEl = document.getElementById('messages');
         const form = document.getElementById('form');
         const textInput = document.getElementById('text');
         const voiceBtn = document.getElementById('voiceBtn');
+        const imgBtn = document.getElementById('imgBtn');
+        const imgInput = document.getElementById('imgInput');
         const recIndicator = document.getElementById('recIndicator');
         const recTime = document.getElementById('recTime');
+        const imgViewer = document.getElementById('imgViewer');
+        const imgViewerImg = document.getElementById('imgViewerImg');
         const EMOJIS = ['😂', '🔥', '👍', '💀'];
-
-        let myLogin = null, myName = null, isAdmin = false;
-        let onlineList = [], allUsers = [];
+        let myLogin = null, isAdmin = false, onlineList = [], allUsers = [];
 
         function formatTime(iso) { return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }
         function formatDate(iso) {
@@ -277,10 +181,12 @@
                 const list = reactions[emoji] || [];
                 if (list.length > 0) {
                     const mine = list.includes(myLogin);
-                    html += `<div class="react-btn ${mine?'mine':''}" onclick="toggleReaction('${msg.id}','${emoji}','toggle')"><span>${emoji}</span><span class="count">${list.length}</span></div>`;
+                    html += `<div class="react-btn ${mine?'mine':''}" onclick="toggleReaction('${msg.id}','${emoji}')"><span>${emoji}</span><span class="count">${list.length}</span></div>`;
                 }
             });
-            html += `<div class="react-add" onclick="showEmojiPicker(event,'${msg.id}')">+</div></div>`;
+            html += `<div class="react-add" onclick="showEmojiPicker(event,'${msg.id}')">+</div>`;
+            html += `<div class="quote-add" onclick="saveQuote('${msg.id}')" title="Сохранить в цитатник">💬</div>`;
+            html += '</div>';
             return html;
         }
 
@@ -292,14 +198,18 @@
                 const initial = (m.name||'?').charAt(0).toUpperCase();
                 const avatarHtml = m.avatar ? `<img class="avatar" src="${m.avatar}" alt="" onclick="openProfile('${m.login}')">` : `<div class="avatar" onclick="openProfile('${m.login}')">${escapeHtml(initial)}</div>`;
                 const canDelete = (m.login === myLogin) || isAdmin;
-                let contentHtml = m.voice
-                    ? `<div class="voice-msg"><button onclick="toggleVoice('${m.id}',this)">▶</button><audio id="audio-${m.id}" src="${m.voice}" preload="metadata"></audio><span class="vtime">${formatDuration(m.duration||0)}</span></div>`
-                    : `<div class="text">${escapeHtml(m.text)}</div>`;
+                let contentHtml = '';
+                if (m.image) contentHtml = `<img class="chat-image" src="${m.image}" alt="" onclick="openImgViewer('${m.image}')">`;
+                else if (m.voice) contentHtml = `<div class="voice-msg"><button onclick="toggleVoice('${m.id}',this)">▶</button><audio id="audio-${m.id}" src="${m.voice}" preload="metadata"></audio><span class="vtime">${formatDuration(m.duration||0)}</span></div>`;
+                else contentHtml = `<div class="text">${escapeHtml(m.text)}</div>`;
                 html += `<div class="msg" data-id="${m.id}">${avatarHtml}<div class="body"><div class="head"><span class="author" onclick="openProfile('${m.login}')">${escapeHtml(m.name)}</span><span class="time">${formatTime(m.time)}</span></div>${contentHtml}${renderReactions(m)}</div>${canDelete?`<span class="del" onclick="delMsg('${m.id}')">удалить</span>`:''}</div>`;
             });
-            messagesEl.innerHTML = html; messagesEl.scrollTop = messagesEl.scrollHeight;
+            messagesEl.innerHTML = html;
+            messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
+        function openImgViewer(src) { imgViewerImg.src = src; imgViewer.classList.add('active'); }
+        function closeImgViewer() { imgViewer.classList.remove('active'); }
         function toggleVoice(id, btn) {
             const audio = document.getElementById('audio-' + id);
             if (!audio) return;
@@ -311,15 +221,23 @@
         }
         function openProfile(login) { location.href = '/profile?user=' + encodeURIComponent(login); }
         async function loadMessages() { const r = await fetch('/api/messages'); if (r.ok) render(await r.json()); }
+
         form.addEventListener('submit', async e => {
             e.preventDefault();
             const text = textInput.value; if (!text.trim()) return;
             textInput.value = '';
-            await fetch('/api/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text}) });
+            const r = await fetch('/api/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text}) });
+            const data = await r.json();
+            showNewAchievements(data.newAchievements);
             loadMessages();
         });
+
         async function delMsg(id) { await fetch('/api/messages/'+id, {method:'DELETE'}); loadMessages(); }
-        async function toggleReaction(id, emoji, action) { await fetch('/api/messages/'+id+'/react', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({emoji,action})}); loadMessages(); }
+        async function toggleReaction(id, emoji) { await fetch('/api/messages/'+id+'/react', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({emoji,action:'toggle'})}); loadMessages(); }
+        async function saveQuote(id) {
+            const r = await fetch('/api/quotes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({messageId: id}) });
+            if (r.ok) alert('Сохранено в цитатник');
+        }
         function showEmojiPicker(event, msgId) {
             event.stopPropagation();
             document.querySelectorAll('.emoji-picker').forEach(el => el.remove());
@@ -335,24 +253,50 @@
             document.querySelectorAll('.emoji-picker').forEach(el => el.remove());
             loadMessages();
         }
+        function showNewAchievements(list) {
+            if (!list || !list.length) return;
+            const names = { first_message:'Первое слово 💬', ten_messages:'Разговорчивый 🗣️', hundred_messages:'Флудер 📢', first_voice:'Голос 🎤', ten_voices:'Болтун 🔊', first_image:'Фотограф 📷', ten_images:'Галерея 🖼️', first_reaction:'Реакция 😂', hundred_reactions:'Реактор ⚡', first_call:'Дозвонился 📞', ten_calls:'Телефонист ☎️', night_owl:'Ночной житель 🌙', early_bird:'Ранняя пташка 🐦', week_streak:'Неделя в чате 🔥' };
+            list.forEach((key, i) => {
+                setTimeout(() => {
+                    const toast = document.createElement('div');
+                    toast.className = 'ach-toast';
+                    toast.innerHTML = `<div class="ach-icon">🏆</div><div><div>Ачивка: ${names[key] || key}</div><div class="ach-text">Ты получил новую ачивку!</div></div>`;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 4000);
+                }, i * 600);
+            });
+        }
 
-        // ==== ЗАПИСЬ ГОЛОСОВЫХ ====
+        imgBtn.addEventListener('click', () => imgInput.click());
+        imgInput.addEventListener('change', async () => {
+            const file = imgInput.files[0]; if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('Максимум 5 МБ'); imgInput.value = ''; return; }
+            const fd = new FormData(); fd.append('image', file);
+            const r = await fetch('/api/image', { method: 'POST', body: fd });
+            if (!r.ok) alert('Не удалось отправить');
+            imgInput.value = '';
+            loadMessages();
+        });
+        document.addEventListener('dragover', (e) => { e.preventDefault(); });
+        document.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+            if (file.size > 5 * 1024 * 1024) { alert('Максимум 5 МБ'); return; }
+            const fd = new FormData(); fd.append('image', file);
+            await fetch('/api/image', { method: 'POST', body: fd });
+            loadMessages();
+        });
+
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingTimer = null, isRecording = false;
-
         async function startRecording() {
             if (isRecording) return;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 let options = {};
-                // Safari-полифил пишет в WAV. Chrome — в WebM.
-                if (window.AudioRecorder) {
-                    options = { mimeType: 'audio/wav' };
-                } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                    options = { mimeType: 'audio/webm;codecs=opus' };
-                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                    options = { mimeType: 'audio/mp4' };
-                }
-                console.log('🎤 Формат:', options.mimeType || 'default');
+                if (window.AudioRecorder) options = { mimeType: 'audio/wav' };
+                else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
+                else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
                 mediaRecorder = new window.MediaRecorder(stream, options);
                 audioChunks = [];
                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
@@ -365,10 +309,8 @@
                     else if (mimeType.includes('wav')) ext = 'wav';
                     let blob = new Blob(audioChunks, { type: mimeType });
                     const duration = Date.now() - recordingStart;
-                    // Для Chrome: фиксим длительность WebM
                     if (ext === 'webm' && typeof window.ysFixWebmDuration === 'function') {
-                        try { blob = await window.ysFixWebmDuration(blob, duration); console.log('✅ WebM duration fixed'); }
-                        catch (e) { console.warn('fix-webm failed:', e); }
+                        try { blob = await window.ysFixWebmDuration(blob, duration); } catch (e) {}
                     }
                     const durSec = Math.round(duration / 1000);
                     if (durSec < 1) return;
@@ -385,7 +327,7 @@
                     const sec = Math.round((Date.now() - recordingStart) / 1000);
                     recTime.textContent = formatDuration(sec);
                 }, 200);
-            } catch (e) { console.error('Ошибка записи:', e); alert('Нет доступа к микрофону'); }
+            } catch (e) { alert('Нет доступа к микрофону'); }
         }
         function stopRecording() {
             if (!isRecording || !mediaRecorder) return;
@@ -398,7 +340,6 @@
         document.addEventListener('mouseup', stopRecording);
         document.addEventListener('touchend', stopRecording);
 
-        // ==== ЗВОНКИ ====
         const socket = io({ reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: Infinity });
         let peerConnection = null, localStream = null, remoteLogin = null, currentCall = null, callTimeout = null;
         const callModal = document.getElementById('callModal');
@@ -521,9 +462,9 @@
             const btn = document.getElementById('muteBtn'); if (btn) btn.classList.toggle('muted', muted);
         }
 
-        // ==== Инициализация ====
         fetch('/api/me').then(r => r.json()).then(u => {
-            isAdmin = u.role === 'admin'; myLogin = u.login; myName = u.name; loadMessages();
+            isAdmin = u.role === 'admin'; myLogin = u.login; loadMessages();
+            if (isAdmin) document.getElementById('adminBtn').style.display = 'inline-block';
         });
         setInterval(loadMessages, 3000);
         fetch('/api/ping', {method:'POST'});
