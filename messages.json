@@ -77,6 +77,42 @@
       "duration": 7,
       "time": "2026-10-12T13:29:21.235Z",
       "reactions": {}
+    },
+    {
+      "id": "1791813177937-v22qeq",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "▶ Голосовое сообщение",
+      "voice": "/voice/voice-1791813177902-8b35.mp4",
+      "duration": 10,
+      "time": "2026-10-12T13:52:57.940Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791813738907-p9sbv9",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "эм",
+      "time": "2026-10-12T14:02:18.907Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791813759635-b3oibs",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "▶ Голосовое сообщение",
+      "voice": "/voice/voice-1791813759582-hqj5.mp4",
+      "duration": 9,
+      "time": "2026-10-12T14:02:39.635Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791813811207-ji88m3",
+      "login": "lukash",
+      "name": "Лукаш",
+      "text": "а",
+      "time": "2026-10-12T14:03:31.207Z",
+      "reactions": {}
     }
   ]
 }
