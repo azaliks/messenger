@@ -47,6 +47,16 @@
       "duration": 10,
       "time": "2026-10-11T17:07:17.625Z",
       "reactions": {}
+    },
+    {
+      "id": "1791810177881-i6fj1z",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "▶ Голосовое сообщение",
+      "voice": "/voice/voice-1791810177860-ut3d.mp4",
+      "duration": 5,
+      "time": "2026-10-12T13:02:57.881Z",
+      "reactions": {}
     }
   ]
 }

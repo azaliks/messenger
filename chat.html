@@ -77,7 +77,7 @@
             background: #5865f2; color: white; border: none;
             cursor: pointer; font-size: 16px;
             display: flex; align-items: center; justify-content: center;
-            padding: 0;
+            padding: 0; flex-shrink: 0;
         }
         .voice-msg button:hover { background: #4752c4; }
         .voice-msg audio { display: none; }
@@ -145,7 +145,7 @@
             background: #4e5058; color: white; border: none;
             cursor: pointer; font-size: 20px;
             display: flex; align-items: center; justify-content: center;
-            user-select: none; touch-action: none;
+            user-select: none; touch-action: none; flex-shrink: 0;
             transition: background 0.15s, transform 0.1s;
         }
         .voice-btn:hover { background: #5d6069; }
@@ -342,7 +342,7 @@
                 let contentHtml = '';
                 if (m.voice) {
                     contentHtml = `
-                        <div class="voice-msg" data-voice="${m.id}">
+                        <div class="voice-msg">
                             <button onclick="toggleVoice('${m.id}', this)">▶</button>
                             <audio id="audio-${m.id}" src="${m.voice}" preload="metadata"></audio>
                             <span class="vtime">${formatDuration(m.duration || 0)}</span>
@@ -375,16 +375,13 @@
             const audio = document.getElementById('audio-' + id);
             if (!audio) return;
             if (audio.paused) {
-                // Стоп всем остальным
                 document.querySelectorAll('audio').forEach(a => {
-                    if (a.id !== 'audio-' + id) {
-                        a.pause();
-                        a.currentTime = 0;
-                    }
+                    if (a.id !== 'audio-' + id) { a.pause(); a.currentTime = 0; }
                 });
                 document.querySelectorAll('.voice-msg button').forEach(b => b.textContent = '▶');
                 audio.play();
                 btn.textContent = '⏸';
+                audio.onended = () => { btn.textContent = '▶'; };
             } else {
                 audio.pause();
                 btn.textContent = '▶';
@@ -472,7 +469,27 @@
             if (isRecording) return;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
+
+                // Выбираем формат, который поддерживает браузер
+                let options = {};
+                let chosenMime = '';
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    options = { mimeType: 'audio/webm;codecs=opus' };
+                    chosenMime = 'audio/webm;codecs=opus';
+                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    options = { mimeType: 'audio/mp4' };
+                    chosenMime = 'audio/mp4';
+                } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                    options = { mimeType: 'audio/webm' };
+                    chosenMime = 'audio/webm';
+                } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+                    options = { mimeType: 'audio/ogg' };
+                    chosenMime = 'audio/ogg';
+                }
+
+                console.log('🎤 Формат записи:', chosenMime);
+                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder._chosenMime = chosenMime;
                 audioChunks = [];
 
                 mediaRecorder.ondataavailable = (e) => {
@@ -481,13 +498,21 @@
 
                 mediaRecorder.onstop = async () => {
                     stream.getTracks().forEach(t => t.stop());
-                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+
+                    // Определяем расширение по mime
+                    const mimeType = mediaRecorder._chosenMime || 'audio/webm';
+                    let ext = 'webm';
+                    if (mimeType.includes('mp4')) ext = 'mp4';
+                    else if (mimeType.includes('ogg')) ext = 'ogg';
+                    else if (mimeType.includes('wav')) ext = 'wav';
+
+                    const blob = new Blob(audioChunks, { type: mimeType });
                     const duration = Math.round((Date.now() - recordingStart) / 1000);
 
                     if (duration < 1) return;
 
                     const fd = new FormData();
-                    fd.append('voice', blob, 'voice.webm');
+                    fd.append('voice', blob, 'voice.' + ext);
                     fd.append('duration', duration);
 
                     await fetch('/api/voice', { method: 'POST', body: fd });
@@ -505,6 +530,7 @@
                     recTime.textContent = formatDuration(sec);
                 }, 200);
             } catch (e) {
+                console.error('Ошибка записи:', e);
                 alert('Нет доступа к микрофону');
             }
         }
@@ -519,7 +545,7 @@
             mediaRecorder.stop();
         }
 
-        voiceBtn.addEventListener('mousedown', startRecording);
+        voiceBtn.addEventListener('mousedown', (e) => { e.preventDefault(); startRecording(); });
         voiceBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
 
         document.addEventListener('mouseup', stopRecording);
