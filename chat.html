@@ -499,12 +499,10 @@
                 mediaRecorder.onstop = async () => {
                     stream.getTracks().forEach(t => t.stop());
 
-                    // Определяем расширение по mime
                     const mimeType = mediaRecorder._chosenMime || 'audio/webm';
                     let ext = 'webm';
                     if (mimeType.includes('mp4')) ext = 'mp4';
                     else if (mimeType.includes('ogg')) ext = 'ogg';
-                    else if (mimeType.includes('wav')) ext = 'wav';
 
                     const blob = new Blob(audioChunks, { type: mimeType });
                     const duration = Math.round((Date.now() - recordingStart) / 1000);
@@ -519,7 +517,7 @@
                     loadMessages();
                 };
 
-                mediaRecorder.start();
+                mediaRecorder.start(1000);
                 isRecording = true;
                 recordingStart = Date.now();
                 voiceBtn.classList.add('recording');
