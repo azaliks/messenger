@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Битва копейщиков</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #1e1f22; color: #dbdee1; display: flex; flex-direction: column; }
+        .topbar { padding: 8px 12px; display: flex; align-items: center; gap: 10px; background: #2b2d31; border-bottom: 1px solid #1e1f22; flex-shrink: 0; }
+        .topbar h1 { font-size: 16px; margin: 0; color: #f2f3f5; }
+        .topbar .spacer { flex: 1; }
+        .btn { padding: 7px 14px; background: #5865f2; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #4752c4; }
+        .btn.gray { background: #4e5058; }
+        .btn.gray:hover { background: #5d6069; }
+        .result { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 36px; font-weight: 700; color: #f0d030; text-align: center; text-shadow: 0 4px 16px rgba(0,0,0,0.9); z-index: 10; pointer-events: none; }
+        .canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+        #game { display: block; width: 100%; height: 100%; }
+
+        .picker {
+            position: absolute; inset: 0; background: #1e1f22;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 20px; z-index: 20;
+        }
+        .picker.hidden { display: none; }
+        .picker h2 { color: #f2f3f5; font-size: 22px; margin: 0 0 8px; font-weight: 600; }
+        .picker .hint { color: #949ba4; font-size: 14px; margin: 0 0 24px; text-align: center; }
+        .players { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 340px; }
+        .player-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 16px; background: #2b2d31;
+            border-radius: 10px; cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            border: 2px solid transparent;
+        }
+        .player-item:hover { background: #3a3c42; transform: scale(1.02); border-color: #5865f2; }
+        .player-item .avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: #5865f2; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 18px;
+            object-fit: cover; flex-shrink: 0;
+        }
+        .player-item .name { color: #f2f3f5; font-size: 16px; font-weight: 600; }
+        .player-item .arrow { margin-left: auto; color: #5865f2; font-size: 20px; font-weight: 700; }
+        .empty-msg { color: #6d6f78; font-style: italic; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>⚔️ Битва копейщиков</h1>
+        <span class="spacer"></span>
+        <a href="/chat" class="btn gray">← В чат</a>
+    </div>
+    <div class="canvas-wrap">
+        <canvas id="game"></canvas>
+        <div class="result" id="result"></div>
+
+        <div class="picker" id="picker">
+            <h2>С кем сражаться?</h2>
+            <p class="hint">Выбери соперника. Если он тоже вызовет тебя — начнётся бой.</p>
+            <div class="players" id="playersList"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const resultEl = document.getElementById('result');
+        const pickerEl = document.getElementById('picker');
+        const playersListEl = document.getElementById('playersList');
+
+        let W, H;
+        let arenaX, arenaY, arenaW, arenaH;
+        let balls = [];
+        let finished = false;
+        let lastHitTime = [0, 0];
+        const HIT_COOLDOWN = 300;
+        let loopStarted = false;
+
+        let myLogin = null, myName = 'Ты', myAvatarImg = null;
+        let allUsers = [];
+
+        let oppLogin = null, oppName = 'Соперник', oppAvatarImg = null;
+
+        let isHost = false;
+        let duelActive = false;
+
+        const socket = io({ reconnection: true });
+
+        // ============ ИНИЦИАЛИЗАЦИЯ ============
+        async function init() {
+            try {
+                const me = await fetch('/api/me').then(r => r.json());
+                myLogin = me.login;
+                myName = me.name;
+                myAvatarImg = await loadImage(me.avatar);
+
+                allUsers = await fetch('/api/users').then(r => r.json());
+                allUsers = allUsers.filter(u => u.login !== myLogin);
+
+                resizeCanvas();
+
+                // Проверяем sessionStorage — может, нас перекинули из чата
+                const duel = sessionStorage.getItem('duel');
+                if (duel) {
+                    sessionStorage.removeItem('duel');
+                    const data = JSON.parse(duel);
+                    isHost = data.host;
+                    oppLogin = data.opponent;
+                    // Загружаем инфу о сопернике
+                    const u = await fetch('/api/users').then(r => r.json()).then(list => list.find(x => x.login === oppLogin));
+                    if (u) {
+                        oppName = u.name;
+                        oppAvatarImg = await loadImage(u.avatar);
+                    }
+                    duelActive = true;
+                    startGame();
+                } else {
+                    renderPicker();
+                }
+
+                if (!loopStarted) {
+                    loopStarted = true;
+                    loop();
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки:', e);
+            }
+        }
+
+        function resizeCanvas() {
+            const wrap = canvas.parentElement;
+            W = wrap.clientWidth;
+            H = wrap.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            const maxW = W * 0.92;
+            const maxH = H * 0.78;
+            const size = Math.min(maxW, maxH);
+            arenaW = size;
+            arenaH = size;
+            arenaX = (W - size) / 2;
+            arenaY = (H - size) / 2 + 10;
+        }
+
+        function random(min, max) { return Math.random() * (max - min) + min; }
+
+        function loadImage(url) {
+            return new Promise(resolve => {
+                if (!url) return resolve(null);
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        }
+
+        function renderPicker() {
+            if (!allUsers.length) {
+                playersListEl.innerHTML = '<div class="empty-msg">Нет других игроков</div>';
+                return;
+            }
+            playersListEl.innerHTML = allUsers.map(u => {
+                const initial = (u.name || '?').charAt(0).toUpperCase();
+                const avatarHtml = u.avatar
+                    ? `<img class="avatar" src="${u.avatar}" alt="">`
+                    : `<div class="avatar">${initial}</div>`;
+                return `
+                    <div class="player-item" onclick="invitePlayer('${u.login}')">
+                        ${avatarHtml}
+                        <span class="name">${escapeHtml(u.name)}</span>
+                        <span class="arrow">⚔️</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function invitePlayer(login) {
+            socket.emit('duel:invite', { to: login });
+            alert('Вызов отправлен! Если ' + login + ' тоже тебя вызовет — начнётся бой.');
+        }
+
+        // ============ СТАРТ БОЯ ============
+        socket.on('duel:start', async ({ youAreHost, opponentLogin }) => {
+            isHost = youAreHost;
+            oppLogin = opponentLogin;
+            const u = allUsers.find(x => x.login === opponentLogin) || await fetch('/api/users').then(r => r.json()).then(list => list.find(x => x.login === opponentLogin));
+            if (u) {
+                oppName = u.name;
+                oppAvatarImg = await loadImage(u.avatar);
+            }
+            duelActive = true;
+            pickerEl.classList.add('hidden');
+            startGame();
+        });
+
+        socket.on('duel:state', ({ state }) => {
+            if (isHost) return;
+            if (!state) return;
+
+            balls.forEach((b, i) => {
+                if (!state[i]) return;
+                b.x = state[i].x;
+                b.y = state[i].y;
+                b.angle = state[i].angle;
+                b.hp = state[i].hp;
+            });
+
+            if (state[0] && state[1] && (state[0].hp <= 0 || state[1].hp <= 0)) {
+                if (!finished) {
+                    finished = true;
+                    const winnerIdx = state[0].hp <= 0 ? 1 : 0;
+                    resultEl.textContent = '🏆 Победил ' + balls[winnerIdx].name + '!';
+                }
+            }
+        });
+
+        socket.on('duel:ended', ({ winnerName }) => {
+            finished = true;
+            resultEl.textContent = '🏆 Победил ' + winnerName + '!';
+        });
+
+        socket.on('duel:opponentLeft', ({ byName }) => {
+            finished = true;
+            resultEl.textContent = '🏆 ' + byName + ' вышел. Ты победил!';
+        });
+
+        socket.on('duel:offline', () => {
+            alert('Этот пацан сейчас не в сети');
+        });
+
+        // ============ ИГРА ============
+        function startGame() {
+            resultEl.textContent = '';
+            finished = false;
+            lastHitTime = [0, 0];
+            resizeCanvas();
+
+            const r = arenaW * 0.075;
+
+            balls = [
+                {
+                    x: arenaX + arenaW * 0.30,
+                    y: arenaY + arenaH * 0.50,
+                    vx: random(-1.5, 1.5),
+                    vy: random(-1.5, 1.5),
+                    r: r, hp: 20, maxHp: 20,
+                    angle: 0, speed: 0.05,
+                    avatar: myAvatarImg,
+                    name: myName,
+                    color: '#5865f2',
+                    spearLen: r * 3
+                },
+                {
+                    x: arenaX + arenaW * 0.70,
+                    y: arenaY + arenaH * 0.50,
+                    vx: random(-1.5, 1.5),
+                    vy: random(-1.5, 1.5),
+                    r: r, hp: 20, maxHp: 20,
+                    angle: Math.PI, speed: -0.05,
+                    avatar: oppAvatarImg,
+                    name: oppName,
+                    color: '#23a55a',
+                    spearLen: r * 3
+                }
+            ];
+        }
+
+        function update() {
+            if (finished) return;
+            if (!duelActive) return;
+            if (!balls || balls.length < 2) return;
+
+            if (!isHost) return;
+
+            balls.forEach(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+
+                if (b.x - b.r < arenaX) { b.x = arenaX + b.r; b.vx = Math.abs(b.vx); }
+                if (b.x + b.r > arenaX + arenaW) { b.x = arenaX + arenaW - b.r; b.vx = -Math.abs(b.vx); }
+                if (b.y - b.r < arenaY) { b.y = arenaY + b.r; b.vy = Math.abs(b.vy); }
+                if (b.y + b.r > arenaY + arenaH) { b.y = arenaY + arenaH - b.r; b.vy = -Math.abs(b.vy); }
+
+                b.angle += b.speed;
+            });
+
+            const a = balls[0], b2 = balls[1];
+            const dx = b2.x - a.x;
+            const dy = b2.y - a.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const minDist = a.r + b2.r;
+
+            if (dist < minDist && dist > 0) {
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+                a.x -= nx * overlap / 2;
+                a.y -= ny * overlap / 2;
+                b2.x += nx * overlap / 2;
+                b2.y += ny * overlap / 2;
+
+                const dvx = b2.vx - a.vx;
+                const dvy = b2.vy - a.vy;
+                const dot = dvx * nx + dvy * ny;
+
+                if (dot < 0) {
+                    a.vx += nx * dot;
+                    a.vy += ny * dot;
+                    b2.vx -= nx * dot;
+                    b2.vy -= ny * dot;
+                }
+            }
+
+            const now = Date.now();
+            for (let i = 0; i < 2; i++) {
+                const attacker = balls[i];
+                const enemy = balls[1 - i];
+
+                const tipX = attacker.x + Math.cos(attacker.angle) * attacker.spearLen;
+                const tipY = attacker.y + Math.sin(attacker.angle) * attacker.spearLen;
+
+                const ex = tipX - enemy.x;
+                const ey = tipY - enemy.y;
+                const eDist = Math.sqrt(ex * ex + ey * ey);
+
+                if (eDist < enemy.r + 4 && now - lastHitTime[i] > HIT_COOLDOWN) {
+                    enemy.hp -= 1;
+                    lastHitTime[i] = now;
+
+                    if (enemy.hp <= 0) {
+                        enemy.hp = 0;
+                        finished = true;
+                        resultEl.textContent = '🏆 Победил ' + attacker.name + '!';
+
+                        socket.emit('duel:end', {
+                            to: oppLogin,
+                            winnerName: attacker.name,
+                            loserName: enemy.name
+                        });
+                    }
+                }
+            }
+
+            // Хост шлёт state ~30 раз в секунду
+            if (Math.random() < 0.5) {
+                const state = balls.map(b => ({
+                    x: Math.round(b.x * 10) / 10,
+                    y: Math.round(b.y * 10) / 10,
+                    angle: Math.round(b.angle * 100) / 100,
+                    hp: b.hp
+                }));
+                socket.emit('duel:state', { to: oppLogin, state });
+            }
+        }
+
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        function render() {
+            ctx.fillStyle = '#1e1f22';
+            ctx.fillRect(0, 0, W, H);
+
+            if (!balls || balls.length < 2) return;
+
+            ctx.fillStyle = '#313338';
+            roundRect(arenaX, arenaY, arenaW, arenaH, 16);
+            ctx.fill();
+            ctx.strokeStyle = '#4e5058';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.strokeStyle = '#3a3c42';
+            ctx.lineWidth = 1;
+            const gridSize = arenaW / 8;
+            for (let i = 1; i < 8; i++) {
+                ctx.beginPath();
+                ctx.moveTo(arenaX + gridSize * i, arenaY);
+                ctx.lineTo(arenaX + gridSize * i, arenaY + arenaH);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(arenaX, arenaY + gridSize * i);
+                ctx.lineTo(arenaX + arenaW, arenaY + gridSize * i);
+                ctx.stroke();
+            }
+
+            const barW = arenaW * 0.42;
+            const barH = 20;
+            const barY = arenaY - 42;
+
+            balls.forEach((b, i) => {
+                const barX = i === 0 ? arenaX : arenaX + arenaW - barW;
+                const ratio = b.hp / b.maxHp;
+
+                ctx.fillStyle = '#1e1f22';
+                roundRect(barX, barY, barW, barH, 5);
+                ctx.fill();
+                ctx.strokeStyle = '#4e5058';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                if (ratio > 0) {
+                    ctx.fillStyle = b.color;
+                    roundRect(barX + 1, barY + 1, (barW - 2) * ratio, barH - 2, 4);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.textBaseline = 'middle';
+                ctx.textAlign = 'center';
+                ctx.fillText(b.hp + ' / ' + b.maxHp, barX + barW / 2, barY + barH / 2 + 1);
+
+                ctx.fillStyle = '#f2f3f5';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = i === 0 ? 'left' : 'right';
+                ctx.fillText(b.name, i === 0 ? arenaX : arenaX + arenaW, barY - 14);
+            });
+
+            balls.forEach(b => {
+                const tipX = b.x + Math.cos(b.angle) * b.spearLen;
+                const tipY = b.y + Math.sin(b.angle) * b.spearLen;
+
+                ctx.strokeStyle = b.color;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y);
+                ctx.lineTo(tipX, tipY);
+                ctx.stroke();
+
+                ctx.fillStyle = b.color;
+                ctx.beginPath();
+                ctx.arc(tipX, tipY, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fillStyle = b.color;
+                ctx.fill();
+                ctx.clip();
+
+                if (b.avatar) {
+                    ctx.drawImage(b.avatar, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+                } else {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold ' + Math.floor(b.r) + 'px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText((b.name || '?').charAt(0).toUpperCase(), b.x, b.y);
+                }
+                ctx.restore();
+
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+
+        function loop() {
+            if (balls && balls.length >= 2) {
+                update();
+            }
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (duelActive && oppLogin) {
+                socket.emit('duel:leave', { to: oppLogin });
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>

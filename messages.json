@@ -132,6 +132,126 @@
       "duration": 6,
       "time": "2026-10-12T14:36:55.501Z",
       "reactions": {}
+    },
+    {
+      "id": "sys-1791826836735-bws2",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "67676776",
+      "time": "2026-10-12T17:40:36.736Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "sys-1791826847149-gtly",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "🚫 Лукаш забанен на 15 минут (azaliks)",
+      "time": "2026-10-12T17:40:47.149Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "1791827393921-7kvh2e",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "hello",
+      "time": "2026-10-12T17:49:53.921Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791827402481-sc8nuj",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "how are you",
+      "time": "2026-10-12T17:50:02.481Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791827408767-mf50w9",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "n",
+      "time": "2026-10-12T17:50:08.767Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791827410610-hefjia",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "f",
+      "time": "2026-10-12T17:50:10.610Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791827411263-vi6l2k",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "f",
+      "time": "2026-10-12T17:50:11.263Z",
+      "reactions": {}
+    },
+    {
+      "id": "1791827411894-cfy7xn",
+      "login": "azaliks",
+      "name": "azaliks",
+      "text": "f",
+      "time": "2026-10-12T17:50:11.894Z",
+      "reactions": {}
+    },
+    {
+      "id": "sys-1791834356221-obb9",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaasdfghjkl;'#",
+      "time": "2026-10-12T19:45:56.222Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "sys-1791834381517-uyzd",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "asdfghj",
+      "time": "2026-10-12T19:46:21.517Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "sys-1792004132607-o4sb",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "4356545",
+      "time": "2026-10-14T18:55:32.607Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "sys-1792006277296-9ws7",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "⚔️ luk вызывает azaliks на битву копейщиков! azaliks, зайди в /game и вызови luk в ответ.",
+      "time": "2026-10-14T19:31:17.296Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "sys-1792006290307-8fh1",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "⚔️ azaliks вызывает luk на битву копейщиков! luk, зайди в /game и вызови azaliks в ответ.",
+      "time": "2026-10-14T19:31:30.307Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "sys-1792006290308-pec1",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "⚔️ Битва началась: azaliks vs luk!",
+      "time": "2026-10-14T19:31:30.308Z",
+      "reactions": {},
+      "system": true
     }
   ]
 }

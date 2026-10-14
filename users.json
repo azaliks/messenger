@@ -6,18 +6,19 @@
       "name": "azaliks",
       "nickname": "azaliks",
       "role": "admin",
-      "lastLogin": "2026-10-12T14:52:37.508Z",
-      "lastPing": "2026-10-12T14:56:40.460Z",
+      "lastLogin": "2026-10-14T19:30:49.071Z",
+      "lastPing": "2026-10-14T19:30:56.318Z",
       "phrase": "6767676767",
       "stats": {
-        "messages": 0,
+        "messages": 6,
         "voices": 0,
         "images": 1,
         "reactions": 0,
         "calls": 0
       },
       "achievements": [
-        "first_image"
+        "first_image",
+        "first_message"
       ]
     },
     {
@@ -26,8 +27,8 @@
       "name": "luk",
       "nickname": "Лукаш",
       "role": "user",
-      "lastLogin": "2026-10-12T14:53:05.071Z",
-      "lastPing": "2026-10-12T14:56:40.697Z",
+      "lastLogin": "2026-10-14T19:31:11.908Z",
+      "lastPing": "2026-10-14T19:31:12.104Z",
       "stats": {
         "messages": 0,
         "voices": 0,
@@ -35,7 +36,8 @@
         "reactions": 0,
         "calls": 0
       },
-      "achievements": []
+      "achievements": [],
+      "bannedUntil": null
     },
     {
       "login": "tarasenkov",

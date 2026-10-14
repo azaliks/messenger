@@ -30,52 +30,38 @@ function writeMessages(d) { fs.writeFileSync('messages.json', JSON.stringify(d, 
 function readChangelog() { return JSON.parse(fs.readFileSync('changelog.json', 'utf-8')); }
 function writeChangelog(d) { fs.writeFileSync('changelog.json', JSON.stringify(d, null, 2), 'utf-8'); }
 
-// ==== Проверка модерации ====
+function addSystemMessage(text) {
+    const data = readMessages();
+    const msg = { id: 'sys-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), login: '__system__', name: 'СИСТЕМА', text: text, time: new Date().toISOString(), reactions: {}, system: true };
+    data.messages.push(msg);
+    writeMessages(data);
+    return msg;
+}
+
 function checkPunishments(user) {
     if (!user) return { muted: false, banned: false };
     const now = Date.now();
     let changed = false;
     let result = { muted: false, banned: false, mutedUntil: null, bannedUntil: null };
-
     if (user.mutedUntil) {
-        if (new Date(user.mutedUntil).getTime() > now) {
-            result.muted = true;
-            result.mutedUntil = user.mutedUntil;
-        } else {
-            user.mutedUntil = null;
-            changed = true;
-        }
+        if (new Date(user.mutedUntil).getTime() > now) { result.muted = true; result.mutedUntil = user.mutedUntil; }
+        else { user.mutedUntil = null; changed = true; }
     }
     if (user.bannedUntil) {
-        if (new Date(user.bannedUntil).getTime() > now) {
-            result.banned = true;
-            result.bannedUntil = user.bannedUntil;
-        } else {
-            user.bannedUntil = null;
-            changed = true;
-        }
+        if (new Date(user.bannedUntil).getTime() > now) { result.banned = true; result.bannedUntil = user.bannedUntil; }
+        else { user.bannedUntil = null; changed = true; }
     }
     return { ...result, changed };
-}
-
-function formatDuration(ms) {
-    if (ms === null) return 'навсегда';
-    const s = Math.floor(ms / 1000);
-    if (s < 60) return s + ' сек';
-    const m = Math.floor(s / 60);
-    if (m < 60) return m + ' мин';
-    const h = Math.floor(m / 60);
-    if (h < 24) return h + ' ч';
-    const d = Math.floor(h / 24);
-    return d + ' дн';
 }
 
 function parseDuration(str) {
     const map = { '5m': 5*60*1000, '15m': 15*60*1000, '1h': 60*60*1000, '1d': 24*60*60*1000, '7d': 7*24*60*60*1000, 'forever': null };
     return map[str] !== undefined ? map[str] : undefined;
 }
-
-const ACHIEVEMENTS = { first_message:{name:'Первое слово'}, ten_messages:{name:'Разговорчивый'}, hundred_messages:{name:'Флудер'}, first_voice:{name:'Голос'}, ten_voices:{name:'Болтун'}, first_image:{name:'Фотограф'}, ten_images:{name:'Галерея'}, first_reaction:{name:'Реакция'}, hundred_reactions:{name:'Реактор'}, first_call:{name:'Дозвонился'}, ten_calls:{name:'Телефонист'}, night_owl:{name:'Ночной житель'}, early_bird:{name:'Ранняя пташка'}, week_streak:{name:'Неделя в чате'} };
+function parseDurationRu(str) {
+    const map = { '5m': '5 минут', '15m': '15 минут', '1h': '1 час', '1d': '1 день', '7d': '7 дней', 'forever': 'навсегда' };
+    return map[str] || str;
+}
 
 function checkAchievements(login) {
     const users = readUsers();
@@ -114,18 +100,79 @@ app.use('/voice', express.static(VOICE_DIR));
 app.use('/images', express.static(IMAGES_DIR));
 io.engine.use(sessionMiddleware);
 
-const onlineUsers = new Map();
+// ==== Онлайн и вызовы ====
+const onlineUsers = new Map();       // socket.id -> login
+const duelInvites = new Map();       // "from:to" -> true (кто кого вызвал)
+
 io.on('connection', (socket) => {
     const user = socket.request.session && socket.request.session.user;
     if (!user) { socket.disconnect(); return; }
     onlineUsers.set(socket.id, user.login);
     io.emit('online', Array.from(onlineUsers.values()));
+
+    // ==== ДУЭЛЬ ====
+    socket.on('duel:invite', ({ to }) => {
+        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (!targetSocketId) { socket.emit('duel:offline', { to }); return; }
+
+        const key = `${user.login}:${to}`;
+        duelInvites.set(key, Date.now());
+
+        // Системное сообщение в чат
+        addSystemMessage(`⚔️ ${user.name} вызывает ${to} на битву копейщиков! ${to}, зайди в /game и вызови ${user.name} в ответ.`);
+        io.emit('chat:refresh');
+
+        // Проверим, ответный вызов уже есть?
+        const reverseKey = `${to}:${user.login}`;
+        if (duelInvites.has(reverseKey)) {
+            // Оба вызвали друг друга — старт!
+            duelInvites.delete(key);
+            duelInvites.delete(reverseKey);
+
+            addSystemMessage(`⚔️ Битва началась: ${user.login} vs ${to}!`);
+            io.emit('chat:refresh');
+
+            // Кто хост? Первый, кто вызвал — тот, чей ключ был создан раньше. Оба равны — берём юзера.
+            const hostLogin = user.login;
+            const clientLogin = to;
+
+            // Шлём host сигнал
+            const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === hostLogin)?.[0];
+            const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === clientLogin)?.[0];
+
+            if (hostSocketId) io.to(hostSocketId).emit('duel:start', { youAreHost: true, opponentLogin: clientLogin });
+            if (clientSocketId) io.to(clientSocketId).emit('duel:start', { youAreHost: false, opponentLogin: hostLogin });
+        }
+    });
+
+    socket.on('duel:state', ({ to, state }) => {
+        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
+        if (t) io.to(t).emit('duel:state', { state });
+    });
+
+    socket.on('duel:end', ({ to, winnerName, loserName }) => {
+        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
+        if (t) io.to(t).emit('duel:ended', { winnerName, loserName });
+        addSystemMessage(`⚔️ ${winnerName} победил ${loserName} в битве копейщиков!`);
+        io.emit('chat:refresh');
+    });
+
+    socket.on('duel:leave', ({ to }) => {
+        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
+        if (t) io.to(t).emit('duel:opponentLeft', { byName: user.name });
+    });
+
+    // ==== ЗВОНКИ ====
     socket.on('call:offer', ({ to, offer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:incoming', { from: user.login, fromName: user.name, offer }); else socket.emit('call:offline', { to }); });
     socket.on('call:answer', ({ to, answer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:answered', { answer }); });
     socket.on('call:ice', ({ to, candidate }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ice', { candidate }); });
     socket.on('call:end', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ended'); });
     socket.on('call:reject', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:rejected'); });
-    socket.on('disconnect', () => { onlineUsers.delete(socket.id); io.emit('online', Array.from(onlineUsers.values())); });
+
+    socket.on('disconnect', () => {
+        onlineUsers.delete(socket.id);
+        io.emit('online', Array.from(onlineUsers.values()));
+    });
 });
 
 app.get('/api/turn', (req, res) => {
@@ -237,7 +284,14 @@ app.get('/api/changelog', (req, res) => {
     res.json(readChangelog().changes.slice().reverse());
 });
 
-// ==== Модерация (только админ) ====
+app.post('/api/sys', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
+    const msg = addSystemMessage(text.trim().slice(0, 500));
+    res.json(msg);
+});
+
 app.post('/api/moderate', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
     const { action, target, duration } = req.body;
@@ -249,25 +303,17 @@ app.post('/api/moderate', (req, res) => {
     const ms = duration ? parseDuration(duration) : undefined;
     const isForever = duration === 'forever';
     const until = isForever ? new Date('9999-12-31').toISOString() : (ms ? new Date(Date.now() + ms).toISOString() : null);
+    const durRu = duration ? parseDurationRu(duration) : '';
+    const adminName = req.session.user.nickname || req.session.user.name;
 
     switch (action) {
-        case 'mute':
-            user.mutedUntil = until;
-            break;
-        case 'unmute':
-            user.mutedUntil = null;
-            break;
-        case 'ban':
-            user.bannedUntil = until;
-            break;
-        case 'unban':
-            user.bannedUntil = null;
-            break;
+        case 'mute': user.mutedUntil = until; addSystemMessage(`🔇 ${user.nickname} замучен на ${durRu} (${adminName})`); break;
+        case 'unmute': user.mutedUntil = null; addSystemMessage(`🔊 ${user.nickname} размучен (${adminName})`); break;
+        case 'ban': user.bannedUntil = until; addSystemMessage(`🚫 ${user.nickname} забанен на ${durRu} (${adminName})`); break;
+        case 'unban': user.bannedUntil = null; addSystemMessage(`✅ ${user.nickname} разбанен (${adminName})`); break;
         case 'kick':
-            // Уведомим через socket
-            for (const [sid, login] of onlineUsers.entries()) {
-                if (login === target) io.to(sid).emit('kicked');
-            }
+            for (const [sid, login] of onlineUsers.entries()) { if (login === target) io.to(sid).emit('kicked'); }
+            addSystemMessage(`👢 ${user.nickname} кикнут (${adminName})`);
             break;
         case 'warn':
             if (!user.warnings) user.warnings = [];
@@ -276,16 +322,14 @@ app.post('/api/moderate', (req, res) => {
                 user.mutedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
                 user.warnings = [];
                 writeUsers(data);
+                addSystemMessage(`⚠️ ${user.nickname} получил 3-й варн → автомут на 15 минут`);
                 return res.json({ ok: true, autoMuted: true });
             }
+            addSystemMessage(`⚠️ ${user.nickname} получил предупреждение (${adminName}). Варнов: ${user.warnings.length}/3`);
             break;
-        case 'clearWarns':
-            user.warnings = [];
-            break;
-        default:
-            return res.status(400).json({ error: 'unknown action' });
+        case 'clearWarns': user.warnings = []; addSystemMessage(`🧹 ${user.nickname}: варны сброшены (${adminName})`); break;
+        default: return res.status(400).json({ error: 'unknown action' });
     }
-
     writeUsers(data);
     res.json({ ok: true, action, target, duration: duration || null });
 });
@@ -299,6 +343,7 @@ app.get('/chat', (req, res) => { if (!req.session.user) return res.redirect('/lo
 app.get('/profile', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'profile.html')); });
 app.get('/rating', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'rating.html')); });
 app.get('/quotes', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'quotes.html')); });
+app.get('/game', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'game.html')); });
 app.get('/changelog', (req, res) => { if (!req.session.user) return res.redirect('/login'); if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); res.sendFile(path.join(__dirname, 'changelog.html')); });
 
 app.get('/api/profile/:login', (req, res) => {
@@ -341,7 +386,6 @@ app.post('/api/profile/credentials', (req, res) => {
     const oldLogin = user.login;
     const oldPassword = user.password;
     const changes = [];
-
     if (newLogin && newLogin.trim() && newLogin !== oldLogin) {
         const trimmed = newLogin.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
         if (trimmed.length < 3) return res.status(400).json({ error: 'Логин минимум 3 символа' });
@@ -362,11 +406,9 @@ app.post('/api/profile/credentials', (req, res) => {
     }
     if (changes.length === 0) return res.json({ ok: true, changes: [] });
     writeUsers(data);
-
     const log = readChangelog();
     changes.forEach(c => { log.changes.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), user: user.login, oldLogin, field: c.field, from: c.from, to: c.to, time: new Date().toISOString() }); });
     writeChangelog(log);
-
     if (newLogin && newLogin.trim()) { req.session.user.login = user.login; req.session.user.name = user.name; }
     res.json({ ok: true, changes: changes.map(c => c.field), newLogin: user.login });
 });
@@ -375,7 +417,11 @@ app.get('/api/messages', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const data = readMessages();
     const users = readUsers().users;
-    res.json(data.messages.map(m => { const u = users.find(x => x.login === m.login); return { ...m, avatar: u && u.avatar ? u.avatar : null, reactions: m.reactions || {} }; }));
+    res.json(data.messages.map(m => {
+        if (m.system) return { ...m, avatar: null, reactions: {} };
+        const u = users.find(x => x.login === m.login);
+        return { ...m, avatar: u && u.avatar ? u.avatar : null, reactions: m.reactions || {} };
+    }));
 });
 
 app.post('/api/messages', (req, res) => {
@@ -385,7 +431,6 @@ app.post('/api/messages', (req, res) => {
     const p = checkPunishments(user);
     if (p.changed) writeUsers(usersData);
     if (p.muted) return res.status(403).json({ error: 'Ты в муте' });
-
     const { text } = req.body;
     if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
     const data = readMessages();
@@ -446,6 +491,7 @@ app.delete('/api/messages/:id', (req, res) => {
     const msg = data.messages[idx];
     const isOwn = msg.login === req.session.user.login;
     const isAdmin = req.session.user.role === 'admin';
+    if (msg.system && !isAdmin) return res.status(403).json({ error: 'no permission' });
     if (!isOwn && !isAdmin) return res.status(403).json({ error: 'no permission' });
     if (msg.voice) { const p = path.join(VOICE_DIR, path.basename(msg.voice)); if (fs.existsSync(p)) fs.unlinkSync(p); }
     if (msg.image) { const p = path.join(IMAGES_DIR, path.basename(msg.image)); if (fs.existsSync(p)) fs.unlinkSync(p); }
@@ -462,6 +508,7 @@ app.post('/api/messages/:id/react', (req, res) => {
     const data = readMessages();
     const msg = data.messages.find(m => m.id === req.params.id);
     if (!msg) return res.status(404).json({ error: 'not found' });
+    if (msg.system) return res.status(400).json({ error: 'no reactions on system' });
     if (!msg.reactions) msg.reactions = {};
     if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
     const myLogin = req.session.user.login;
@@ -487,7 +534,17 @@ app.post('/api/messages/:id/react', (req, res) => {
     res.json({ ...msg, avatar });
 });
 
-// ==== Админка ====
+const COMMANDS_LIST = [
+    { cmd: '/mute', desc: 'Замутить участника (5м, 15м, 1ч, 1д, 7д, навсегда)' },
+    { cmd: '/unmute', desc: 'Снять мут' },
+    { cmd: '/warn', desc: 'Предупреждение. 3 варна = автомут 15 мин' },
+    { cmd: '/clearwarns', desc: 'Сбросить варны' },
+    { cmd: '/ban', desc: 'Забанить' },
+    { cmd: '/unban', desc: 'Снять бан' },
+    { cmd: '/kick', desc: 'Кикнуть (разлогинить)' },
+    { cmd: '/sys текст', desc: 'Написать от лица СИСТЕМЫ' }
+];
+
 app.get('/admin', (req, res) => {
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role !== 'admin') return res.status(403).send('Доступ только для админа');
@@ -511,13 +568,10 @@ app.get('/admin', (req, res) => {
         if (p.muted) punish += `<span class="pun mute">🔇 МУТ</span>`;
         const warns = (u.warnings || []).length;
         if (warns) punish += `<span class="pun warn">⚠️ ${warns}</span>`;
-
         const lastTime = u.lastLogin ? new Date(u.lastLogin).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
         const initial = (u.nickname || '?').charAt(0).toUpperCase();
         const avatarHtml = u.avatar ? `<img src="${u.avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">` : `<div class="avatar">${initial}</div>`;
         const stats = u.stats || {};
-        const achCount = (u.achievements || []).length;
-
         return `<tr>
             <td><div class="user-cell">${avatarHtml}<span class="nickname">${u.nickname}</span>${punish}</div></td>
             <td class="muted">${u.login}</td>
@@ -530,10 +584,13 @@ app.get('/admin', (req, res) => {
         </tr>`;
     }).join('');
 
+    const cmdRows = COMMANDS_LIST.map(c => `<tr><td class="cmd-name">${c.cmd}</td><td class="muted">${c.desc}</td></tr>`).join('');
+
     res.send(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Админка</title><style>
         * { box-sizing: border-box; }
         body { font-family: "gg sans","Helvetica Neue",Helvetica,Arial,sans-serif; background:#313338; color:#dbdee1; margin:0; padding:40px 20px; min-height:100vh; }
         h1 { color:#f2f3f5; font-size:24px; font-weight:600; text-align:center; margin:0 0 8px; }
+        h2 { color:#f2f3f5; font-size:18px; font-weight:600; margin:32px 0 12px; text-align:center; }
         .sub { text-align:center; color:#b5bac1; font-size:14px; margin-bottom:24px; }
         .stats-grid { max-width:1200px; margin:0 auto 24px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
         .stat-card { background:#2b2d31; padding:16px; border-radius:8px; text-align:center; }
@@ -562,6 +619,7 @@ app.get('/admin', (req, res) => {
         .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
         .reset-btn { background:#4e5058; color:#fff; border:none; border-radius:4px; padding:4px 10px; cursor:pointer; font-size:12px; }
         .reset-btn:hover { background:#5d6069; }
+        .cmd-name { color:#5865f2; font-family:monospace; font-size:14px; font-weight:600; }
         .footer { text-align:center; margin-top:24px; display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
         .footer a { color:#00a8fc; text-decoration:none; font-size:15px; }
         .footer a:hover { text-decoration:underline; }
@@ -583,6 +641,13 @@ app.get('/admin', (req, res) => {
         <tr><th>Кличка</th><th>Логин</th><th>Последний вход</th><th>Статус</th><th>Сообщ.</th><th>Голос.</th><th>Карт.</th><th></th></tr>
         ${rows}
     </table></div>
+
+    <h2>📖 Список команд (только админ)</h2>
+    <div class="container"><table>
+        <tr><th>Команда</th><th>Описание</th></tr>
+        ${cmdRows}
+    </table></div>
+
     <div class="footer">
         <a href="/chat">→ В чат</a>
         <a href="/rating">→ Рейтинг</a>
@@ -592,26 +657,10 @@ app.get('/admin', (req, res) => {
     <script>
         fetch('/api/ping', { method: 'POST' });
         setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
-        async function resetStats(login) {
-            if (!confirm('Сбросить статистику ' + login + '?')) return;
-            const r = await fetch('/api/admin/reset/' + login, { method: 'POST' });
-            if (r.ok) location.reload(); else alert('Ошибка');
-        }
-        async function clearChat() {
-            if (!confirm('Удалить ВСЕ сообщения? Это необратимо!')) return;
-            const r = await fetch('/api/admin/clear-chat', { method: 'POST' });
-            if (r.ok) alert('Чат очищен'); else alert('Ошибка');
-        }
-        async function clearQuotes() {
-            if (!confirm('Удалить ВСЕ цитаты?')) return;
-            const r = await fetch('/api/admin/clear-quotes', { method: 'POST' });
-            if (r.ok) alert('Цитатник очищен'); else alert('Ошибка');
-        }
-        async function clearLogins() {
-            if (!confirm('Сбросить даты последнего входа всех? Это для журнала.')) return;
-            const r = await fetch('/api/admin/clear-logins', { method: 'POST' });
-            if (r.ok) { alert('Журнал входов очищен'); location.reload(); } else alert('Ошибка');
-        }
+        async function resetStats(login) { if (!confirm('Сбросить статистику ' + login + '?')) return; const r = await fetch('/api/admin/reset/' + login, { method: 'POST' }); if (r.ok) location.reload(); else alert('Ошибка'); }
+        async function clearChat() { if (!confirm('Удалить ВСЕ сообщения?')) return; const r = await fetch('/api/admin/clear-chat', { method: 'POST' }); if (r.ok) alert('Чат очищен'); else alert('Ошибка'); }
+        async function clearQuotes() { if (!confirm('Удалить ВСЕ цитаты?')) return; const r = await fetch('/api/admin/clear-quotes', { method: 'POST' }); if (r.ok) alert('Цитатник очищен'); else alert('Ошибка'); }
+        async function clearLogins() { if (!confirm('Сбросить даты последнего входа?')) return; const r = await fetch('/api/admin/clear-logins', { method: 'POST' }); if (r.ok) { alert('Журнал входов очищен'); location.reload(); } else alert('Ошибка'); }
     </script>
     </body></html>`);
 });

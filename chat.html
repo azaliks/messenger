@@ -76,7 +76,6 @@
         .user-item .u-status.online { background: #23a55a; }
         .modal .cancel { margin-top: 16px; width: 100%; background: #4e5058; color: #fff; padding: 10px; border-radius: 6px; border: none; cursor: pointer; font-family: inherit; font-size: 14px; }
         .modal .cancel:hover { background: #5d6069; }
-        /* Модалка команд */
         .cmd-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 250; }
         .cmd-modal.active { display: flex; }
         .cmd-box { background: #313338; border-radius: 12px; padding: 24px; width: 90%; max-width: 420px; }
@@ -91,7 +90,6 @@
         .cmd-actions .go:hover { background: #4752c4; }
         .cmd-actions .cancel-btn { background: #4e5058; }
         .cmd-actions .cancel-btn:hover { background: #5d6069; }
-        /* Экран звонка */
         .call-screen { position: fixed; inset: 0; background: #1e1f22; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; gap: 24px; }
         .call-screen.active { display: flex; }
         .call-avatar { width: 140px; height: 140px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 56px; object-fit: cover; animation: pulse 1.6s infinite; }
@@ -111,10 +109,13 @@
         .img-viewer { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 300; cursor: pointer; }
         .img-viewer.active { display: flex; }
         .img-viewer img { max-width: 90%; max-height: 90%; border-radius: 8px; }
-        /* Плашки в шапке */
         .pun-tag { padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; }
         .pun-tag.warn { background: #2a2a1a; color: #f0d030; }
         .pun-tag.mute { background: #3a2a1a; color: #f0a030; }
+        .sys-msg { display: flex; justify-content: center; padding: 8px 20px; margin: 6px 0; }
+        .sys-msg .sys-box { background: #2b2d31; border-left: 3px solid #f0d030; border-radius: 6px; padding: 8px 16px; color: #f0d030; font-size: 13px; font-weight: 600; max-width: 80%; text-align: center; word-wrap: break-word; }
+        .sys-msg .duel-btn { background: #23a55a; color: white; border: none; border-radius: 6px; padding: 6px 14px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; margin-top: 8px; display: inline-block; }
+        .sys-msg .duel-btn:hover { background: #1e8a4a; }
     </style>
 </head>
 <body>
@@ -124,6 +125,7 @@
         <span id="warnTag" class="pun-tag warn" style="display:none;"></span>
         <span id="muteTag" class="pun-tag mute" style="display:none;"></span>
         <button class="btn btn-admin" id="adminBtn" style="display:none;" onclick="location.href='/admin'">← Админка</button>
+        <button class="btn" onclick="location.href='/game'">🎮 Игра</button>
         <button class="btn" onclick="location.href='/rating'">🏆 Рейтинг</button>
         <button class="btn" onclick="location.href='/quotes'">💬 Цитаты</button>
         <button class="btn btn-call" id="callBtn">📞 Позвонить</button>
@@ -132,7 +134,7 @@
     <div class="mute-banner" id="muteBanner" style="display:none;"></div>
     <div id="messages"></div>
     <form id="form">
-        <input type="text" id="text" placeholder="Написать сообщение..." autocomplete="off">
+        <input type="text" id="text" placeholder="Написать сообщение... (или /команда)" autocomplete="off">
         <button type="button" class="icon-btn" id="imgBtn" title="Отправить картинку">📎</button>
         <input type="file" id="imgInput" accept="image/*" style="display:none">
         <button type="button" class="icon-btn voice-btn" id="voiceBtn" title="Удерживай для записи">🎤</button>
@@ -149,7 +151,6 @@
         </div>
     </div>
 
-    <!-- Модалка команд -->
     <div class="cmd-modal" id="cmdModal">
         <div class="cmd-box">
             <h3 id="cmdTitle">Команда</h3>
@@ -189,8 +190,6 @@
     <audio id="remoteAudio" autoplay></audio>
 
     <script src="https://unpkg.com/fix-webm-duration@1.0.6/fix-webm-duration.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/audio-recorder-polyfill@0.4.1/index.js"></script>
-    <script>if (window.AudioRecorder) { window.MediaRecorder = window.AudioRecorder; }</script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const messagesEl = document.getElementById('messages');
@@ -241,10 +240,18 @@
         }
 
         function render(messages) {
+            const wasAtBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+
             let html = '', lastDate = null;
             messages.forEach(m => {
                 const dateKey = new Date(m.time).toDateString();
                 if (dateKey !== lastDate) { html += `<div class="date-divider">${formatDate(m.time)}</div>`; lastDate = dateKey; }
+
+                if (m.system) {
+                    html += `<div class="sys-msg"><div class="sys-box">⚙️ СИСТЕМА: ${escapeHtml(m.text)}</div></div>`;
+                    return;
+                }
+
                 const initial = (m.name||'?').charAt(0).toUpperCase();
                 const avatarHtml = m.avatar ? `<img class="avatar" src="${m.avatar}" alt="" onclick="openProfile('${m.login}')">` : `<div class="avatar" onclick="openProfile('${m.login}')">${escapeHtml(initial)}</div>`;
                 const canDelete = (m.login === myLogin) || isAdmin;
@@ -255,7 +262,10 @@
                 html += `<div class="msg" data-id="${m.id}">${avatarHtml}<div class="body"><div class="head"><span class="author" onclick="openProfile('${m.login}')">${escapeHtml(m.name)}</span><span class="time">${formatTime(m.time)}</span></div>${contentHtml}${renderReactions(m)}</div>${canDelete?`<span class="del" onclick="delMsg('${m.id}')">удалить</span>`:''}</div>`;
             });
             messagesEl.innerHTML = html;
-            messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            if (wasAtBottom) {
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
         }
 
         function openImgViewer(src) { imgViewerImg.src = src; imgViewer.classList.add('active'); }
@@ -270,17 +280,36 @@
             } else { audio.pause(); btn.textContent = '▶'; }
         }
         function openProfile(login) { location.href = '/profile?user=' + encodeURIComponent(login); }
-        async function loadMessages() { const r = await fetch('/api/messages'); if (r.ok) render(await r.json()); }
+
+        let lastMessageId = null;
+        let hasRenderedOnce = false;
+
+        async function loadMessages() {
+            const r = await fetch('/api/messages');
+            if (!r.ok) return;
+            const messages = await r.json();
+            const last = messages.length ? messages[messages.length - 1].id : null;
+
+            if (hasRenderedOnce && last === lastMessageId) return;
+
+            render(messages);
+            lastMessageId = last;
+            hasRenderedOnce = true;
+        }
 
         form.addEventListener('submit', async e => {
             e.preventDefault();
             const text = textInput.value;
             if (!text.trim()) return;
 
-            // Обработка команд
             if (text.startsWith('/')) {
                 textInput.value = '';
-                handleCommand(text.trim());
+                const trimmed = text.trim();
+                if (trimmed.startsWith('/sys ')) {
+                    await sendSys(trimmed.slice(5));
+                } else {
+                    handleCommand(trimmed);
+                }
                 return;
             }
 
@@ -327,7 +356,14 @@
             });
         }
 
-        // ==== КОМАНДЫ ====
+        async function sendSys(text) {
+            if (!isAdmin) { alert('Только для админа'); return; }
+            if (!text.trim()) { alert('Использование: /sys текст'); return; }
+            const r = await fetch('/api/sys', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+            if (r.ok) loadMessages();
+            else alert('Ошибка');
+        }
+
         const COMMANDS = {
             '/mute':       { title: '🔇 Замутить', duration: true, action: 'mute' },
             '/unmute':     { title: '🔊 Размутить', duration: false, action: 'unmute' },
@@ -343,13 +379,10 @@
         function handleCommand(text) {
             const cmd = text.split(' ')[0].toLowerCase();
             if (!COMMANDS[cmd]) {
-                alert('Неизвестная команда. Доступно: ' + Object.keys(COMMANDS).join(', '));
+                alert('Неизвестная команда. Доступно: ' + Object.keys(COMMANDS).join(', ') + ', /sys текст');
                 return;
             }
-            if (!isAdmin) {
-                alert('Команды доступны только админу');
-                return;
-            }
+            if (!isAdmin) { alert('Команды доступны только админу'); return; }
             openCmdModal(cmd);
         }
 
@@ -357,16 +390,10 @@
             pendingCmd = COMMANDS[cmd];
             document.getElementById('cmdTitle').textContent = pendingCmd.title;
             document.getElementById('stepDuration').style.display = pendingCmd.duration ? 'block' : 'none';
-
-            // Загружаем список юзеров
             const r = await fetch('/api/users');
             allUsers = await r.json();
             const select = document.getElementById('cmdUser');
-            select.innerHTML = allUsers
-                .filter(u => u.login !== myLogin)
-                .map(u => `<option value="${u.login}">${escapeHtml(u.name)} (@${u.login})</option>`)
-                .join('');
-
+            select.innerHTML = allUsers.filter(u => u.login !== myLogin).map(u => `<option value="${u.login}">${escapeHtml(u.name)} (@${u.login})</option>`).join('');
             document.getElementById('cmdModal').classList.add('active');
         }
 
@@ -379,22 +406,20 @@
             if (!pendingCmd) return;
             const target = document.getElementById('cmdUser').value;
             const duration = document.getElementById('stepDuration').style.display !== 'none' ? document.getElementById('cmdDuration').value : undefined;
-
             const body = { action: pendingCmd.action, target };
             if (duration) body.duration = duration;
-
             const r = await fetch('/api/moderate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
             const data = await r.json();
             if (data.ok) {
                 if (data.autoMuted) alert('⚠️ 3 варна! ' + target + ' автоматом получил мут на 15 минут.');
                 else alert('✅ Готово');
                 closeCmdModal();
+                loadMessages();
             } else {
                 alert('Ошибка: ' + (data.error || 'unknown'));
             }
         });
 
-        // ==== КАРТИНКИ ====
         imgBtn.addEventListener('click', () => imgInput.click());
         imgInput.addEventListener('change', async () => {
             const file = imgInput.files[0]; if (!file) return;
@@ -417,15 +442,13 @@
             loadMessages();
         });
 
-        // ==== ГОЛОСОВЫЕ ====
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingTimer = null, isRecording = false;
         async function startRecording() {
             if (isRecording) return;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 let options = {};
-                if (window.AudioRecorder) options = { mimeType: 'audio/wav' };
-                else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
                 else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
                 mediaRecorder = new window.MediaRecorder(stream, options);
                 audioChunks = [];
@@ -435,8 +458,6 @@
                     const mimeType = mediaRecorder.mimeType || 'audio/webm';
                     let ext = 'webm';
                     if (mimeType.includes('mp4')) ext = 'mp4';
-                    else if (mimeType.includes('ogg')) ext = 'ogg';
-                    else if (mimeType.includes('wav')) ext = 'wav';
                     let blob = new Blob(audioChunks, { type: mimeType });
                     const duration = Date.now() - recordingStart;
                     if (ext === 'webm' && typeof window.ysFixWebmDuration === 'function') {
@@ -472,7 +493,6 @@
         document.addEventListener('mouseup', stopRecording);
         document.addEventListener('touchend', stopRecording);
 
-        // ==== ЗВОНКИ ====
         const socket = io({ reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: Infinity });
         let peerConnection = null, localStream = null, remoteLogin = null, currentCall = null, callTimeout = null;
         const callModal = document.getElementById('callModal');
@@ -484,6 +504,19 @@
         const remoteAudio = document.getElementById('remoteAudio');
 
         socket.on('kicked', () => { alert('Тебя кикнули с сервера'); location.href = '/login'; });
+        socket.on('chat:refresh', () => { loadMessages(); });
+
+        // ==== ДУЭЛЬ: сигнал старта ====
+        socket.on('duel:start', ({ youAreHost, opponentLogin }) => {
+            sessionStorage.setItem('duel', JSON.stringify({ host: youAreHost, opponent: opponentLogin }));
+            location.href = '/game';
+        });
+
+        socket.on('duel:offline', ({ to }) => {
+            alert('Этот пацан сейчас не в сети');
+        });
+
+        // ==== ЗВОНКИ ====
         socket.on('online', (list) => { onlineList = list; if (callModal.classList.contains('active')) renderUserList(); });
         socket.on('call:incoming', async ({from, fromName, offer}) => {
             if (currentCall) { socket.emit('call:reject', {to:from}); return; }
@@ -596,15 +629,12 @@
             const btn = document.getElementById('muteBtn'); if (btn) btn.classList.toggle('muted', muted);
         }
 
-        // ==== Инициализация ====
         fetch('/api/me').then(r => r.json()).then(u => {
             meData = u;
             isAdmin = u.role === 'admin';
             myLogin = u.login;
             loadMessages();
             if (isAdmin) document.getElementById('adminBtn').style.display = 'inline-block';
-
-            // Плашки
             const warns = (u.warnings || []).length;
             if (warns) {
                 const t = document.getElementById('warnTag');
