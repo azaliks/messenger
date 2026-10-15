@@ -90,6 +90,41 @@ function checkAchievements(login) {
     return newOnes;
 }
 
+// ==== МОНЕТЫ ====
+const DAILY_REWARD = 10;
+const DAILY_COOLDOWN = 24 * 60 * 60 * 1000;
+const DUEL_REWARD = 20;
+
+const COLOR_PRICE = 50;
+const BADGE_PRICE = 30;
+const STATUS_PRICE = 10;
+const REACTION_PRICE = 20;
+
+const FORBIDDEN_STATUS_WORDS = ['админ', 'admin', 'azaliks', 'система', 'system'];
+
+function ensureCoinFields(user) {
+    if (typeof user.coins !== 'number') user.coins = 0;
+    if (!user.lastDaily) user.lastDaily = null;
+    if (!user.lastDuelReward) user.lastDuelReward = null;
+    if (!Array.isArray(user.colors)) user.colors = [];
+    if (!Array.isArray(user.badges)) user.badges = [];
+    if (!user.currentColor) user.currentColor = null;
+    if (!user.currentBadge) user.currentBadge = null;
+    if (!user.status) user.status = null;
+    if (!Array.isArray(user.extraReactions)) user.extraReactions = [];
+    if (typeof user.isAdmin === 'undefined') user.isAdmin = (user.role === 'admin');
+}
+
+function isForbiddenStatus(text) {
+    if (!text) return false;
+    const low = text.toLowerCase();
+    return FORBIDDEN_STATUS_WORDS.some(w => low.includes(w));
+}
+
+function isAdminUser(user) {
+    return user && (user.role === 'admin' || user.isAdmin === true);
+}
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 const sessionMiddleware = session({ secret: 'pacan-secret-key', resave: false, saveUninitialized: false });
@@ -100,9 +135,8 @@ app.use('/voice', express.static(VOICE_DIR));
 app.use('/images', express.static(IMAGES_DIR));
 io.engine.use(sessionMiddleware);
 
-// ==== Онлайн и вызовы ====
-const onlineUsers = new Map();       // socket.id -> login
-const duelInvites = new Map();       // "from:to" -> true (кто кого вызвал)
+const onlineUsers = new Map();
+const duelInvites = new Map();
 
 io.on('connection', (socket) => {
     const user = socket.request.session && socket.request.session.user;
@@ -110,7 +144,6 @@ io.on('connection', (socket) => {
     onlineUsers.set(socket.id, user.login);
     io.emit('online', Array.from(onlineUsers.values()));
 
-    // ==== ДУЭЛЬ ====
     socket.on('duel:invite', ({ to }) => {
         const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
         if (!targetSocketId) { socket.emit('duel:offline', { to }); return; }
@@ -118,25 +151,20 @@ io.on('connection', (socket) => {
         const key = `${user.login}:${to}`;
         duelInvites.set(key, Date.now());
 
-        // Системное сообщение в чат
         addSystemMessage(`⚔️ ${user.name} вызывает ${to} на битву копейщиков! ${to}, зайди в /game и вызови ${user.name} в ответ.`);
         io.emit('chat:refresh');
 
-        // Проверим, ответный вызов уже есть?
         const reverseKey = `${to}:${user.login}`;
         if (duelInvites.has(reverseKey)) {
-            // Оба вызвали друг друга — старт!
             duelInvites.delete(key);
             duelInvites.delete(reverseKey);
 
             addSystemMessage(`⚔️ Битва началась: ${user.login} vs ${to}!`);
             io.emit('chat:refresh');
 
-            // Кто хост? Первый, кто вызвал — тот, чей ключ был создан раньше. Оба равны — берём юзера.
             const hostLogin = user.login;
             const clientLogin = to;
 
-            // Шлём host сигнал
             const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === hostLogin)?.[0];
             const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === clientLogin)?.[0];
 
@@ -150,10 +178,25 @@ io.on('connection', (socket) => {
         if (t) io.to(t).emit('duel:state', { state });
     });
 
-    socket.on('duel:end', ({ to, winnerName, loserName }) => {
+    socket.on('duel:end', ({ to, winnerLogin, winnerName, loserName }) => {
         const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
         if (t) io.to(t).emit('duel:ended', { winnerName, loserName });
-        addSystemMessage(`⚔️ ${winnerName} победил ${loserName} в битве копейщиков!`);
+
+        const usersData = readUsers();
+        const winner = usersData.users.find(u => u.login === winnerLogin);
+        let rewardText = '';
+        if (winner && !isAdminUser(winner)) {
+            ensureCoinFields(winner);
+            const now = Date.now();
+            if (!winner.lastDuelReward || now - new Date(winner.lastDuelReward).getTime() > DAILY_COOLDOWN) {
+                winner.coins += DUEL_REWARD;
+                winner.lastDuelReward = new Date().toISOString();
+                rewardText = ` (+${DUEL_REWARD} монет)`;
+            }
+        }
+        writeUsers(usersData);
+
+        addSystemMessage(`⚔️ ${winnerName} победил ${loserName} в битве копейщиков!${rewardText}`);
         io.emit('chat:refresh');
     });
 
@@ -162,7 +205,6 @@ io.on('connection', (socket) => {
         if (t) io.to(t).emit('duel:opponentLeft', { byName: user.name });
     });
 
-    // ==== ЗВОНКИ ====
     socket.on('call:offer', ({ to, offer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:incoming', { from: user.login, fromName: user.name, offer }); else socket.emit('call:offline', { to }); });
     socket.on('call:answer', ({ to, answer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:answered', { answer }); });
     socket.on('call:ice', ({ to, candidate }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ice', { candidate }); });
@@ -217,6 +259,7 @@ app.post('/login', (req, res) => {
     if (p.changed) writeUsers(data);
     if (p.banned) return res.redirect('/login?error=banned');
     user.lastLogin = new Date().toISOString();
+    ensureCoinFields(user);
     writeUsers(data);
     req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
     if (user.role === 'admin') return res.redirect('/admin');
@@ -225,10 +268,150 @@ app.post('/login', (req, res) => {
 
 app.get('/api/me', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const user = readUsers().users.find(u => u.login === req.session.user.login);
+    const data = readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
     if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
+    writeUsers(data);
+
     const p = checkPunishments(user);
-    res.json({ login: user.login, name: user.name, nickname: user.nickname, role: user.role, avatar: user.avatar || null, phrase: user.phrase || '', achievements: user.achievements || [], stats: user.stats || {}, warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil });
+    const now = Date.now();
+    const dailyReady = !user.lastDaily || now - new Date(user.lastDaily).getTime() > DAILY_COOLDOWN;
+
+    res.json({
+        login: user.login, name: user.name, nickname: user.nickname, role: user.role,
+        avatar: user.avatar || null, phrase: user.phrase || '',
+        achievements: user.achievements || [], stats: user.stats || {},
+        warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil,
+        coins: user.coins || 0,
+        colors: user.colors || [],
+        badges: user.badges || [],
+        currentColor: user.currentColor || null,
+        currentBadge: user.currentBadge || null,
+        status: user.status || null,
+        extraReactions: user.extraReactions || [],
+        isAdmin: isAdminUser(user),
+        dailyReady: dailyReady
+    });
+});
+
+app.post('/api/daily', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
+
+    if (isAdminUser(user)) return res.json({ ok: true, coins: user.coins, reward: 0, admin: true });
+
+    const now = Date.now();
+    if (user.lastDaily && now - new Date(user.lastDaily).getTime() < DAILY_COOLDOWN) {
+        return res.status(400).json({ error: 'Уже получено сегодня' });
+    }
+    user.lastDaily = new Date().toISOString();
+    user.coins += DAILY_REWARD;
+    writeUsers(data);
+    res.json({ ok: true, coins: user.coins, reward: DAILY_REWARD });
+});
+
+// ==== ПОКУПКА ====
+app.post('/api/shop/buy', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { item, value } = req.body;
+    const data = readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
+
+    const admin = isAdminUser(user);
+    let price = 0;
+
+    if (item === 'color') {
+        if (!/^#[0-9a-fA-F]{6}$/.test(value)) return res.status(400).json({ error: 'Неверный цвет' });
+        if (user.colors.includes(value)) return res.status(400).json({ error: 'Уже куплено' });
+        price = admin ? 0 : COLOR_PRICE;
+        if (user.coins < price) return res.status(400).json({ error: 'Недостаточно монет' });
+        user.coins -= price;
+        user.colors.push(value);
+        user.currentColor = value;
+    } else if (item === 'badge') {
+        const allowed = ['⭐', '🔥', '💎', '🎯', '⚡', '🌟', '🏆'];
+        if (!allowed.includes(value)) return res.status(400).json({ error: 'Неверный значок' });
+        if (user.badges.includes(value)) return res.status(400).json({ error: 'Уже куплено' });
+        price = admin ? 0 : BADGE_PRICE;
+        if (user.coins < price) return res.status(400).json({ error: 'Недостаточно монет' });
+        user.coins -= price;
+        user.badges.push(value);
+        user.currentBadge = value;
+    } else if (item === 'extraReactions') {
+        const allowed = ['🎉', '💯', '🤡', '❤️'];
+        if (!allowed.includes(value)) return res.status(400).json({ error: 'Неверная реакция' });
+        if (user.extraReactions.includes(value)) return res.status(400).json({ error: 'Уже куплено' });
+        price = admin ? 0 : REACTION_PRICE;
+        if (user.coins < price) return res.status(400).json({ error: 'Недостаточно монет' });
+        user.coins -= price;
+        user.extraReactions.push(value);
+    } else {
+        return res.status(400).json({ error: 'unknown item' });
+    }
+
+    writeUsers(data);
+    res.json({ ok: true, coins: user.coins, item, value, price });
+});
+
+app.post('/api/shop/set', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { item, value } = req.body;
+    const data = readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
+    ensureCoinFields(user);
+
+    if (item === 'color') {
+        if (!user.colors.includes(value)) return res.status(400).json({ error: 'Не куплено' });
+        user.currentColor = value;
+    } else if (item === 'badge') {
+        if (value === null) { user.currentBadge = null; }
+        else {
+            if (!user.badges.includes(value)) return res.status(400).json({ error: 'Не куплено' });
+            user.currentBadge = value;
+        }
+    }
+    writeUsers(data);
+    res.json({ ok: true });
+});
+
+app.post('/api/status/set', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { status } = req.body;
+    if (typeof status !== 'string') return res.status(400).json({ error: 'invalid' });
+    const trimmed = status.trim().slice(0, 50);
+
+    if (isForbiddenStatus(trimmed)) {
+        return res.status(400).json({ error: 'Статус содержит запрещённое слово (админ / admin / azaliks / система / system)' });
+    }
+
+    const data = readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
+    ensureCoinFields(user);
+    const admin = isAdminUser(user);
+
+    if (trimmed.length > 0 && !admin) {
+        if (user.coins < STATUS_PRICE) return res.status(400).json({ error: 'Недостаточно монет для смены статуса (' + STATUS_PRICE + ')' });
+        user.coins -= STATUS_PRICE;
+    }
+
+    user.status = trimmed || null;
+    writeUsers(data);
+    res.json({ ok: true, status: user.status, coins: user.coins, price: admin ? 0 : STATUS_PRICE });
+});
+
+app.get('/api/shop/items', (req, res) => {
+    res.json({
+        color: { price: COLOR_PRICE },
+        badge: { price: BADGE_PRICE },
+        status: { price: STATUS_PRICE },
+        extraReactions: { price: REACTION_PRICE }
+    });
 });
 
 app.post('/api/ping', (req, res) => {
@@ -243,13 +426,18 @@ app.post('/api/ping', (req, res) => {
 
 app.get('/api/users', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    res.json(readUsers().users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null })));
+    res.json(readUsers().users.map(u => ({
+        login: u.login, name: u.name, avatar: u.avatar || null,
+        coins: u.coins || 0,
+        badge: u.role === 'admin' ? '👑' : (u.currentBadge || null),
+        color: u.currentColor || null
+    })));
 });
 
 app.get('/api/rating', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const users = readUsers().users;
-    const rating = users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null, messages: (u.stats && u.stats.messages) || 0, voices: (u.stats && u.stats.voices) || 0, images: (u.stats && u.stats.images) || 0, reactions: (u.stats && u.stats.reactions) || 0, calls: (u.stats && u.stats.calls) || 0, achievements: (u.achievements || []).length })).sort((a, b) => (b.messages + b.voices * 2 + b.images * 2) - (a.messages + a.voices * 2 + a.images * 2));
+    const rating = users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null, coins: u.coins || 0, messages: (u.stats && u.stats.messages) || 0, voices: (u.stats && u.stats.voices) || 0, images: (u.stats && u.stats.images) || 0, reactions: (u.stats && u.stats.reactions) || 0, calls: (u.stats && u.stats.calls) || 0, achievements: (u.achievements || []).length })).sort((a, b) => (b.messages + b.voices * 2 + b.images * 2) - (a.messages + a.voices * 2 + a.images * 2));
     res.json(rating);
 });
 
@@ -290,6 +478,63 @@ app.post('/api/sys', (req, res) => {
     if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
     const msg = addSystemMessage(text.trim().slice(0, 500));
     res.json(msg);
+});
+
+app.post('/api/give-coins', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target, amount } = req.body;
+    const num = parseInt(amount);
+    if (!target || !num || num === 0) return res.status(400).json({ error: 'Укажи логин и число' });
+    const data = readUsers();
+    const user = data.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'Игрок не найден' });
+    ensureCoinFields(user);
+    user.coins += num;
+    if (user.coins < 0) user.coins = 0;
+    writeUsers(data);
+    const sign = num > 0 ? '+' : '';
+    addSystemMessage(`💰 ${req.session.user.name} выдал ${sign}${num} монет игроку ${user.name}. Теперь у него ${user.coins} монет.`);
+    res.json({ ok: true, target: user.login, coins: user.coins });
+});
+
+app.post('/api/reset-coins', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target } = req.body;
+    const data = readUsers();
+
+    if (target) {
+        const user = data.users.find(u => u.login === target);
+        if (!user) return res.status(404).json({ error: 'Игрок не найден' });
+        ensureCoinFields(user);
+        user.coins = 0;
+        writeUsers(data);
+        addSystemMessage(`💰 ${req.session.user.name} обнулил монеты игроку ${user.name}.`);
+        return res.json({ ok: true, target: user.login });
+    } else {
+        data.users.forEach(u => { ensureCoinFields(u); u.coins = 0; });
+        writeUsers(data);
+        addSystemMessage(`💰 ${req.session.user.name} обнулил монеты ВСЕМ игрокам.`);
+        return res.json({ ok: true, all: true });
+    }
+});
+
+app.post('/api/take-coins', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target, amount } = req.body;
+    const num = parseInt(amount);
+    if (!target || !num || num <= 0) return res.status(400).json({ error: 'Укажи логин и число > 0' });
+
+    const data = readUsers();
+    const user = data.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'Игрок не найден' });
+    ensureCoinFields(user);
+
+    const taken = Math.min(num, user.coins);
+    user.coins -= taken;
+    writeUsers(data);
+
+    addSystemMessage(`💰 ${req.session.user.name} забрал ${taken} монет у ${user.name}. Осталось: ${user.coins}.`);
+    res.json({ ok: true, target: user.login, taken, coins: user.coins });
 });
 
 app.post('/api/moderate', (req, res) => {
@@ -344,14 +589,29 @@ app.get('/profile', (req, res) => { if (!req.session.user) return res.redirect('
 app.get('/rating', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'rating.html')); });
 app.get('/quotes', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'quotes.html')); });
 app.get('/game', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'game.html')); });
+app.get('/shop', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'shop.html')); });
 app.get('/changelog', (req, res) => { if (!req.session.user) return res.redirect('/login'); if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); res.sendFile(path.join(__dirname, 'changelog.html')); });
 
 app.get('/api/profile/:login', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const user = readUsers().users.find(u => u.login === req.params.login);
     if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
     const p = checkPunishments(user);
-    res.json({ login: user.login, name: user.name, nickname: user.nickname, avatar: user.avatar || null, phrase: user.phrase || '', achievements: user.achievements || [], stats: user.stats || {}, warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil, banned: p.banned, bannedUntil: p.bannedUntil, isOwn: user.login === req.session.user.login });
+    const isAdmin = isAdminUser(user);
+    res.json({
+        login: user.login, name: user.name, nickname: user.nickname,
+        avatar: user.avatar || null, phrase: user.phrase || '',
+        achievements: user.achievements || [], stats: user.stats || {},
+        warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil,
+        banned: p.banned, bannedUntil: p.bannedUntil,
+        coins: user.coins || 0,
+        color: user.currentColor || null,
+        badge: isAdmin ? '👑' : (user.currentBadge || null),
+        isAdmin: isAdmin,
+        status: user.status || null,
+        isOwn: user.login === req.session.user.login
+    });
 });
 
 app.post('/api/profile/avatar', uploadAvatar.single('avatar'), (req, res) => {
@@ -420,7 +680,15 @@ app.get('/api/messages', (req, res) => {
     res.json(data.messages.map(m => {
         if (m.system) return { ...m, avatar: null, reactions: {} };
         const u = users.find(x => x.login === m.login);
-        return { ...m, avatar: u && u.avatar ? u.avatar : null, reactions: m.reactions || {} };
+        const isAdm = u && (u.role === 'admin');
+        return {
+            ...m,
+            avatar: u && u.avatar ? u.avatar : null,
+            badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null),
+            color: u && u.currentColor ? u.currentColor : null,
+            status: u && u.status ? u.status : null,
+            reactions: m.reactions || {}
+        };
     }));
 });
 
@@ -503,7 +771,7 @@ app.delete('/api/messages/:id', (req, res) => {
 app.post('/api/messages/:id/react', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const { emoji, action } = req.body;
-    const ALLOWED = ['😂', '🔥', '👍', '💀'];
+    const ALLOWED = ['😂', '🔥', '👍', '💀', '🎉', '💯', '🤡', '❤️'];
     if (!ALLOWED.includes(emoji)) return res.status(400).json({ error: 'bad emoji' });
     const data = readMessages();
     const msg = data.messages.find(m => m.id === req.params.id);
@@ -542,6 +810,10 @@ const COMMANDS_LIST = [
     { cmd: '/ban', desc: 'Забанить' },
     { cmd: '/unban', desc: 'Снять бан' },
     { cmd: '/kick', desc: 'Кикнуть (разлогинить)' },
+    { cmd: '/give логин число', desc: 'Выдать монеты игроку' },
+    { cmd: '/resetcoins', desc: 'Обнулить монеты ВСЕМ' },
+    { cmd: '/resetcoins логин', desc: 'Обнулить монеты игроку' },
+    { cmd: '/takecoins логин число', desc: 'Забрать монеты у игрока' },
     { cmd: '/sys текст', desc: 'Написать от лица СИСТЕМЫ' }
 ];
 
@@ -575,6 +847,7 @@ app.get('/admin', (req, res) => {
         return `<tr>
             <td><div class="user-cell">${avatarHtml}<span class="nickname">${u.nickname}</span>${punish}</div></td>
             <td class="muted">${u.login}</td>
+            <td class="muted">💰 ${u.coins || 0}</td>
             <td class="muted">${lastTime}</td>
             <td><span class="status" style="color:${statusColor};"><span class="dot" style="background:${statusColor};"></span>${status}</span></td>
             <td class="muted">${stats.messages || 0}</td>
@@ -600,6 +873,8 @@ app.get('/admin', (req, res) => {
         .action-btn { padding:10px 18px; border-radius:6px; border:none; cursor:pointer; font-family:inherit; font-size:14px; font-weight:600; color:white; }
         .action-btn.danger { background:#f23f43; }
         .action-btn.danger:hover { background:#d63031; }
+        .action-btn.gold { background:#f0d030; color:#1e1f22; }
+        .action-btn.gold:hover { background:#d4b62a; }
         .container { max-width:1200px; margin:0 auto; background:#2b2d31; border-radius:8px; overflow:hidden; box-shadow:0 8px 16px rgba(0,0,0,0.24); }
         table { border-collapse:collapse; width:100%; }
         th, td { padding:12px 16px; text-align:left; font-size:14px; }
@@ -636,9 +911,10 @@ app.get('/admin', (req, res) => {
         <button class="action-btn danger" onclick="clearChat()">🗑️ Очистить чат</button>
         <button class="action-btn danger" onclick="clearQuotes()">🗑️ Очистить цитатник</button>
         <button class="action-btn danger" onclick="clearLogins()">🗑️ Очистить журнал входов</button>
+        <button class="action-btn gold" onclick="resetAllCoins()">💰 Обнулить все монеты</button>
     </div>
     <div class="container"><table>
-        <tr><th>Кличка</th><th>Логин</th><th>Последний вход</th><th>Статус</th><th>Сообщ.</th><th>Голос.</th><th>Карт.</th><th></th></tr>
+        <tr><th>Кличка</th><th>Логин</th><th>Монеты</th><th>Последний вход</th><th>Статус</th><th>Сообщ.</th><th>Голос.</th><th>Карт.</th><th></th></tr>
         ${rows}
     </table></div>
 
@@ -653,6 +929,7 @@ app.get('/admin', (req, res) => {
         <a href="/rating">→ Рейтинг</a>
         <a href="/quotes">→ Цитатник</a>
         <a href="/changelog">→ Журнал изменений</a>
+        <a href="/shop">→ Магазин</a>
     </div>
     <script>
         fetch('/api/ping', { method: 'POST' });
@@ -661,6 +938,7 @@ app.get('/admin', (req, res) => {
         async function clearChat() { if (!confirm('Удалить ВСЕ сообщения?')) return; const r = await fetch('/api/admin/clear-chat', { method: 'POST' }); if (r.ok) alert('Чат очищен'); else alert('Ошибка'); }
         async function clearQuotes() { if (!confirm('Удалить ВСЕ цитаты?')) return; const r = await fetch('/api/admin/clear-quotes', { method: 'POST' }); if (r.ok) alert('Цитатник очищен'); else alert('Ошибка'); }
         async function clearLogins() { if (!confirm('Сбросить даты последнего входа?')) return; const r = await fetch('/api/admin/clear-logins', { method: 'POST' }); if (r.ok) { alert('Журнал входов очищен'); location.reload(); } else alert('Ошибка'); }
+        async function resetAllCoins() { if (!confirm('Обнулить монеты ВСЕМ игрокам?')) return; const r = await fetch('/api/reset-coins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }); if (r.ok) { alert('Все монеты обнулены'); location.reload(); } else alert('Ошибка'); }
     </script>
     </body></html>`);
 });

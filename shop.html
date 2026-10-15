@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Магазин</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #313338; color: #dbdee1; margin: 0; padding: 30px 20px; min-height: 100vh; }
+        h1 { color: #f2f3f5; font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 8px; }
+        .sub { text-align: center; color: #b5bac1; font-size: 14px; margin-bottom: 24px; }
+        .balance { max-width: 900px; margin: 0 auto 24px; background: linear-gradient(135deg, #f0d030, #b8860b); color: #1e1f22; padding: 18px 24px; border-radius: 12px; text-align: center; font-weight: 700; box-shadow: 0 8px 24px rgba(240,208,48,0.3); }
+        .balance .num { font-size: 32px; }
+        .balance .lbl { font-size: 13px; opacity: 0.8; }
+        .daily-block { max-width: 900px; margin: 0 auto 24px; background: #2b2d31; border-radius: 12px; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .daily-block h3 { margin: 0 0 4px; color: #f2f3f5; font-size: 16px; }
+        .daily-block p { margin: 0; color: #949ba4; font-size: 13px; }
+        .daily-btn { padding: 10px 20px; background: #23a55a; color: white; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; }
+        .daily-btn:hover { background: #1e8a4a; }
+        .daily-btn:disabled { background: #4e5058; cursor: default; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+        .item { background: #2b2d31; border-radius: 12px; padding: 20px; border: 2px solid transparent; }
+        .item h3 { margin: 0 0 6px; color: #f2f3f5; font-size: 17px; font-weight: 700; }
+        .item p { margin: 0 0 14px; color: #b5bac1; font-size: 13px; line-height: 1.4; }
+        .item .price-tag { display: inline-block; background: #1e1f22; color: #f0d030; padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+        .color-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+        .color-dot { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; position: relative; }
+        .color-dot.owned { border-color: #23a55a; }
+        .color-dot.current { border-color: #f0d030; box-shadow: 0 0 12px rgba(240,208,48,0.6); }
+        .color-dot:hover { transform: scale(1.1); }
+        .badge-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+        .badge-opt { padding: 8px 14px; background: #1e1f22; border-radius: 8px; cursor: pointer; font-size: 22px; border: 3px solid transparent; }
+        .badge-opt.owned { border-color: #23a55a; }
+        .badge-opt.current { border-color: #f0d030; box-shadow: 0 0 12px rgba(240,208,48,0.6); }
+        .badge-opt:hover { transform: scale(1.1); }
+        .reaction-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+        .reaction-opt { padding: 8px 14px; background: #1e1f22; border-radius: 8px; cursor: pointer; font-size: 22px; border: 3px solid transparent; }
+        .reaction-opt.owned { border-color: #23a55a; }
+        .reaction-opt:hover { transform: scale(1.1); }
+        .status-input { width: 100%; padding: 10px; background: #1e1f22; border: none; border-radius: 8px; color: #dbdee1; font-family: inherit; font-size: 14px; margin-bottom: 10px; outline: none; }
+        .status-input:focus { outline: 2px solid #5865f2; }
+        .buy-btn { width: 100%; padding: 10px; background: #5865f2; color: white; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; }
+        .buy-btn:hover { background: #4752c4; }
+        .buy-btn:disabled { background: #4e5058; cursor: default; opacity: 0.6; }
+        .admin-tag { background: #5865f2; color: white; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; margin-left: 8px; }
+        .back { display: block; text-align: center; margin-top: 30px; color: #00a8fc; text-decoration: none; font-size: 15px; }
+        .back:hover { text-decoration: underline; }
+        .toast { position: fixed; top: 20px; right: 20px; background: #23a55a; color: white; padding: 14px 20px; border-radius: 10px; font-weight: 600; z-index: 500; box-shadow: 0 8px 24px rgba(35,165,90,0.4); max-width: 320px; }
+        .toast.err { background: #f23f43; box-shadow: 0 8px 24px rgba(242,63,67,0.4); }
+    </style>
+</head>
+<body>
+    <h1>🛒 Магазин банды</h1>
+    <p class="sub">Покупай плюшки по одной. Всё навсегда.</p>
+
+    <div class="balance">
+        <div class="num" id="coinsBalance">...</div>
+        <div class="lbl">монет у тебя</div>
+    </div>
+
+    <div class="daily-block" id="dailyBlock">
+        <div>
+            <h3>🎁 Ежедневная награда</h3>
+            <p>+10 монет раз в 24 часа</p>
+        </div>
+        <button class="daily-btn" id="dailyBtn" onclick="claimDaily()">Получить</button>
+    </div>
+
+    <div class="container">
+        <div class="grid">
+
+            <div class="item">
+                <h3>🎨 Цвета ников</h3>
+                <p>Каждый цвет — отдельная покупка. Переключайся между купленными бесплатно. <span id="colorPriceTag" class="price-tag">50 монет</span></p>
+                <div class="color-grid" id="colorGrid"></div>
+            </div>
+
+            <div class="item">
+                <h3>⭐ Значки</h3>
+                <p>Значок рядом с ником. Каждый — отдельно. <span id="badgePriceTag" class="price-tag">30 монет</span></p>
+                <div class="badge-grid" id="badgeGrid"></div>
+                <button class="buy-btn" id="badgeReset" onclick="resetBadge()" style="background:#4e5058;margin-top:8px;">Убрать значок</button>
+            </div>
+
+            <div class="item">
+                <h3>💬 Статус</h3>
+                <p>Короткий статус под ником. <b>Каждое изменение — 10 монет.</b> Запрещены слова: админ, admin, azaliks, система, system.</p>
+                <input class="status-input" id="statusInput" placeholder="Твой статус (до 50 симв.)" maxlength="50">
+                <button class="buy-btn" onclick="saveStatus()">Сохранить статус (10 монет)</button>
+            </div>
+
+            <div class="item">
+                <h3>😂 Эксклюзивные реакции</h3>
+                <p>Дополнительные смайлики. Каждый — отдельно. <span class="price-tag">20 монет</span></p>
+                <div class="reaction-grid" id="reactionGrid"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <a href="/chat" class="back">← Вернуться в чат</a>
+
+    <script>
+        const COLORS = ['#5865f2', '#23a55a', '#f23f43', '#f0d030', '#eb459e', '#9b59b6', '#e67e22', '#ffffff'];
+        const BADGES = ['⭐', '🔥', '💎', '🎯', '⚡', '🌟', '🏆'];
+        const EXTRA_REACTIONS = ['🎉', '💯', '🤡', '❤️'];
+
+        const PRICES = { color: 50, badge: 30, status: 10, extraReactions: 20 };
+
+        let me = null;
+
+        function toast(text, isErr) {
+            const t = document.createElement('div');
+            t.className = 'toast' + (isErr ? ' err' : '');
+            t.textContent = text;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        async function loadMe() {
+            me = await fetch('/api/me').then(r => r.json());
+            document.getElementById('coinsBalance').textContent = me.isAdmin ? '∞ (админ)' : (me.coins || 0);
+            const dailyBtn = document.getElementById('dailyBtn');
+            if (me.isAdmin) {
+                dailyBtn.disabled = true;
+                dailyBtn.textContent = 'Бесплатно (админ)';
+            } else if (!me.dailyReady) {
+                dailyBtn.disabled = true;
+                dailyBtn.textContent = 'Уже получено';
+            }
+            document.getElementById('colorPriceTag').textContent = me.isAdmin ? 'Бесплатно (админ)' : '50 монет';
+            document.getElementById('badgePriceTag').textContent = me.isAdmin ? 'Бесплатно (админ)' : '30 монет';
+            renderAll();
+        }
+
+        function renderAll() {
+            // Цвета
+            const colorGrid = document.getElementById('colorGrid');
+            colorGrid.innerHTML = COLORS.map(c => {
+                const owned = (me.colors || []).includes(c);
+                const current = me.currentColor === c;
+                const cls = 'color-dot' + (owned ? ' owned' : '') + (current ? ' current' : '');
+                return `<div class="${cls}" style="background:${c}" onclick="clickColor('${c}', ${owned})" title="${owned ? 'Куплено' : 'Купить за 50'}"></div>`;
+            }).join('');
+
+            // Значки
+            const badgeGrid = document.getElementById('badgeGrid');
+            badgeGrid.innerHTML = BADGES.map(b => {
+                const owned = (me.badges || []).includes(b);
+                const current = me.currentBadge === b;
+                const cls = 'badge-opt' + (owned ? ' owned' : '') + (current ? ' current' : '');
+                return `<div class="${cls}" onclick="clickBadge('${b}', ${owned})" title="${owned ? 'Куплено' : 'Купить за 30'}">${b}</div>`;
+            }).join('');
+
+            // Реакции
+            const reactionGrid = document.getElementById('reactionGrid');
+            reactionGrid.innerHTML = EXTRA_REACTIONS.map(r => {
+                const owned = (me.extraReactions || []).includes(r);
+                const cls = 'reaction-opt' + (owned ? ' owned' : '');
+                return `<div class="${cls}" onclick="clickReaction('${r}', ${owned})" title="${owned ? 'Куплено' : 'Купить за 20'}">${r}</div>`;
+            }).join('');
+
+            // Статус
+            const statusInput = document.getElementById('statusInput');
+            if (statusInput && document.activeElement !== statusInput) {
+                statusInput.value = me.status || '';
+            }
+        }
+
+        async function clickColor(color, owned) {
+            if (owned) {
+                // Переключить
+                const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'color', value: color }) });
+                const data = await r.json();
+                if (data.ok) { toast('Цвет выбран'); await loadMe(); }
+                else toast(data.error || 'Ошибка', true);
+            } else {
+                if (!confirm('Купить цвет за ' + (me.isAdmin ? '0 (админ)' : PRICES.color + ' монет') + '?')) return;
+                const r = await fetch('/api/shop/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'color', value: color }) });
+                const data = await r.json();
+                if (data.ok) { toast('Куплено!'); await loadMe(); }
+                else toast(data.error || 'Ошибка', true);
+            }
+        }
+
+        async function clickBadge(badge, owned) {
+            if (owned) {
+                const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'badge', value: badge }) });
+                const data = await r.json();
+                if (data.ok) { toast('Значок выбран'); await loadMe(); }
+                else toast(data.error || 'Ошибка', true);
+            } else {
+                if (!confirm('Купить значок ' + badge + ' за ' + (me.isAdmin ? '0 (админ)' : PRICES.badge + ' монет') + '?')) return;
+                const r = await fetch('/api/shop/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'badge', value: badge }) });
+                const data = await r.json();
+                if (data.ok) { toast('Куплено!'); await loadMe(); }
+                else toast(data.error || 'Ошибка', true);
+            }
+        }
+
+        async function clickReaction(react, owned) {
+            if (owned) { toast('Уже куплено'); return; }
+            if (!confirm('Купить реакцию ' + react + ' за ' + (me.isAdmin ? '0 (админ)' : PRICES.extraReactions + ' монет') + '?')) return;
+            const r = await fetch('/api/shop/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'extraReactions', value: react }) });
+            const data = await r.json();
+            if (data.ok) { toast('Куплено!'); await loadMe(); }
+            else toast(data.error || 'Ошибка', true);
+        }
+
+        async function resetBadge() {
+            const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'badge', value: null }) });
+            const data = await r.json();
+            if (data.ok) { toast('Значок убран'); await loadMe(); }
+            else toast(data.error || 'Ошибка', true);
+        }
+
+        async function saveStatus() {
+            const status = document.getElementById('statusInput').value.trim();
+            if (!status) { toast('Введи статус', true); return; }
+            if (!confirm('Сохранить статус? Спишется ' + (me.isAdmin ? '0 (админ)' : PRICES.status + ' монет') + '.')) return;
+            const r = await fetch('/api/status/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+            const data = await r.json();
+            if (data.ok) { toast('Статус сохранён'); await loadMe(); }
+            else toast(data.error || 'Ошибка', true);
+        }
+
+        async function claimDaily() {
+            const r = await fetch('/api/daily', { method: 'POST' });
+            const data = await r.json();
+            if (data.ok) { toast('+' + data.reward + ' монет!'); await loadMe(); }
+            else toast(data.error || 'Ошибка', true);
+        }
+
+        loadMe();
+        fetch('/api/ping', { method: 'POST' });
+    </script>
+</body>
+</html>

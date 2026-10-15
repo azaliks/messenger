@@ -252,6 +252,33 @@
       "time": "2026-10-14T19:31:30.308Z",
       "reactions": {},
       "system": true
+    },
+    {
+      "id": "sys-1792067661025-597s",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "💰 azaliks выдал +100 монет игроку azaliks. Теперь у него 110 монет.",
+      "time": "2026-10-15T12:34:21.031Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "sys-1792067698991-t3da",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "💰 azaliks обнулил монеты ВСЕМ игрокам.",
+      "time": "2026-10-15T12:34:58.991Z",
+      "reactions": {},
+      "system": true
+    },
+    {
+      "id": "sys-1792067852975-sva1",
+      "login": "__system__",
+      "name": "СИСТЕМА",
+      "text": "💰 azaliks выдал +100 монет игроку azaliks. Теперь у него 100 монет.",
+      "time": "2026-10-15T12:37:32.975Z",
+      "reactions": {},
+      "system": true
     }
   ]
 }

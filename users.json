@@ -6,20 +6,29 @@
       "name": "azaliks",
       "nickname": "azaliks",
       "role": "admin",
-      "lastLogin": "2026-10-14T19:30:49.071Z",
-      "lastPing": "2026-10-14T19:30:56.318Z",
+      "lastLogin": "2026-10-15T12:52:35.219Z",
+      "lastPing": "2026-10-15T12:55:05.477Z",
       "phrase": "6767676767",
       "stats": {
-        "messages": 6,
+        "messages": 0,
         "voices": 0,
-        "images": 1,
+        "images": 0,
         "reactions": 0,
         "calls": 0
       },
-      "achievements": [
-        "first_image",
-        "first_message"
-      ]
+      "achievements": [],
+      "coins": 50,
+      "lastDaily": "2026-10-15T12:20:15.921Z",
+      "lastDuelReward": null,
+      "color": "#9b59b6",
+      "badge": "💎",
+      "status": "hi",
+      "extraReactions": [],
+      "colors": [],
+      "badges": [],
+      "currentColor": null,
+      "currentBadge": null,
+      "isAdmin": true
     },
     {
       "login": "luk",
@@ -37,21 +46,42 @@
         "calls": 0
       },
       "achievements": [],
-      "bannedUntil": null
+      "bannedUntil": null,
+      "coins": 0,
+      "lastDaily": null,
+      "lastDuelReward": null,
+      "color": null,
+      "badge": null,
+      "status": null,
+      "extraReactions": []
     },
     {
       "login": "tarasenkov",
       "password": "tarasenkov123",
       "name": "Тарасенков",
       "nickname": "Пенсия",
-      "role": "user"
+      "role": "user",
+      "coins": 0,
+      "lastDaily": null,
+      "lastDuelReward": null,
+      "color": null,
+      "badge": null,
+      "status": null,
+      "extraReactions": []
     },
     {
       "login": "tema",
       "password": "tema123",
       "name": "Тёма",
       "nickname": "СУПЕР ПЕНСИЯ",
-      "role": "user"
+      "role": "user",
+      "coins": 0,
+      "lastDaily": null,
+      "lastDuelReward": null,
+      "color": null,
+      "badge": null,
+      "status": null,
+      "extraReactions": []
     }
   ]
 }

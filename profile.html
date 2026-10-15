@@ -14,8 +14,19 @@
         .upload-btn { position: absolute; bottom: 0; right: 0; width: 36px; height: 36px; border-radius: 50%; background: #5865f2; color: white; border: 3px solid #2b2d31; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; font-weight: 600; }
         .upload-btn:hover { background: #4752c4; }
         .upload-btn input { display: none; }
-        h1 { color: #f2f3f5; font-size: 22px; font-weight: 600; margin: 0 0 4px; }
-        .login-sub { color: #949ba4; font-size: 14px; margin-bottom: 24px; }
+        h1 { color: #f2f3f5; font-size: 22px; font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .badge-icon { font-size: 24px; }
+        .login-sub { color: #949ba4; font-size: 14px; margin-bottom: 8px; }
+        .status-view { color: #b5bac1; font-size: 14px; font-style: italic; margin-bottom: 12px; }
+        .coins-big {
+            display: inline-block;
+            background: linear-gradient(135deg, #f0d030, #b8860b);
+            color: #1e1f22;
+            padding: 10px 22px; border-radius: 20px;
+            font-weight: 700; font-size: 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(240,208,48,0.3);
+        }
         .phrase-block { text-align: left; margin-top: 24px; background: #1e1f22; padding: 16px; border-radius: 8px; }
         .phrase-label { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
         .phrase-text { color: #dbdee1; font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
@@ -27,6 +38,8 @@
         .section textarea:focus, .section input[type=text]:focus { outline: 2px solid #5865f2; }
         .btn { width: 100%; padding: 12px; margin-top: 4px; background: #5865f2; color: white; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; }
         .btn:hover { background: #4752c4; }
+        .btn.gold { background: #f0d030; color: #1e1f22; }
+        .btn.gold:hover { background: #d4b62a; }
         .status-msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
         .ok { color: #23a55a; } .err { color: #fa777c; }
         .back { display: block; margin-top: 24px; color: #00a8fc; text-decoration: none; font-size: 14px; }
@@ -43,15 +56,26 @@
         .stat-item { background: #1e1f22; border-radius: 8px; padding: 10px; text-align: center; }
         .stat-item .n { color: #5865f2; font-size: 20px; font-weight: 700; }
         .stat-item .l { color: #949ba4; font-size: 11px; margin-top: 2px; }
+        .daily-block { background: #1e1f22; border-radius: 8px; padding: 14px; margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .daily-block .info { text-align: left; }
+        .daily-block h4 { margin: 0 0 4px; color: #f2f3f5; font-size: 14px; }
+        .daily-block p { margin: 0; color: #949ba4; font-size: 12px; }
+        .daily-btn { padding: 8px 16px; background: #23a55a; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; }
+        .daily-btn:hover { background: #1e8a4a; }
+        .daily-btn:disabled { background: #4e5058; cursor: default; }
+        .shop-link { display: block; margin-top: 20px; padding: 12px; background: linear-gradient(135deg, #f0d030, #b8860b); color: #1e1f22; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; }
+        .shop-link:hover { filter: brightness(1.1); }
     </style>
 </head>
 <body>
-    <div class="card">
+    <div class="card" id="card">
         <div class="avatar-wrap" id="avatarWrap">
             <div id="avatarBox" class="avatar-big">?</div>
         </div>
-        <h1 id="name">...</h1>
+        <h1 id="name"><span id="badgeSpan"></span><span id="nameText">...</span></h1>
         <div class="login-sub" id="loginLabel"></div>
+        <div class="status-view" id="statusView" style="display:none;"></div>
+        <div class="coins-big" id="coinsBig">💰 0 монет</div>
 
         <div class="stats-grid" id="statsGrid"></div>
 
@@ -76,7 +100,17 @@
                 <button class="btn" id="saveCredentials">Сохранить логин/пароль</button>
                 <div class="status-msg" id="credStatus"></div>
             </div>
+
+            <div class="daily-block">
+                <div class="info">
+                    <h4>🎁 Ежедневная награда</h4>
+                    <p>+10 монет раз в 24 часа</p>
+                </div>
+                <button class="daily-btn" id="dailyBtn" onclick="claimDaily()">Получить</button>
+            </div>
         </div>
+
+        <a href="/shop" class="shop-link">🛒 Открыть магазин</a>
 
         <div class="ach-section">
             <h3>Ачивки</h3>
@@ -99,7 +133,11 @@
         const avatarWrap = document.getElementById('avatarWrap');
         const avatarBox = document.getElementById('avatarBox');
         const nameEl = document.getElementById('name');
+        const nameText = document.getElementById('nameText');
+        const badgeSpan = document.getElementById('badgeSpan');
         const loginLabel = document.getElementById('loginLabel');
+        const statusView = document.getElementById('statusView');
+        const coinsBig = document.getElementById('coinsBig');
         const statsGrid = document.getElementById('statsGrid');
         const phraseView = document.getElementById('phraseView');
         const phraseText = document.getElementById('phraseText');
@@ -111,6 +149,7 @@
         const params = new URLSearchParams(location.search);
         const requestedLogin = params.get('user');
         let myLogin = null;
+        let isOwn = false;
 
         function renderStats(stats) {
             stats = stats || {};
@@ -134,21 +173,23 @@
             myLogin = me.login;
             const targetLogin = requestedLogin || myLogin;
             const p = await fetch('/api/profile/' + targetLogin).then(r => r.json());
-            if (p.error) { nameEl.textContent = 'Профиль не найден'; return; }
-            nameEl.textContent = p.name;
+            if (p.error) { nameText.textContent = 'Профиль не найден'; return; }
+
+            nameText.textContent = p.name;
+            if (p.color) nameText.style.color = p.color;
+            if (p.badge) badgeSpan.textContent = p.badge + ' ';
             loginLabel.textContent = '@' + p.login;
+            if (p.status) { statusView.textContent = '"' + p.status + '"'; statusView.style.display = 'block'; }
+            coinsBig.textContent = '💰 ' + (p.coins || 0) + ' монет';
+
             if (p.avatar) avatarBox.outerHTML = `<img id="avatarBox" class="avatar-big" src="${p.avatar}" alt="">`;
             else avatarBox.textContent = (p.name || '?').charAt(0).toUpperCase();
+
             renderStats(p.stats);
             renderAchievements(p.achievements);
-                        if (p.warnings && p.warnings.length) {
-                const warnHtml = `<div class="section" style="background:#2a2a1a;border-radius:8px;padding:12px;margin-top:16px;">
-                    <div style="color:#f0d030;font-weight:700;font-size:13px;">⚠️ Варны: ${p.warnings.length}</div>
-                </div>`;
-                document.querySelector('.card').insertAdjacentHTML('beforeend', warnHtml);
-            }
 
             if (p.isOwn) {
+                isOwn = true;
                 editSection.style.display = 'block';
                 phraseView.style.display = 'none';
                 phraseEl.value = p.phrase || '';
@@ -186,6 +227,12 @@
                     if (data.ok) { st.textContent = 'Сохранено!'; st.classList.add('ok'); setTimeout(() => location.href = '/chat', 1500); }
                     else { st.textContent = data.error || 'Ошибка'; st.classList.add('err'); }
                 });
+
+                if (!me.dailyReady) {
+                    const btn = document.getElementById('dailyBtn');
+                    btn.disabled = true;
+                    btn.textContent = 'Уже получено';
+                }
             } else {
                 editSection.style.display = 'none';
                 phraseView.style.display = 'block';
@@ -193,6 +240,14 @@
                 else { phraseText.textContent = 'Пока ничего не написал'; phraseText.classList.add('phrase-empty'); }
             }
         }
+
+        async function claimDaily() {
+            const r = await fetch('/api/daily', { method: 'POST' });
+            const data = await r.json();
+            if (data.ok) { alert('+' + data.reward + ' монет!'); location.reload(); }
+            else { alert(data.error || 'Ошибка'); }
+        }
+
         load();
     </script>
 </body>
