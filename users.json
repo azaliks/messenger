@@ -6,9 +6,9 @@
       "name": "azaliks",
       "nickname": "azaliks",
       "role": "admin",
-      "lastLogin": "2026-10-15T12:52:35.219Z",
-      "lastPing": "2026-10-15T12:55:05.477Z",
-      "phrase": "6767676767",
+      "lastLogin": "2026-10-15T15:46:45.205Z",
+      "lastPing": "2026-10-15T15:46:49.432Z",
+      "phrase": "",
       "stats": {
         "messages": 0,
         "voices": 0,
@@ -24,9 +24,12 @@
       "badge": "💎",
       "status": "hi",
       "extraReactions": [],
-      "colors": [],
+      "colors": [
+        "#9b59b6",
+        "#e67e22"
+      ],
       "badges": [],
-      "currentColor": null,
+      "currentColor": "#e67e22",
       "currentBadge": null,
       "isAdmin": true
     },

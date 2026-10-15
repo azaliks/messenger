@@ -378,6 +378,7 @@ app.post('/api/shop/set', (req, res) => {
     }
     writeUsers(data);
     res.json({ ok: true });
+    
 });
 
 app.post('/api/status/set', (req, res) => {
