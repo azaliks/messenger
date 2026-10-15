@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#5865f2">
+    <link rel="manifest" href="/manifest.json">
     <title>Чат банды</title>
     <style>
         * { box-sizing: border-box; }
@@ -25,9 +27,11 @@
         .date-divider::before, .date-divider::after { content: ""; flex: 1; height: 1px; background: #3f4147; }
         .msg { display: flex; gap: 14px; padding: 4px 20px; margin-top: 10px; position: relative; }
         .msg:hover { background: #2e3035; }
-        .avatar { width: 40px; height: 40px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; flex-shrink: 0; user-select: none; object-fit: cover; cursor: pointer; }
+        .avatar-wrap { position: relative; flex-shrink: 0; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; user-select: none; object-fit: cover; cursor: pointer; }
         .avatar:hover { opacity: 0.85; }
         img.avatar { display: block; }
+        .online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #23a55a; border: 2px solid #313338; border-radius: 50%; }
         .body { flex: 1; min-width: 0; }
         .head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; flex-wrap: wrap; }
         .author { font-weight: 600; font-size: 15px; cursor: pointer; }
@@ -64,6 +68,7 @@
         button.send:hover { background: #4752c4; }
         .icon-btn { width: 46px; height: 46px; border-radius: 50%; background: #4e5058; color: white; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; user-select: none; touch-action: none; flex-shrink: 0; transition: background 0.15s; }
         .icon-btn:hover { background: #5d6069; }
+        .icon-btn img { width: 26px; height: 26px; object-fit: contain; pointer-events: none; }
         .voice-btn.recording { background: #f23f43; transform: scale(1.1); }
         .rec-indicator { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #f23f43; color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; display: none; z-index: 150; align-items: center; gap: 8px; }
         .rec-indicator.active { display: flex; }
@@ -152,7 +157,7 @@
         <input type="text" id="text" placeholder="Написать сообщение... (или /команда)" autocomplete="off">
         <button type="button" class="icon-btn" id="imgBtn" title="Отправить картинку">📎</button>
         <input type="file" id="imgInput" accept="image/*" style="display:none">
-        <button type="button" class="icon-btn voice-btn" id="voiceBtn" title="Удерживай для записи">🎤</button>
+        <button type="button" class="icon-btn voice-btn" id="voiceBtn" title="Удерживай для записи"><img src="/images/mic.png" alt="🎤"></button>
         <button type="submit" class="send">Отправить</button>
     </form>
 
@@ -207,6 +212,11 @@
     <script src="https://unpkg.com/fix-webm-duration@1.0.6/fix-webm-duration.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // ====== PWA: регистрация Service Worker ======
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+
         const messagesEl = document.getElementById('messages');
         const form = document.getElementById('form');
         const textInput = document.getElementById('text');
@@ -222,8 +232,9 @@
 
         const BASE_EMOJIS = ['😂', '🔥', '👍', '💀'];
         let myExtraReactions = [];
+        let onlineList = [];
 
-        let myLogin = null, isAdmin = false, onlineList = [], allUsers = [], meData = null;
+        let myLogin = null, isAdmin = false, allUsers = [], meData = null;
 
         function formatTime(iso) { return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }
         function formatDate(iso) {
@@ -263,8 +274,11 @@
             return html;
         }
 
+        let forceScrollBottom = false;
+
         function render(messages) {
-            const wasAtBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+            const atBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+            const needScroll = forceScrollBottom || atBottom;
 
             let html = '', lastDate = null;
             messages.forEach(m => {
@@ -278,6 +292,8 @@
 
                 const initial = (m.name||'?').charAt(0).toUpperCase();
                 const avatarHtml = m.avatar ? `<img class="avatar" src="${m.avatar}" alt="" onclick="openProfile('${m.login}')">` : `<div class="avatar" onclick="openProfile('${m.login}')">${escapeHtml(initial)}</div>`;
+                const isOnline = onlineList.includes(m.login);
+                const onlineDot = isOnline ? '<div class="online-dot"></div>' : '';
                 const canDelete = (m.login === myLogin) || isAdmin;
                 const authorColor = m.color || '#f2f3f5';
                 const badgeHtml = m.badge ? `<span class="badge-icon">${m.badge}</span>` : '';
@@ -288,12 +304,16 @@
                 else if (m.voice) contentHtml = `<div class="voice-msg"><button onclick="toggleVoice('${m.id}',this)">▶</button><audio id="audio-${m.id}" src="${m.voice}" preload="metadata"></audio><span class="vtime">${formatDuration(m.duration||0)}</span></div>`;
                 else contentHtml = `<div class="text">${escapeHtml(m.text)}</div>`;
 
-                html += `<div class="msg" data-id="${m.id}">${avatarHtml}<div class="body">${statusHtml}<div class="head">${badgeHtml}<span class="author" style="color:${authorColor};" onclick="openProfile('${m.login}')">${escapeHtml(m.name)}</span><span class="time">${formatTime(m.time)}</span></div>${contentHtml}${renderReactions(m)}</div>${canDelete?`<span class="del" onclick="delMsg('${m.id}')">удалить</span>`:''}</div>`;
+                html += `<div class="msg" data-id="${m.id}"><div class="avatar-wrap">${avatarHtml}${onlineDot}</div><div class="body">${statusHtml}<div class="head">${badgeHtml}<span class="author" style="color:${authorColor};" onclick="openProfile('${m.login}')">${escapeHtml(m.name)}</span><span class="time">${formatTime(m.time)}</span></div>${contentHtml}${renderReactions(m)}</div>${canDelete?`<span class="del" onclick="delMsg('${m.id}')">удалить</span>`:''}</div>`;
             });
             messagesEl.innerHTML = html;
 
-            if (wasAtBottom) {
+            forceScrollBottom = false;
+
+            if (needScroll) {
                 messagesEl.scrollTop = messagesEl.scrollHeight;
+                requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; });
+                setTimeout(() => { messagesEl.scrollTop = messagesEl.scrollHeight; }, 50);
             }
         }
 
@@ -318,15 +338,33 @@
             if (!r.ok) return;
             const messages = await r.json();
             const last = messages.length ? messages[messages.length - 1].id : null;
-
             if (hasRenderedOnce && last === lastMessageId) return;
-
             render(messages);
             lastMessageId = last;
             hasRenderedOnce = true;
         }
 
-        // ==== АВТОПОДСКАЗКА КОМАНД ====
+        async function loadOnline() {
+            try {
+                const r = await fetch('/api/online');
+                if (!r.ok) return;
+                const list = await r.json();
+                if (JSON.stringify(list) !== JSON.stringify(onlineList)) {
+                    onlineList = list;
+                    forceScrollBottom = false;
+                    lastMessageId = null;   // перерисуем с точками
+                    await loadMessages();
+                }
+            } catch (e) {}
+        }
+
+        async function forceReload() {
+            forceScrollBottom = true;
+            lastMessageId = null;
+            await loadMessages();
+        }
+
+        // ==== АВТОПОДСКАЗКА ====
         const ALL_COMMANDS = [
             { cmd: '/mute', desc: 'Замутить участника' },
             { cmd: '/unmute', desc: 'Снять мут' },
@@ -334,82 +372,54 @@
             { cmd: '/clearwarns', desc: 'Сбросить варны' },
             { cmd: '/ban', desc: 'Забанить' },
             { cmd: '/unban', desc: 'Снять бан' },
-            { cmd: '/kick', desc: 'Кикнуть (разлогинить)' },
+            { cmd: '/kick', desc: 'Кикнуть' },
             { cmd: '/give логин число', desc: 'Выдать монеты' },
             { cmd: '/resetcoins', desc: 'Обнулить монеты всем' },
-            { cmd: '/resetcoins логин', desc: 'Обнулить монеты игроку' },
+            { cmd: '/resetcoins логин', desc: 'Обнулить игроку' },
             { cmd: '/takecoins логин число', desc: 'Забрать монеты' },
-            { cmd: '/sys текст', desc: 'Написать от лица СИСТЕМЫ' }
+            { cmd: '/sys текст', desc: 'Написать от СИСТЕМЫ' }
         ];
 
         function updateCmdHint() {
             const val = textInput.value;
-            if (!val.startsWith('/')) {
-                cmdHint.classList.remove('active');
-                cmdHint.innerHTML = '';
-                return;
-            }
+            if (!val.startsWith('/')) { cmdHint.classList.remove('active'); cmdHint.innerHTML = ''; return; }
             const query = val.toLowerCase();
             let matches = ALL_COMMANDS.filter(c => c.cmd.toLowerCase().startsWith(query));
             if (!isAdmin) matches = [];
             if (!matches.length) { cmdHint.classList.remove('active'); cmdHint.innerHTML = ''; return; }
             let html = '<div class="hint-title">Команды</div>';
             matches.forEach(c => {
-                html += `<div class="hint-item" onclick="pickCommand('${c.cmd.split(' ')[0]}')">
-                    <span class="hint-cmd">${c.cmd}</span>
-                    <span class="hint-desc">${c.desc}</span>
-                </div>`;
+                html += `<div class="hint-item" onclick="pickCommand('${c.cmd.split(' ')[0]}')"><span class="hint-cmd">${c.cmd}</span><span class="hint-desc">${c.desc}</span></div>`;
             });
             cmdHint.innerHTML = html;
             cmdHint.classList.add('active');
         }
-
-        function pickCommand(cmd) {
-            textInput.value = cmd + ' ';
-            textInput.focus();
-            cmdHint.classList.remove('active');
-            cmdHint.innerHTML = '';
-        }
+        function pickCommand(cmd) { textInput.value = cmd + ' '; textInput.focus(); cmdHint.classList.remove('active'); cmdHint.innerHTML = ''; }
 
         textInput.addEventListener('input', updateCmdHint);
-        textInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { cmdHint.classList.remove('active'); cmdHint.innerHTML = ''; }
-        });
-        document.addEventListener('click', (e) => {
-            if (!cmdHint.contains(e.target) && e.target !== textInput) {
-                cmdHint.classList.remove('active');
-            }
-        });
+        textInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cmdHint.classList.remove('active'); cmdHint.innerHTML = ''; } });
+        document.addEventListener('click', (e) => { if (!cmdHint.contains(e.target) && e.target !== textInput) cmdHint.classList.remove('active'); });
 
         form.addEventListener('submit', async e => {
             e.preventDefault();
             const text = textInput.value;
             if (!text.trim()) return;
-
             if (text.startsWith('/')) {
-                textInput.value = '';
-                cmdHint.classList.remove('active');
+                textInput.value = ''; cmdHint.classList.remove('active');
                 const trimmed = text.trim();
-                if (trimmed.startsWith('/sys ')) {
-                    await sendSys(trimmed.slice(5));
-                } else if (trimmed.startsWith('/give ')) {
-                    await giveCoins(trimmed);
-                } else if (trimmed.startsWith('/resetcoins')) {
-                    await resetCoins(trimmed);
-                } else if (trimmed.startsWith('/takecoins ')) {
-                    await takeCoins(trimmed);
-                } else {
-                    handleCommand(trimmed);
-                }
+                if (trimmed.startsWith('/sys ')) await sendSys(trimmed.slice(5));
+                else if (trimmed.startsWith('/give ')) await giveCoins(trimmed);
+                else if (trimmed.startsWith('/resetcoins')) await resetCoins(trimmed);
+                else if (trimmed.startsWith('/takecoins ')) await takeCoins(trimmed);
+                else handleCommand(trimmed);
                 return;
             }
-
             textInput.value = '';
             const r = await fetch('/api/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text}) });
             const data = await r.json();
             if (data.error === 'Ты в муте') { alert('Ты в муте, не можешь писать'); return; }
             showNewAchievements(data.newAchievements);
-            loadMessages();
+            forceReload();
         });
 
         async function giveCoins(text) {
@@ -418,22 +428,19 @@
             if (parts.length < 3) { alert('Использование: /give логин число'); return; }
             const r = await fetch('/api/give-coins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: parts[1], amount: parts[2] }) });
             const data = await r.json();
-            if (data.ok) { showCoinToast(`💰 ${parts[1]}: ${data.coins} монет`); loadMessages(); }
-            else { alert('Ошибка: ' + (data.error || 'unknown')); }
+            if (data.ok) { showCoinToast(`💰 ${parts[1]}: ${data.coins} монет`); forceReload(); }
+            else alert('Ошибка: ' + (data.error || 'unknown'));
         }
-
         async function resetCoins(text) {
             if (!isAdmin) { alert('Только для админа'); return; }
             const parts = text.split(/\s+/);
             const target = parts[1] || null;
-            const msg = target ? `Обнулить монеты игроку ${target}?` : `Обнулить монеты ВСЕМ игрокам?`;
-            if (!confirm(msg)) return;
+            if (!confirm(target ? `Обнулить монеты игроку ${target}?` : `Обнулить монеты ВСЕМ?`)) return;
             const r = await fetch('/api/reset-coins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target }) });
             const data = await r.json();
-            if (data.ok) { showCoinToast(target ? `💰 ${target}: 0 монет` : '💰 Все монеты обнулены'); loadMessages(); }
-            else { alert('Ошибка: ' + (data.error || 'unknown')); }
+            if (data.ok) { showCoinToast(target ? `💰 ${target}: 0` : '💰 Все обнулены'); forceReload(); }
+            else alert('Ошибка: ' + (data.error || 'unknown'));
         }
-
         async function takeCoins(text) {
             if (!isAdmin) { alert('Только для админа'); return; }
             const parts = text.split(/\s+/);
@@ -441,24 +448,17 @@
             if (!confirm(`Забрать ${parts[2]} монет у ${parts[1]}?`)) return;
             const r = await fetch('/api/take-coins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: parts[1], amount: parts[2] }) });
             const data = await r.json();
-            if (data.ok) { showCoinToast(`💰 Забрано ${data.taken} у ${parts[1]}. Осталось ${data.coins}`); loadMessages(); }
-            else { alert('Ошибка: ' + (data.error || 'unknown')); }
+            if (data.ok) { showCoinToast(`💰 Забрано ${data.taken} у ${parts[1]}. Осталось ${data.coins}`); forceReload(); }
+            else alert('Ошибка: ' + (data.error || 'unknown'));
         }
-
         function showCoinToast(text) {
-            const t = document.createElement('div');
-            t.className = 'coin-toast';
-            t.textContent = text;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 3000);
+            const t = document.createElement('div'); t.className = 'coin-toast'; t.textContent = text;
+            document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
         }
 
-        async function delMsg(id) { await fetch('/api/messages/'+id, {method:'DELETE'}); loadMessages(); }
-        async function toggleReaction(id, emoji) { await fetch('/api/messages/'+id+'/react', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({emoji,action:'toggle'})}); loadMessages(); }
-        async function saveQuote(id) {
-            const r = await fetch('/api/quotes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({messageId: id}) });
-            if (r.ok) alert('Сохранено в цитатник');
-        }
+        async function delMsg(id) { await fetch('/api/messages/'+id, {method:'DELETE'}); forceReload(); }
+        async function toggleReaction(id, emoji) { await fetch('/api/messages/'+id+'/react', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({emoji,action:'toggle'})}); forceReload(); }
+        async function saveQuote(id) { const r = await fetch('/api/quotes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({messageId: id}) }); if (r.ok) alert('Сохранено в цитатник'); }
         function showEmojiPicker(event, msgId) {
             event.stopPropagation();
             document.querySelectorAll('.emoji-picker').forEach(el => el.remove());
@@ -472,28 +472,24 @@
         async function pickEmoji(msgId, emoji) {
             await fetch('/api/messages/'+msgId+'/react', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({emoji,action:'toggle'})});
             document.querySelectorAll('.emoji-picker').forEach(el => el.remove());
-            loadMessages();
+            forceReload();
         }
         function showNewAchievements(list) {
             if (!list || !list.length) return;
             const names = { first_message:'Первое слово 💬', ten_messages:'Разговорчивый 🗣️', hundred_messages:'Флудер 📢', first_voice:'Голос 🎤', ten_voices:'Болтун 🔊', first_image:'Фотограф 📷', ten_images:'Галерея 🖼️', first_reaction:'Реакция 😂', hundred_reactions:'Реактор ⚡', first_call:'Дозвонился 📞', ten_calls:'Телефонист ☎️', night_owl:'Ночной житель 🌙', early_bird:'Ранняя пташка 🐦', week_streak:'Неделя в чате 🔥' };
             list.forEach((key, i) => {
                 setTimeout(() => {
-                    const toast = document.createElement('div');
-                    toast.className = 'ach-toast';
+                    const toast = document.createElement('div'); toast.className = 'ach-toast';
                     toast.innerHTML = `<div class="ach-icon">🏆</div><div><div>Ачивка: ${names[key] || key}</div><div class="ach-text">Ты получил новую ачивку!</div></div>`;
-                    document.body.appendChild(toast);
-                    setTimeout(() => toast.remove(), 4000);
+                    document.body.appendChild(toast); setTimeout(() => toast.remove(), 4000);
                 }, i * 600);
             });
         }
-
         async function sendSys(text) {
             if (!isAdmin) { alert('Только для админа'); return; }
             if (!text.trim()) { alert('Использование: /sys текст'); return; }
             const r = await fetch('/api/sys', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
-            if (r.ok) loadMessages();
-            else alert('Ошибка');
+            if (r.ok) forceReload(); else alert('Ошибка');
         }
 
         const COMMANDS = {
@@ -507,14 +503,12 @@
         };
 
         let pendingCmd = null;
-
         function handleCommand(text) {
             const cmd = text.split(' ')[0].toLowerCase();
-            if (!COMMANDS[cmd]) { alert('Неизвестная команда. Доступно: /mute, /unmute, /ban, /unban, /warn, /kick, /clearwarns, /give, /resetcoins, /takecoins, /sys'); return; }
+            if (!COMMANDS[cmd]) { alert('Неизвестная команда'); return; }
             if (!isAdmin) { alert('Команды доступны только админу'); return; }
             openCmdModal(cmd);
         }
-
         async function openCmdModal(cmd) {
             pendingCmd = COMMANDS[cmd];
             document.getElementById('cmdTitle').textContent = pendingCmd.title;
@@ -525,12 +519,7 @@
             select.innerHTML = allUsers.filter(u => u.login !== myLogin).map(u => `<option value="${u.login}">${escapeHtml(u.name)} (@${u.login})</option>`).join('');
             document.getElementById('cmdModal').classList.add('active');
         }
-
-        function closeCmdModal() {
-            document.getElementById('cmdModal').classList.remove('active');
-            pendingCmd = null;
-        }
-
+        function closeCmdModal() { document.getElementById('cmdModal').classList.remove('active'); pendingCmd = null; }
         document.getElementById('cmdGo').addEventListener('click', async () => {
             if (!pendingCmd) return;
             const target = document.getElementById('cmdUser').value;
@@ -542,11 +531,8 @@
             if (data.ok) {
                 if (data.autoMuted) alert('⚠️ 3 варна! ' + target + ' автоматом получил мут на 15 минут.');
                 else alert('✅ Готово');
-                closeCmdModal();
-                loadMessages();
-            } else {
-                alert('Ошибка: ' + (data.error || 'unknown'));
-            }
+                closeCmdModal(); forceReload();
+            } else alert('Ошибка: ' + (data.error || 'unknown'));
         });
 
         imgBtn.addEventListener('click', () => imgInput.click());
@@ -557,8 +543,7 @@
             const r = await fetch('/api/image', { method: 'POST', body: fd });
             const data = await r.json();
             if (data.error === 'Ты в муте') alert('Ты в муте');
-            imgInput.value = '';
-            loadMessages();
+            imgInput.value = ''; forceReload();
         });
         document.addEventListener('dragover', (e) => { e.preventDefault(); });
         document.addEventListener('drop', async (e) => {
@@ -568,7 +553,7 @@
             if (file.size > 5 * 1024 * 1024) { alert('Максимум 5 МБ'); return; }
             const fd = new FormData(); fd.append('image', file);
             await fetch('/api/image', { method: 'POST', body: fd });
-            loadMessages();
+            forceReload();
         });
 
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingTimer = null, isRecording = false;
@@ -600,7 +585,7 @@
                     const r = await fetch('/api/voice', { method: 'POST', body: fd });
                     const data = await r.json();
                     if (data.error === 'Ты в муте') alert('Ты в муте');
-                    loadMessages();
+                    forceReload();
                 };
                 mediaRecorder.start(1000);
                 isRecording = true; recordingStart = Date.now();
@@ -633,7 +618,7 @@
         const remoteAudio = document.getElementById('remoteAudio');
 
         socket.on('kicked', () => { alert('Тебя кикнули с сервера'); location.href = '/login'; });
-        socket.on('chat:refresh', () => { loadMessages(); });
+        socket.on('chat:refresh', () => { lastMessageId = null; loadMessages(); });
 
         socket.on('duel:start', ({ youAreHost, opponentLogin }) => {
             sessionStorage.setItem('duel', JSON.stringify({ host: youAreHost, opponent: opponentLogin }));
@@ -641,7 +626,7 @@
         });
         socket.on('duel:offline', () => { alert('Этот пацан сейчас не в сети'); });
 
-        socket.on('online', (list) => { onlineList = list; if (callModal.classList.contains('active')) renderUserList(); });
+        socket.on('online', (list) => { onlineList = list; });
         socket.on('call:incoming', async ({from, fromName, offer}) => {
             if (currentCall) { socket.emit('call:reject', {to:from}); return; }
             currentCall = {from, offer}; remoteLogin = from;
@@ -760,6 +745,7 @@
             myExtraReactions = u.extraReactions || [];
             updateCoins(u.coins);
             loadMessages();
+            loadOnline();
             if (isAdmin) document.getElementById('adminBtn').style.display = 'inline-block';
             const warns = (u.warnings || []).length;
             if (warns) {
@@ -779,11 +765,12 @@
 
         function updateCoins(n) { if (coinsTag) coinsTag.textContent = '💰 ' + (n || 0); }
 
-        setInterval(() => {
-            fetch('/api/me').then(r => r.json()).then(u => updateCoins(u.coins));
-        }, 10000);
+        setInterval(() => { fetch('/api/me').then(r => r.json()).then(u => updateCoins(u.coins)); }, 10000);
 
-        setInterval(loadMessages, 3000);
+        // Ускоренное обновление — каждые 0.8 сек
+        setInterval(loadMessages, 800);
+        setInterval(loadOnline, 1500);
+
         fetch('/api/ping', {method:'POST'});
         setInterval(() => { fetch('/api/ping', {method:'POST'}); }, 30000);
     </script>

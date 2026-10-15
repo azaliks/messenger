@@ -6,31 +6,43 @@
       "name": "azaliks",
       "nickname": "azaliks",
       "role": "admin",
-      "lastLogin": "2026-10-15T15:46:45.205Z",
-      "lastPing": "2026-10-15T15:46:49.432Z",
+      "lastLogin": "2026-10-15T16:04:43.331Z",
+      "lastPing": "2026-10-15T16:18:31.465Z",
       "phrase": "",
       "stats": {
-        "messages": 0,
-        "voices": 0,
+        "messages": 4,
+        "voices": 1,
         "images": 0,
-        "reactions": 0,
+        "reactions": 5,
         "calls": 0
       },
-      "achievements": [],
+      "achievements": [
+        "first_message",
+        "first_reaction",
+        "first_voice"
+      ],
       "coins": 50,
       "lastDaily": "2026-10-15T12:20:15.921Z",
       "lastDuelReward": null,
       "color": "#9b59b6",
       "badge": "💎",
       "status": "hi",
-      "extraReactions": [],
+      "extraReactions": [
+        "🎉"
+      ],
       "colors": [
         "#9b59b6",
-        "#e67e22"
+        "#e67e22",
+        "#eb459e"
       ],
-      "badges": [],
-      "currentColor": "#e67e22",
-      "currentBadge": null,
+      "badges": [
+        "💎",
+        "🔥",
+        "⭐",
+        "🏆"
+      ],
+      "currentColor": "#eb459e",
+      "currentBadge": "🏆",
       "isAdmin": true
     },
     {

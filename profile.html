@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#5865f2">
+    <link rel="manifest" href="/manifest.json">
     <title>Профиль</title>
     <style>
         * { box-sizing: border-box; }
@@ -11,6 +13,7 @@
         .avatar-wrap { position: relative; width: 120px; height: 120px; margin: 0 auto 20px; }
         .avatar-big { width: 120px; height: 120px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 600; object-fit: cover; }
         img.avatar-big { display: block; }
+        .online-dot-big { position: absolute; bottom: 8px; right: 8px; width: 22px; height: 22px; background: #23a55a; border: 3px solid #2b2d31; border-radius: 50%; }
         .upload-btn { position: absolute; bottom: 0; right: 0; width: 36px; height: 36px; border-radius: 50%; background: #5865f2; color: white; border: 3px solid #2b2d31; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; font-weight: 600; }
         .upload-btn:hover { background: #4752c4; }
         .upload-btn input { display: none; }
@@ -59,17 +62,17 @@
 
         .purchases { text-align: left; margin-top: 32px; background: #1e1f22; border-radius: 8px; padding: 16px; }
         .purchases h3 { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 12px; }
-        .purchases .group { margin-bottom: 16px; }
+        .purchases .group { margin-bottom: 18px; }
         .purchases .group:last-child { margin-bottom: 0; }
         .purchases .group-label { color: #949ba4; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
-        .purchases .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-        .chip { padding: 4px 10px; background: #2b2d31; border-radius: 20px; font-size: 13px; border: 2px solid transparent; }
-        .chip.color-chip { padding: 0; width: 28px; height: 28px; border-radius: 50%; }
-        .chip.current { border-color: #f0d030; box-shadow: 0 0 8px rgba(240,208,48,0.5); }
-        .chip.badge-chip { font-size: 18px; padding: 4px 10px; }
-                .chip.clickable { cursor: pointer; transition: transform 0.1s, border-color 0.15s; }
-        .chip.clickable:hover { transform: scale(1.15); }
-        .chip.clickable.current { cursor: pointer; }
+        .purchases .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip { padding: 6px 12px; background: #2b2d31; border-radius: 20px; font-size: 13px; border: 3px solid transparent; transition: transform 0.1s, border-color 0.15s; }
+        .chip.color-chip { padding: 0; width: 36px; height: 36px; border-radius: 50%; }
+        .chip.badge-chip { font-size: 22px; padding: 6px 14px; }
+        .chip.reaction-chip { font-size: 22px; padding: 6px 14px; }
+        .chip.clickable { cursor: pointer; }
+        .chip.clickable:hover { transform: scale(1.15); border-color: #5865f2; }
+        .chip.current { border-color: #f0d030 !important; box-shadow: 0 0 12px rgba(240,208,48,0.6); }
         .empty-purchases { color: #6d6f78; font-style: italic; font-size: 13px; }
     </style>
 </head>
@@ -118,7 +121,7 @@
 
         <div class="purchases" id="purchasesBlock">
             <h3>🛍️ Мои покупки</h3>
-            <div id="purchasesList"></div>
+            <div id="purchasesList">Загрузка...</div>
         </div>
 
         <a href="/shop" class="shop-link">🛒 Открыть магазин</a>
@@ -132,6 +135,11 @@
     </div>
 
     <script>
+        // PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+
         const ACHIEVEMENTS = {
             first_message: { name: 'Первое слово', icon: '💬' }, ten_messages: { name: 'Разговорчивый', icon: '🗣️' },
             hundred_messages: { name: 'Флудер', icon: '📢' }, first_voice: { name: 'Голос', icon: '🎤' },
@@ -180,52 +188,44 @@
                 return `<div class="ach-item"><div class="icon">${a.icon}</div><div class="name">${a.name}</div></div>`;
             }).join('');
         }
-
         function renderPurchases(p) {
-            if (!isOwn) {
-                purchasesBlock.style.display = 'none';
-                return;
-            }
+            if (!isOwn) { purchasesBlock.style.display = 'none'; return; }
             purchasesBlock.style.display = 'block';
-
             let html = '';
-
-            // Цвета
             if (p.colors && p.colors.length) {
-                html += `<div class="group"><div class="group-label">🎨 Цвета (${p.colors.length})</div><div class="chips">`;
+                html += `<div class="group"><div class="group-label">🎨 Цвета (${p.colors.length}) — кликни</div><div class="chips">`;
                 p.colors.forEach(c => {
                     const isCurrent = p.currentColor === c;
-                    html += `<div class="chip color-chip ${isCurrent ? 'current' : ''}" style="background:${c}" title="${isCurrent ? 'Текущий' : ''}"></div>`;
+                    html += `<div class="chip color-chip clickable ${isCurrent ? 'current' : ''}" style="background:${c}" onclick="setColor('${c}')"></div>`;
                 });
                 html += `</div></div>`;
-            } else {
-                html += `<div class="group"><div class="group-label">🎨 Цвета</div><div class="empty-purchases">Не куплено</div></div>`;
-            }
-
-            // Значки
+            } else html += `<div class="group"><div class="group-label">🎨 Цвета</div><div class="empty-purchases">Не куплено</div></div>`;
             if (p.badges && p.badges.length) {
-                html += `<div class="group"><div class="group-label">⭐ Значки (${p.badges.length})</div><div class="chips">`;
+                html += `<div class="group"><div class="group-label">⭐ Значки (${p.badges.length}) — кликни</div><div class="chips">`;
                 p.badges.forEach(b => {
                     const isCurrent = p.currentBadge === b;
-                    html += `<div class="chip badge-chip ${isCurrent ? 'current' : ''}">${b}</div>`;
+                    html += `<div class="chip badge-chip clickable ${isCurrent ? 'current' : ''}" onclick="setBadge('${b}')">${b}</div>`;
                 });
                 html += `</div></div>`;
-            } else {
-                html += `<div class="group"><div class="group-label">⭐ Значки</div><div class="empty-purchases">Не куплено</div></div>`;
-            }
-
-            // Реакции
+            } else html += `<div class="group"><div class="group-label">⭐ Значки</div><div class="empty-purchases">Не куплено</div></div>`;
             if (p.extraReactions && p.extraReactions.length) {
                 html += `<div class="group"><div class="group-label">😂 Реакции (${p.extraReactions.length})</div><div class="chips">`;
-                p.extraReactions.forEach(r => {
-                    html += `<div class="chip">${r}</div>`;
-                });
+                p.extraReactions.forEach(r => { html += `<div class="chip reaction-chip">${r}</div>`; });
                 html += `</div></div>`;
-            } else {
-                html += `<div class="group"><div class="group-label">😂 Реакции</div><div class="empty-purchases">Не куплено</div></div>`;
-            }
-
+            } else html += `<div class="group"><div class="group-label">😂 Реакции</div><div class="empty-purchases">Не куплено</div></div>`;
             purchasesList.innerHTML = html;
+        }
+        async function setColor(color) {
+            const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'color', value: color }) });
+            const data = await r.json();
+            if (data.ok) location.reload(); else alert(data.error || 'Ошибка');
+        }
+        async function setBadge(badge) {
+            const p = await fetch('/api/profile/' + myLogin).then(r => r.json());
+            const value = (p.currentBadge === badge) ? null : badge;
+            const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'badge', value }) });
+            const data = await r.json();
+            if (data.ok) location.reload(); else alert(data.error || 'Ошибка');
         }
 
         async function load() {
@@ -245,74 +245,80 @@
             if (p.avatar) avatarBox.outerHTML = `<img id="avatarBox" class="avatar-big" src="${p.avatar}" alt="">`;
             else avatarBox.textContent = (p.name || '?').charAt(0).toUpperCase();
 
+            // Онлайн-точка
+            try {
+                const online = await fetch('/api/online').then(r => r.json());
+                if (online.includes(targetLogin)) {
+                    const dot = document.createElement('div');
+                    dot.className = 'online-dot-big';
+                    dot.title = 'В сети';
+                    document.getElementById('avatarWrap').appendChild(dot);
+                }
+            } catch (e) {}
+
             renderStats(p.stats);
             renderAchievements(p.achievements);
-
             isOwn = !!p.isOwn;
-            function renderPurchases(p) {
-            if (!isOwn) {
-                purchasesBlock.style.display = 'none';
-                return;
-            }
-            purchasesBlock.style.display = 'block';
+            renderPurchases(p);
 
-            let html = '';
-
-            // Цвета
-            if (p.colors && p.colors.length) {
-                html += `<div class="group"><div class="group-label">🎨 Цвета (${p.colors.length}) — кликни, чтобы выбрать</div><div class="chips">`;
-                p.colors.forEach(c => {
-                    const isCurrent = p.currentColor === c;
-                    html += `<div class="chip color-chip clickable ${isCurrent ? 'current' : ''}" style="background:${c}" onclick="setColor('${c}')" title="${isCurrent ? 'Текущий' : 'Сделать текущим'}"></div>`;
+            if (p.isOwn) {
+                editSection.style.display = 'block';
+                phraseView.style.display = 'none';
+                phraseEl.value = p.phrase || '';
+                const uploadLabel = document.createElement('label');
+                uploadLabel.className = 'upload-btn';
+                uploadLabel.title = 'Загрузить аватарку';
+                uploadLabel.innerHTML = '+<input type="file" id="avatarInput" accept="image/*">';
+                avatarWrap.appendChild(uploadLabel);
+                uploadLabel.querySelector('input').addEventListener('change', async e => {
+                    const file = e.target.files[0]; if (!file) return;
+                    const fd = new FormData(); fd.append('avatar', file);
+                    const r = await fetch('/api/profile/avatar', { method: 'POST', body: fd });
+                    const data = await r.json();
+                    if (data.ok) {
+                        const img = document.getElementById('avatarBox');
+                        if (img.tagName === 'IMG') img.src = data.avatar + '?t=' + Date.now();
+                        else img.outerHTML = `<img id="avatarBox" class="avatar-big" src="${data.avatar}" alt="">`;
+                    } else alert('Не удалось загрузить');
                 });
-                html += `</div></div>`;
-            } else {
-                html += `<div class="group"><div class="group-label">🎨 Цвета</div><div class="empty-purchases">Не куплено</div></div>`;
-            }
-
-            // Значки
-            if (p.badges && p.badges.length) {
-                html += `<div class="group"><div class="group-label">⭐ Значки (${p.badges.length}) — кликни, чтобы выбрать</div><div class="chips">`;
-                p.badges.forEach(b => {
-                    const isCurrent = p.currentBadge === b;
-                    html += `<div class="chip badge-chip clickable ${isCurrent ? 'current' : ''}" onclick="setBadge('${b}')" title="${isCurrent ? 'Текущий' : 'Сделать текущим'}">${b}</div>`;
+                savePhraseBtn.addEventListener('click', async () => {
+                    phraseStatus.textContent = '';
+                    const r = await fetch('/api/profile/phrase', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phrase: phraseEl.value }) });
+                    const data = await r.json();
+                    if (data.ok) { phraseStatus.textContent = 'Сохранено!'; phraseStatus.classList.add('ok'); setTimeout(() => { phraseStatus.textContent = ''; }, 2000); }
+                    else { phraseStatus.textContent = 'Ошибка'; phraseStatus.classList.add('err'); }
                 });
-                html += `</div></div>`;
-            } else {
-                html += `<div class="group"><div class="group-label">⭐ Значки</div><div class="empty-purchases">Не куплено</div></div>`;
-            }
-
-            // Реакции (не кликабельны — они и так все доступны)
-            if (p.extraReactions && p.extraReactions.length) {
-                html += `<div class="group"><div class="group-label">😂 Реакции (${p.extraReactions.length})</div><div class="chips">`;
-                p.extraReactions.forEach(r => {
-                    html += `<div class="chip">${r}</div>`;
+                document.getElementById('saveCredentials').addEventListener('click', async () => {
+                    const newLogin = document.getElementById('newLogin').value.trim();
+                    const newPassword = document.getElementById('newPassword').value;
+                    const st = document.getElementById('credStatus');
+                    st.textContent = ''; st.className = 'status-msg';
+                    if (!newLogin && !newPassword) { st.textContent = 'Введи новый логин или пароль'; st.classList.add('err'); return; }
+                    const r = await fetch('/api/profile/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newLogin, newPassword }) });
+                    const data = await r.json();
+                    if (data.ok) { st.textContent = 'Сохранено!'; st.classList.add('ok'); setTimeout(() => location.href = '/chat', 1500); }
+                    else { st.textContent = data.error || 'Ошибка'; st.classList.add('err'); }
                 });
-                html += `</div></div>`;
+                if (!me.dailyReady) {
+                    const btn = document.getElementById('dailyBtn');
+                    btn.disabled = true;
+                    btn.textContent = 'Уже получено';
+                }
             } else {
-                html += `<div class="group"><div class="group-label">😂 Реакции</div><div class="empty-purchases">Не куплено</div></div>`;
+                editSection.style.display = 'none';
+                phraseView.style.display = 'block';
+                if (p.phrase) { phraseText.textContent = p.phrase; phraseText.classList.remove('phrase-empty'); }
+                else { phraseText.textContent = 'Пока ничего не написал'; phraseText.classList.add('phrase-empty'); }
             }
-
-            purchasesList.innerHTML = html;
         }
 
-        async function setColor(color) {
-            const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'color', value: color }) });
+        async function claimDaily() {
+            const r = await fetch('/api/daily', { method: 'POST' });
             const data = await r.json();
-            if (data.ok) location.reload();
-            else alert(data.error || 'Ошибка');
+            if (data.ok) { alert('+' + data.reward + ' монет!'); location.reload(); }
+            else { alert(data.error || 'Ошибка'); }
         }
 
-        async function setBadge(badge) {
-            // Если это текущий значок — снимаем, иначе ставим
-            const current = (await fetch('/api/profile/' + myLogin).then(r => r.json())).currentBadge;
-            const value = (current === badge) ? null : badge;
-            const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'badge', value }) });
-            const data = await r.json();
-            if (data.ok) location.reload();
-            else alert(data.error || 'Ошибка');
-        }
-    }
         load();
     </script>
 </body>
