@@ -18,15 +18,7 @@
         .badge-icon { font-size: 24px; }
         .login-sub { color: #949ba4; font-size: 14px; margin-bottom: 8px; }
         .status-view { color: #b5bac1; font-size: 14px; font-style: italic; margin-bottom: 12px; }
-        .coins-big {
-            display: inline-block;
-            background: linear-gradient(135deg, #f0d030, #b8860b);
-            color: #1e1f22;
-            padding: 10px 22px; border-radius: 20px;
-            font-weight: 700; font-size: 18px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(240,208,48,0.3);
-        }
+        .coins-big { display: inline-block; background: linear-gradient(135deg, #f0d030, #b8860b); color: #1e1f22; padding: 10px 22px; border-radius: 20px; font-weight: 700; font-size: 18px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(240,208,48,0.3); }
         .phrase-block { text-align: left; margin-top: 24px; background: #1e1f22; padding: 16px; border-radius: 8px; }
         .phrase-label { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
         .phrase-text { color: #dbdee1; font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
@@ -47,7 +39,7 @@
         .ach-section { text-align: left; margin-top: 32px; }
         .ach-section h3 { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 12px; }
         .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
-        .ach-item { background: #1e1f22; border-radius: 8px; padding: 12px 8px; text-align: center; transition: transform 0.15s; cursor: help; }
+        .ach-item { background: #1e1f22; border-radius: 8px; padding: 12px 8px; text-align: center; transition: transform 0.15s; }
         .ach-item:hover { transform: scale(1.05); }
         .ach-item .icon { font-size: 28px; margin-bottom: 4px; }
         .ach-item .name { color: #dbdee1; font-size: 11px; font-weight: 600; line-height: 1.2; }
@@ -57,7 +49,6 @@
         .stat-item .n { color: #5865f2; font-size: 20px; font-weight: 700; }
         .stat-item .l { color: #949ba4; font-size: 11px; margin-top: 2px; }
         .daily-block { background: #1e1f22; border-radius: 8px; padding: 14px; margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .daily-block .info { text-align: left; }
         .daily-block h4 { margin: 0 0 4px; color: #f2f3f5; font-size: 14px; }
         .daily-block p { margin: 0; color: #949ba4; font-size: 12px; }
         .daily-btn { padding: 8px 16px; background: #23a55a; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; }
@@ -65,6 +56,18 @@
         .daily-btn:disabled { background: #4e5058; cursor: default; }
         .shop-link { display: block; margin-top: 20px; padding: 12px; background: linear-gradient(135deg, #f0d030, #b8860b); color: #1e1f22; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; }
         .shop-link:hover { filter: brightness(1.1); }
+
+        .purchases { text-align: left; margin-top: 32px; background: #1e1f22; border-radius: 8px; padding: 16px; }
+        .purchases h3 { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 12px; }
+        .purchases .group { margin-bottom: 16px; }
+        .purchases .group:last-child { margin-bottom: 0; }
+        .purchases .group-label { color: #949ba4; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+        .purchases .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .chip { padding: 4px 10px; background: #2b2d31; border-radius: 20px; font-size: 13px; border: 2px solid transparent; }
+        .chip.color-chip { padding: 0; width: 28px; height: 28px; border-radius: 50%; }
+        .chip.current { border-color: #f0d030; box-shadow: 0 0 8px rgba(240,208,48,0.5); }
+        .chip.badge-chip { font-size: 18px; padding: 4px 10px; }
+        .empty-purchases { color: #6d6f78; font-style: italic; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -102,12 +105,17 @@
             </div>
 
             <div class="daily-block">
-                <div class="info">
+                <div>
                     <h4>🎁 Ежедневная награда</h4>
                     <p>+10 монет раз в 24 часа</p>
                 </div>
                 <button class="daily-btn" id="dailyBtn" onclick="claimDaily()">Получить</button>
             </div>
+        </div>
+
+        <div class="purchases" id="purchasesBlock">
+            <h3>🛍️ Мои покупки</h3>
+            <div id="purchasesList"></div>
         </div>
 
         <a href="/shop" class="shop-link">🛒 Открыть магазин</a>
@@ -132,7 +140,6 @@
         };
         const avatarWrap = document.getElementById('avatarWrap');
         const avatarBox = document.getElementById('avatarBox');
-        const nameEl = document.getElementById('name');
         const nameText = document.getElementById('nameText');
         const badgeSpan = document.getElementById('badgeSpan');
         const loginLabel = document.getElementById('loginLabel');
@@ -146,6 +153,8 @@
         const savePhraseBtn = document.getElementById('savePhrase');
         const phraseStatus = document.getElementById('phraseStatus');
         const achGrid = document.getElementById('achGrid');
+        const purchasesList = document.getElementById('purchasesList');
+        const purchasesBlock = document.getElementById('purchasesBlock');
         const params = new URLSearchParams(location.search);
         const requestedLogin = params.get('user');
         let myLogin = null;
@@ -168,6 +177,54 @@
                 return `<div class="ach-item"><div class="icon">${a.icon}</div><div class="name">${a.name}</div></div>`;
             }).join('');
         }
+
+        function renderPurchases(p) {
+            if (!isOwn) {
+                purchasesBlock.style.display = 'none';
+                return;
+            }
+            purchasesBlock.style.display = 'block';
+
+            let html = '';
+
+            // Цвета
+            if (p.colors && p.colors.length) {
+                html += `<div class="group"><div class="group-label">🎨 Цвета (${p.colors.length})</div><div class="chips">`;
+                p.colors.forEach(c => {
+                    const isCurrent = p.currentColor === c;
+                    html += `<div class="chip color-chip ${isCurrent ? 'current' : ''}" style="background:${c}" title="${isCurrent ? 'Текущий' : ''}"></div>`;
+                });
+                html += `</div></div>`;
+            } else {
+                html += `<div class="group"><div class="group-label">🎨 Цвета</div><div class="empty-purchases">Не куплено</div></div>`;
+            }
+
+            // Значки
+            if (p.badges && p.badges.length) {
+                html += `<div class="group"><div class="group-label">⭐ Значки (${p.badges.length})</div><div class="chips">`;
+                p.badges.forEach(b => {
+                    const isCurrent = p.currentBadge === b;
+                    html += `<div class="chip badge-chip ${isCurrent ? 'current' : ''}">${b}</div>`;
+                });
+                html += `</div></div>`;
+            } else {
+                html += `<div class="group"><div class="group-label">⭐ Значки</div><div class="empty-purchases">Не куплено</div></div>`;
+            }
+
+            // Реакции
+            if (p.extraReactions && p.extraReactions.length) {
+                html += `<div class="group"><div class="group-label">😂 Реакции (${p.extraReactions.length})</div><div class="chips">`;
+                p.extraReactions.forEach(r => {
+                    html += `<div class="chip">${r}</div>`;
+                });
+                html += `</div></div>`;
+            } else {
+                html += `<div class="group"><div class="group-label">😂 Реакции</div><div class="empty-purchases">Не куплено</div></div>`;
+            }
+
+            purchasesList.innerHTML = html;
+        }
+
         async function load() {
             const me = await fetch('/api/me').then(r => r.json());
             myLogin = me.login;
@@ -188,8 +245,10 @@
             renderStats(p.stats);
             renderAchievements(p.achievements);
 
+            isOwn = !!p.isOwn;
+            renderPurchases(p);
+
             if (p.isOwn) {
-                isOwn = true;
                 editSection.style.display = 'block';
                 phraseView.style.display = 'none';
                 phraseEl.value = p.phrase || '';

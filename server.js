@@ -599,7 +599,12 @@ app.get('/api/profile/:login', (req, res) => {
     ensureCoinFields(user);
     const p = checkPunishments(user);
     const isAdmin = isAdminUser(user);
-    res.json({
+    res.json({        
+        colors: user.colors || [],
+        badges: user.badges || [],
+        extraReactions: user.extraReactions || [],
+        currentColor: user.currentColor || null,
+        currentBadge: isAdmin ? '👑' : (user.currentBadge || null),
         login: user.login, name: user.name, nickname: user.nickname,
         avatar: user.avatar || null, phrase: user.phrase || '',
         achievements: user.achievements || [], stats: user.stats || {},
@@ -613,6 +618,7 @@ app.get('/api/profile/:login', (req, res) => {
         isOwn: user.login === req.session.user.login
     });
 });
+
 
 app.post('/api/profile/avatar', uploadAvatar.single('avatar'), (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
