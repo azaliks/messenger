@@ -44,7 +44,7 @@ async function writeUsers(d) {
 }
 async function readMessages() {
     const { data, error } = await supabase.from('messages').select('data').order('created_at', { ascending: true });
-    if (error) { console.error('readMessages error:', error); return { messages: [] }; }
+    if (error) return { messages: [] };
     return { messages: data.map(r => r.data) };
 }
 async function writeMessages(d) {
@@ -73,6 +73,52 @@ async function writeQuotes(d) {
         const rows = d.quotes.map(q => ({ id: q.id, data: q, created_at: q.savedAt || new Date().toISOString() }));
         await supabase.from('quotes').upsert(rows, { onConflict: 'id' });
     }
+}
+// ====== ЛИЧНЫЕ СООБЩЕНИЯ ======
+async function readDmChats() {
+    const { data, error } = await supabase.from('dm_chats').select('*');
+    if (error) { console.error('readDmChats:', error); return []; }
+    return data.map(r => ({ id: r.id, type: r.type, name: r.name, members: r.members, created_at: r.created_at, created_by: r.created_by }));
+}
+async function writeDmChat(chat) {
+    await supabase.from('dm_chats').upsert({
+        id: chat.id,
+        type: chat.type,
+        name: chat.name || null,
+        members: chat.members,
+        created_by: chat.created_by || null
+    }, { onConflict: 'id' });
+}
+async function deleteDmChat(id) {
+    await supabase.from('dm_chats').delete().eq('id', id);
+}
+async function readDmMessages(chatId) {
+    let q = supabase.from('dm_messages').select('*').order('time', { ascending: true });
+    if (chatId) q = q.eq('chat_id', chatId);
+    const { data, error } = await q;
+    if (error) { console.error('readDmMessages:', error); return []; }
+    return data;
+}
+async function writeDmMessage(msg) {
+    await supabase.from('dm_messages').upsert({
+        id: msg.id,
+        chat_id: msg.chat_id,
+        from_login: msg.from_login,
+        from_name: msg.from_name,
+        text: msg.text || null,
+        image: msg.image || null,
+        voice: msg.voice || null,
+        duration: msg.duration || null,
+        time: msg.time,
+        read_by: msg.read_by || []
+    }, { onConflict: 'id' });
+}
+async function deleteDmMessage(id) {
+    await supabase.from('dm_messages').delete().eq('id', id);
+}
+function dmChatIdForPrivate(a, b) {
+    // один и тот же id для пары, независимо от порядка
+    return 'dm-' + [a, b].sort().join('-');
 }
 async function readChangelog() {
     const { data, error } = await supabase.from('changelog').select('data').order('created_at', { ascending: true });
@@ -202,6 +248,7 @@ io.engine.use(sessionMiddleware);
 
 const onlineUsers = new Map();
 const duelInvites = new Map();
+const tttInvites = new Map();
 
 io.on('connection', (socket) => {
     const user = socket.request.session && socket.request.session.user;
@@ -209,6 +256,7 @@ io.on('connection', (socket) => {
     onlineUsers.set(socket.id, user.login);
     io.emit('online', Array.from(onlineUsers.values()));
 
+    // ==== ДУЭЛЬ (копейщики) ====
     socket.on('duel:invite', async ({ to }) => {
         const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
         if (!targetSocketId) { socket.emit('duel:offline', { to }); return; }
@@ -222,12 +270,10 @@ io.on('connection', (socket) => {
             duelInvites.delete(reverseKey);
             await addSystemMessage(`⚔️ Битва началась: ${user.login} vs ${to}!`);
             io.emit('chat:refresh');
-            const hostLogin = user.login;
-            const clientLogin = to;
-            const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === hostLogin)?.[0];
-            const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === clientLogin)?.[0];
-            if (hostSocketId) io.to(hostSocketId).emit('duel:start', { youAreHost: true, opponentLogin: clientLogin });
-            if (clientSocketId) io.to(clientSocketId).emit('duel:start', { youAreHost: false, opponentLogin: hostLogin });
+            const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === user.login)?.[0];
+            const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+            if (hostSocketId) io.to(hostSocketId).emit('duel:start', { youAreHost: true, opponentLogin: to });
+            if (clientSocketId) io.to(clientSocketId).emit('duel:start', { youAreHost: false, opponentLogin: user.login });
         }
     });
     socket.on('duel:state', ({ to, state }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('duel:state', { state }); });
@@ -252,6 +298,44 @@ io.on('connection', (socket) => {
     });
     socket.on('duel:leave', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('duel:opponentLeft', { byName: user.name }); });
 
+    // ==== КРЕСТИКИ-НОЛИКИ ====
+    socket.on('ttt:invite', async ({ to }) => {
+        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+        if (!targetSocketId) { socket.emit('ttt:offline', { to }); return; }
+        const key = `${user.login}:${to}`;
+        tttInvites.set(key, Date.now());
+        await addSystemMessage(`⭕ ${user.name} вызывает ${to} в крестики-нолики! ${to}, зайди в /tictactoe и вызови в ответ.`);
+        io.emit('chat:refresh');
+        const reverseKey = `${to}:${user.login}`;
+        if (tttInvites.has(reverseKey)) {
+            tttInvites.delete(key);
+            tttInvites.delete(reverseKey);
+            await addSystemMessage(`❌ Началась игра в крестики-нолики: ${user.login} vs ${to}!`);
+            io.emit('chat:refresh');
+            const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === user.login)?.[0];
+            const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
+            if (hostSocketId) io.to(hostSocketId).emit('ttt:start', { youAreHost: true, opponentLogin: to, yourSymbol: 'X' });
+            if (clientSocketId) io.to(clientSocketId).emit('ttt:start', { youAreHost: false, opponentLogin: user.login, yourSymbol: 'O' });
+        }
+    });
+    socket.on('ttt:move', ({ to, board, nextTurn }) => {
+        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
+        if (t) io.to(t).emit('ttt:state', { board, nextTurn });
+    });
+    socket.on('ttt:end', async ({ to, winnerName, loserName, draw }) => {
+        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
+        if (t) io.to(t).emit('ttt:ended', { winnerName, loserName, draw });
+        if (draw) await addSystemMessage(`🤝 Ничья в крестиках-ноликах: ${winnerName} vs ${loserName}`);
+        else await addSystemMessage(`🏆 ${winnerName} победил ${loserName} в крестиках-ноликах!`);
+        io.emit('chat:refresh');
+    });
+    socket.on('ttt:leave', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('ttt:opponentLeft', { byName: user.name }); });
+    // ==== Уведомление о новом личном сообщении ====
+    socket.on('dm:notify', ({ to }) => {
+        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
+        if (t) io.to(t).emit('dm:new', { from: user.login });
+    });
+    // ==== ЗВОНКИ ====
     socket.on('call:offer', ({ to, offer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:incoming', { from: user.login, fromName: user.name, offer }); else socket.emit('call:offline', { to }); });
     socket.on('call:answer', ({ to, answer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:answered', { answer }); });
     socket.on('call:ice', ({ to, candidate }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ice', { candidate }); });
@@ -423,10 +507,6 @@ app.post('/api/status/set', async (req, res) => {
     res.json({ ok: true, status: user.status, coins: user.coins, price: admin ? 0 : STATUS_PRICE });
 });
 
-app.get('/api/shop/items', (req, res) => {
-    res.json({ color: { price: COLOR_PRICE }, badge: { price: BADGE_PRICE }, status: { price: STATUS_PRICE }, extraReactions: { price: REACTION_PRICE } });
-});
-
 app.post('/api/ping', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const data = await readUsers();
@@ -436,10 +516,222 @@ app.post('/api/ping', async (req, res) => {
     await writeUsers(data);
     res.json({ ok: true });
 });
+
+// ====== API ЛИЧНЫХ ЧАТОВ ======
+
+// Список моих чатов (общий + личные + группы)
+app.get('/api/dm/chats', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const all = await readDmChats();
+    const mine = all.filter(c => Array.isArray(c.members) && c.members.includes(me));
+    const usersData = await readUsers();
+    const dmMsgs = await readDmMessages();
+
+    // дополняем инфой: имя собеседника, аватарка, непрочитанные, последнее сообщение
+    const result = mine.map(c => {
+        let name = c.name;
+        let avatar = null;
+        if (c.type === 'private') {
+            const otherLogin = c.members.find(l => l !== me);
+            const other = usersData.users.find(u => u.login === otherLogin);
+            if (other) {
+                name = other.name;
+                avatar = other.avatar || null;
+            }
+        }
+        const chatMsgs = dmMsgs.filter(m => m.chat_id === c.id);
+        const last = chatMsgs[chatMsgs.length - 1];
+        const unread = chatMsgs.filter(m => m.from_login !== me && !(m.read_by || []).includes(me)).length;
+        return {
+            id: c.id,
+            type: c.type,
+            name: name || 'Чат',
+            avatar,
+            members: c.members,
+            lastMessage: last ? (last.text || (last.image ? '📷 Картинка' : (last.voice ? '▶ Голосовое' : ''))) : null,
+            lastTime: last ? last.time : c.created_at,
+            unread
+        };
+    }).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
+
+    res.json(result);
+});
+
+// Создать личный чат с другим пользователем
+app.post('/api/dm/open', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const { with: other } = req.body;
+    if (!other || other === me) return res.status(400).json({ error: 'bad target' });
+
+    const id = dmChatIdForPrivate(me, other);
+    const all = await readDmChats();
+    let chat = all.find(c => c.id === id);
+
+    if (!chat) {
+        chat = {
+            id,
+            type: 'private',
+            name: null,
+            members: [me, other],
+            created_by: me
+        };
+        await writeDmChat(chat);
+    }
+    res.json({ ok: true, chatId: id });
+});
+
+// Создать группу
+app.post('/api/dm/create-group', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const { name, members } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Нужно название' });
+    if (!Array.isArray(members) || members.length < 1) return res.status(400).json({ error: 'Нужны участники' });
+
+    const allMembers = [...new Set([me, ...members])];
+    const id = 'grp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const chat = {
+        id,
+        type: 'group',
+        name: name.trim().slice(0, 50),
+        members: allMembers,
+        created_by: me
+    };
+    await writeDmChat(chat);
+    await addSystemMessage(`👥 ${req.session.user.name} создал группу «${chat.name}» с: ${allMembers.filter(l => l !== me).join(', ')}`);
+    res.json({ ok: true, chatId: id });
+});
+
+// Сообщения конкретного чата
+app.get('/api/dm/messages/:chatId', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const chats = await readDmChats();
+    const chat = chats.find(c => c.id === req.params.chatId);
+    if (!chat) return res.status(404).json({ error: 'chat not found' });
+    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
+
+    const msgs = await readDmMessages(req.params.chatId);
+    const usersData = await readUsers();
+    const users = usersData.users;
+
+    // обновляем read_by — помечаем как прочитанные
+    let changed = false;
+    for (const m of msgs) {
+        if (m.from_login !== me && !(m.read_by || []).includes(me)) {
+            m.read_by = (m.read_by || []).concat(me);
+            await writeDmMessage(m);
+            changed = true;
+        }
+    }
+
+    const enriched = msgs.map(m => {
+        const u = users.find(x => x.login === m.from_login);
+        const isAdm = u && u.role === 'admin';
+        return {
+            ...m,
+            avatar: u && u.avatar ? u.avatar : null,
+            badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null),
+            color: u && u.currentColor ? u.currentColor : null,
+            status: u && u.status ? u.status : null
+        };
+    });
+    res.json(enriched);
+});
+
+// Отправить сообщение в чат
+app.post('/api/dm/send', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const { chatId, text, image, voice, duration } = req.body;
+
+    const chats = await readDmChats();
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return res.status(404).json({ error: 'chat not found' });
+    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
+
+    if (!text && !image && !voice) return res.status(400).json({ error: 'empty' });
+
+    const msg = {
+        id: 'dm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        chat_id: chatId,
+        from_login: me,
+        from_name: req.session.user.name,
+        text: text ? text.trim().slice(0, 2000) : null,
+        image: image || null,
+        voice: voice || null,
+        duration: duration || null,
+        time: new Date().toISOString(),
+        read_by: [me]
+    };
+    await writeDmMessage(msg);
+    res.json(msg);
+});
+
+// Удалить сообщение (своё или админ — любое)
+app.delete('/api/dm/message/:id', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const isAdmin = req.session.user.role === 'admin';
+    const all = await readDmMessages();
+    const msg = all.find(m => m.id === req.params.id);
+    if (!msg) return res.status(404).json({ error: 'not found' });
+    if (msg.from_login !== me && !isAdmin) return res.status(403).json({ error: 'no permission' });
+    await deleteDmMessage(req.params.id);
+    res.json({ ok: true });
+});
+
+// Список всех чатов и сообщений для админки
+app.get('/api/admin/dm-all', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const chats = await readDmChats();
+    const msgs = await readDmMessages();
+    const usersData = await readUsers();
+    const users = usersData.users;
+
+    const result = chats.map(c => {
+        let name = c.name;
+        let avatar = null;
+        if (c.type === 'private') {
+            const other = c.members.find(l => l !== c.created_by) || c.members[0];
+            const u = users.find(x => x.login === other);
+            name = u ? u.name : other;
+            avatar = u ? u.avatar : null;
+        }
+        const chatMsgs = msgs.filter(m => m.chat_id === c.id);
+        return {
+            id: c.id,
+            type: c.type,
+            name,
+            avatar,
+            members: c.members,
+            count: chatMsgs.length,
+            last: chatMsgs.length ? chatMsgs[chatMsgs.length - 1].time : c.created_at
+        };
+    }).sort((a, b) => new Date(b.last) - new Date(a.last));
+
+    res.json(result);
+});
+
+// Сообщения для админ-просмотра (по chatId)
+app.get('/api/admin/dm-chat/:chatId', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const msgs = await readDmMessages(req.params.chatId);
+    const usersData = await readUsers();
+    const users = usersData.users;
+    const enriched = msgs.map(m => {
+        const u = users.find(x => x.login === m.from_login);
+        return { ...m, avatar: u && u.avatar ? u.avatar : null };
+    });
+    res.json(enriched);
+});
 app.get('/api/online', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     res.json(Array.from(onlineUsers.values()));
 });
+
 app.get('/api/users', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const data = await readUsers();
@@ -602,10 +894,19 @@ app.get('/profile', (req, res) => { if (!req.session.user) return res.redirect('
 app.get('/rating', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'rating.html')); });
 app.get('/quotes', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'quotes.html')); });
 app.get('/game', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'game.html')); });
+app.get('/tictactoe', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'tictactoe.html')); });
 app.get('/shop', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'shop.html')); });
+app.get('/admin/dms', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
+    res.sendFile(path.join(__dirname, 'admin_dms.html'));
+});
 app.get('/changelog', (req, res) => { if (!req.session.user) return res.redirect('/login'); if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); res.sendFile(path.join(__dirname, 'changelog.html')); });
+app.get('/games', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'games.html')); });
+app.get('/dice', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'dice.html')); });
+app.get('/faster', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'faster.html')); });
+app.get('/guess', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'guess.html')); });
 
-// ==== ПРОФИЛЬ: отдаём купленное =====
 app.get('/api/profile/:login', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const data = await readUsers();
@@ -944,6 +1245,7 @@ app.get('/admin', async (req, res) => {
         <a href="/rating">→ Рейтинг</a>
         <a href="/quotes">→ Цитатник</a>
         <a href="/changelog">→ Журнал изменений</a>
+        <a href="/admin/dms" style="color:#f23f43">→ 👁️ Слежка за ЛС</a>
         <a href="/shop">→ Магазин</a>
     </div>
     <script>

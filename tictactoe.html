@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Крестики-нолики</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #1e1f22; color: #dbdee1; margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        h1 { color: #f2f3f5; font-size: 22px; margin: 0 0 16px; }
+        .status { color: #949ba4; font-size: 15px; margin-bottom: 20px; text-align: center; min-height: 24px; }
+        .status b { color: #f0d030; }
+
+        .picker { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 340px; }
+        .picker h2 { color: #f2f3f5; font-size: 18px; margin: 0 0 8px; text-align: center; }
+        .player-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 16px; background: #2b2d31;
+            border-radius: 10px; cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .player-item:hover { background: #3a3c42; transform: scale(1.02); }
+        .player-item .avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: #5865f2; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 18px;
+            object-fit: cover; flex-shrink: 0;
+        }
+        .player-item .name { color: #f2f3f5; font-size: 16px; font-weight: 600; }
+        .empty-msg { color: #6d6f78; font-style: italic; text-align: center; padding: 20px; }
+
+        .board {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 8px; margin: 0 auto 20px; width: 300px; height: 300px;
+        }
+        .cell {
+            background: #313338;
+            border: 2px solid #3f4147;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 64px; font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            user-select: none;
+        }
+        .cell:hover:not(.taken) { background: #3a3c42; border-color: #5865f2; }
+        .cell.X { color: #5865f2; }
+        .cell.O { color: #23a55a; }
+        .cell.taken { cursor: default; }
+        .cell.win { background: #3a2a1a; border-color: #f0d030; }
+
+        .controls { display: flex; gap: 10px; margin-top: 20px; }
+        .btn { padding: 10px 20px; background: #5865f2; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #4752c4; }
+        .btn.gray { background: #4e5058; }
+        .btn.gray:hover { background: #5d6069; }
+
+        .scores { display: flex; gap: 20px; margin-top: 20px; color: #b5bac1; font-size: 14px; }
+        .scores span { background: #2b2d31; padding: 8px 14px; border-radius: 8px; }
+        .scores b { color: #f2f3f5; }
+    </style>
+</head>
+<body>
+    <h1>⭕ Крестики-нолики ❌</h1>
+
+    <div id="picker" class="picker" style="display:none;">
+        <h2>С кем играть?</h2>
+        <div id="playersList"></div>
+    </div>
+
+    <div id="game" style="display:none;">
+        <div class="status" id="status">...</div>
+        <div class="board" id="board"></div>
+        <div class="scores">
+            <span>❌ <b id="scoreX">0</b></span>
+            <span>🤝 <b id="scoreDraw">0</b></span>
+            <span>⭕ <b id="scoreO">0</b></span>
+        </div>
+        <div class="controls">
+            <button class="btn" onclick="newRound()">▶ Новый раунд</button>
+            <a href="/chat" class="btn gray">← В чат</a>
+        </div>
+    </div>
+
+    <div id="waiting" style="text-align:center; display:none;">
+        <p style="color:#949ba4;">⏳ Ждём, пока соперник тоже вызовет тебя...</p>
+        <a href="/chat" class="btn gray" style="margin-top:20px;">← В чат</a>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io({ reconnection: true });
+
+        let myLogin = null, myName = null, mySymbol = 'X';
+        let opponentLogin = null, opponentName = null;
+        let isHost = false;
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let myTurn = false;
+        let gameActive = false;
+        let scores = { X: 0, O: 0, draw: 0 };
+
+        const pickerEl = document.getElementById('picker');
+        const playersListEl = document.getElementById('playersList');
+        const gameEl = document.getElementById('game');
+        const waitingEl = document.getElementById('waiting');
+        const statusEl = document.getElementById('status');
+        const boardEl = document.getElementById('board');
+        const scoreXEl = document.getElementById('scoreX');
+        const scoreOEl = document.getElementById('scoreO');
+        const scoreDrawEl = document.getElementById('scoreDraw');
+
+        async function init() {
+            const me = await fetch('/api/me').then(r => r.json());
+            myLogin = me.login;
+            myName = me.name;
+            const users = await fetch('/api/users').then(r => r.json());
+            const others = users.filter(u => u.login !== myLogin);
+
+            if (opponentLogin) {
+                // Зашли с параметром — сразу в игру
+                startGameView();
+            } else {
+                // Показываем список
+                renderPicker(others);
+            }
+        }
+
+        function renderPicker(others) {
+            pickerEl.style.display = 'flex';
+            gameEl.style.display = 'none';
+            waitingEl.style.display = 'none';
+
+            if (!others.length) {
+                playersListEl.innerHTML = '<div class="empty-msg">Нет других игроков</div>';
+                return;
+            }
+
+            playersListEl.innerHTML = others.map(u => {
+                const initial = (u.name || '?').charAt(0).toUpperCase();
+                const avatarHtml = u.avatar ? `<img class="avatar" src="${u.avatar}" alt="">` : `<div class="avatar">${initial}</div>`;
+                return `<div class="player-item" onclick="invitePlayer('${u.login}', '${u.name}')">${avatarHtml}<span class="name">${u.name}</span>⚔️</div>`;
+            }).join('');
+        }
+
+        function invitePlayer(login, name) {
+            opponentLogin = login;
+            opponentName = name;
+            socket.emit('ttt:invite', { to: login });
+            pickerEl.style.display = 'none';
+            waitingEl.style.display = 'block';
+        }
+
+        // ==== События от сервера ====
+        socket.on('ttt:offline', () => {
+            alert('Этот пацан не в сети');
+            pickerEl.style.display = 'flex';
+            waitingEl.style.display = 'none';
+        });
+
+        socket.on('ttt:start', ({ youAreHost, opponentLogin: oppLogin, yourSymbol }) => {
+            isHost = youAreHost;
+            opponentLogin = oppLogin;
+            mySymbol = yourSymbol;
+            startGameView();
+            newRound();
+        });
+
+        socket.on('ttt:state', ({ board: newBoard, nextTurn }) => {
+            board = newBoard;
+            myTurn = (nextTurn === myLogin);
+            renderBoard();
+            updateStatus();
+        });
+
+        socket.on('ttt:ended', ({ winnerName, loserName, draw }) => {
+            gameActive = false;
+            if (draw) {
+                scores.draw++;
+                statusEl.innerHTML = `🤝 <b>Ничья!</b>`;
+            } else if (winnerName === myName) {
+                scores[mySymbol]++;
+                statusEl.innerHTML = `🏆 <b>${winnerName}</b> победил!`;
+            } else {
+                const oppSymbol = mySymbol === 'X' ? 'O' : 'X';
+                scores[oppSymbol]++;
+                statusEl.innerHTML = `😞 <b>${winnerName}</b> победил. Ты проиграл.`;
+            }
+            updateScores();
+        });
+
+        socket.on('ttt:opponentLeft', ({ byName }) => {
+            alert(`${byName} вышел`);
+            location.href = '/chat';
+        });
+
+        function startGameView() {
+            pickerEl.style.display = 'none';
+            waitingEl.style.display = 'none';
+            gameEl.style.display = 'block';
+            renderBoard();
+        }
+
+        function newRound() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            if (isHost) {
+                myTurn = true;
+                socket.emit('ttt:move', { to: opponentLogin, board, nextTurn: myLogin });
+            } else {
+                myTurn = false;
+            }
+            renderBoard();
+            updateStatus();
+        }
+
+        function renderBoard() {
+            boardEl.innerHTML = board.map((val, i) =>
+                `<div class="cell ${val || ''} ${val ? 'taken' : ''}" onclick="clickCell(${i})">${val}</div>`
+            ).join('');
+        }
+
+        function updateStatus() {
+            if (!gameActive) return;
+            if (myTurn) {
+                statusEl.innerHTML = `🎯 Твой ход (ты — <b>${mySymbol}</b>)`;
+            } else {
+                statusEl.innerHTML = `⏳ Ход ${opponentName || 'соперника'} (он — <b>${mySymbol === 'X' ? 'O' : 'X'}</b>)`;
+            }
+        }
+
+        function updateScores() {
+            scoreXEl.textContent = scores.X;
+            scoreOEl.textContent = scores.O;
+            scoreDrawEl.textContent = scores.draw;
+        }
+
+        function clickCell(i) {
+            if (!gameActive || !myTurn) return;
+            if (board[i]) return;
+
+            board[i] = mySymbol;
+            renderBoard();
+
+            const winner = checkWinner(board);
+            if (winner) {
+                gameActive = false;
+                socket.emit('ttt:end', { to: opponentLogin, winnerName: myName, loserName: opponentName, draw: false });
+                socket.emit('ttt:move', { to: opponentLogin, board, nextTurn: opponentLogin });
+            } else if (board.every(c => c)) {
+                gameActive = false;
+                socket.emit('ttt:end', { to: opponentLogin, winnerName: myName, loserName: opponentName, draw: true });
+            } else {
+                myTurn = false;
+                socket.emit('ttt:move', { to: opponentLogin, board, nextTurn: opponentLogin });
+                updateStatus();
+            }
+        }
+
+        function checkWinner(b) {
+            const lines = [
+                [0,1,2],[3,4,5],[6,7,8],
+                [0,3,6],[1,4,7],[2,5,8],
+                [0,4,8],[2,4,6]
+            ];
+            for (const [a, c, d] of lines) {
+                if (b[a] && b[a] === b[c] && b[a] === b[d]) return b[a];
+            }
+            return null;
+        }
+
+        init();
+    </script>
+</body>
+</html>

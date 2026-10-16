@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#5865f2">
+<link rel="manifest" href="/manifest.json">
+<title>Кубик</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#313338;color:#dbdee1;height:100vh;display:flex;overflow:hidden}
+.servers{width:72px;background:#1e1f22;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px;flex-shrink:0}
+.server-icon{width:48px;height:48px;border-radius:16px;background:#313338;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .15s;color:#dbdee1;text-decoration:none}
+.server-icon:hover{border-radius:14px;background:#5865f2;color:white}
+.server-icon.active{background:#5865f2;color:white;border-radius:14px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.header{padding:20px 30px;border-bottom:1px solid #1e1f22;background:#2b2d31;display:flex;align-items:center;gap:12px}
+.header h1{font-size:22px;font-weight:700;color:#f2f3f5}
+.back{color:#00a8fc;text-decoration:none;font-size:14px;margin-left:auto}
+.content{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;padding:30px}
+.dice{width:200px;height:200px;background:white;border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:140px;font-weight:700;color:#1e1f22;box-shadow:0 12px 40px rgba(0,0,0,0.5);transition:transform .1s}
+.dice.rolling{animation:shake .1s infinite}
+@keyframes shake{0%{transform:rotate(0deg)}25%{transform:rotate(8deg)}50%{transform:rotate(0deg)}75%{transform:rotate(-8deg)}100%{transform:rotate(0deg)}}
+.roll-btn{padding:16px 40px;background:#5865f2;color:white;border:none;border-radius:12px;cursor:pointer;font-family:inherit;font-size:18px;font-weight:700}
+.roll-btn:hover{background:#4752c4}
+.roll-btn:disabled{background:#4e5058;cursor:default}
+.history{color:#949ba4;font-size:14px;text-align:center;min-height:24px}
+.history b{color:#f2f3f5}
+</style>
+</head>
+<body>
+
+<nav class="servers">
+    <a href="/chat" class="server-icon" title="Чат">💬</a>
+    <a href="/games" class="server-icon active" title="Игры">🎮</a>
+    <a href="/shop" class="server-icon" title="Магазин">🛒</a>
+    <a href="/rating" class="server-icon" title="Рейтинг">🏆</a>
+    <a href="/quotes" class="server-icon" title="Цитаты">📝</a>
+    <a href="/profile" class="server-icon" title="Профиль">👤</a>
+</nav>
+
+<main class="main">
+    <div class="header">
+        <h1>🎲 Кубик</h1>
+        <a href="/games" class="back">← К играм</a>
+    </div>
+    <div class="content">
+        <div class="dice" id="dice">⚀</div>
+        <button class="roll-btn" id="rollBtn" onclick="roll()">🎲 Бросить кубик</button>
+        <div class="history" id="history"></div>
+    </div>
+</main>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+const SYMBOLS = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+const rollBtn = document.getElementById('rollBtn');
+const diceEl = document.getElementById('dice');
+const historyEl = document.getElementById('history');
+let history = [];
+
+function roll(){
+    rollBtn.disabled = true;
+    diceEl.classList.add('rolling');
+    let count = 0;
+    const interval = setInterval(()=>{
+        diceEl.textContent = SYMBOLS[Math.floor(Math.random()*6)];
+        count++;
+        if(count > 15){
+            clearInterval(interval);
+            diceEl.classList.remove('rolling');
+            const result = Math.floor(Math.random()*6) + 1;
+            diceEl.textContent = SYMBOLS[result-1];
+            history.unshift(result);
+            history = history.slice(0, 10);
+            historyEl.innerHTML = 'Последние: <b>' + history.join(' · ') + '</b>';
+            rollBtn.disabled = false;
+        }
+    }, 60);
+}
+</script>
+</body>
+</html>

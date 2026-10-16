@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#5865f2">
+<link rel="manifest" href="/manifest.json">
+<title>Кто быстрее</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#313338;color:#dbdee1;height:100vh;display:flex;overflow:hidden}
+.servers{width:72px;background:#1e1f22;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px;flex-shrink:0}
+.server-icon{width:48px;height:48px;border-radius:16px;background:#313338;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .15s;color:#dbdee1;text-decoration:none}
+.server-icon:hover{border-radius:14px;background:#5865f2;color:white}
+.server-icon.active{background:#5865f2;color:white;border-radius:14px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.header{padding:20px 30px;border-bottom:1px solid #1e1f22;background:#2b2d31;display:flex;align-items:center;gap:12px}
+.header h1{font-size:22px;font-weight:700;color:#f2f3f5}
+.back{color:#00a8fc;text-decoration:none;font-size:14px;margin-left:auto}
+.content{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:30px;text-align:center}
+.title{font-size:28px;font-weight:700;color:#f2f3f5}
+.subtitle{font-size:15px;color:#949ba4}
+.time-shown{font-size:96px;font-weight:700;color:#5865f2;line-height:1;min-height:120px;display:flex;align-items:center}
+.play-btn{padding:24px 60px;background:#5865f2;color:white;border:none;border-radius:16px;cursor:pointer;font-family:inherit;font-size:24px;font-weight:700;transition:transform .1s}
+.play-btn:hover{background:#4752c4}
+.play-btn:active{transform:scale(0.95)}
+.play-btn.waiting{background:#4e5058;cursor:default}
+.play-btn.go{background:#23a55a;animation:pulseGo 0.5s infinite}
+@keyframes pulseGo{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.result{font-size:22px;font-weight:700;min-height:32px}
+.result.good{color:#23a55a}
+.result.bad{color:#f23f43}
+.hint{color:#949ba4;font-size:13px;max-width:400px}
+</style>
+</head>
+<body>
+
+<nav class="servers">
+    <a href="/chat" class="server-icon" title="Чат">💬</a>
+    <a href="/games" class="server-icon active" title="Игры">🎮</a>
+    <a href="/shop" class="server-icon" title="Магазин">🛒</a>
+    <a href="/rating" class="server-icon" title="Рейтинг">🏆</a>
+    <a href="/quotes" class="server-icon" title="Цитаты">📝</a>
+    <a href="/profile" class="server-icon" title="Профиль">👤</a>
+</nav>
+
+<main class="main">
+    <div class="header">
+        <h1>⚡ Кто быстрее</h1>
+        <a href="/games" class="back">← К играм</a>
+    </div>
+    <div class="content">
+        <div class="title">Проверь свою реакцию</div>
+        <div class="subtitle">Нажми, когда кнопка станет зелёной</div>
+        <div class="time-shown" id="timeShown">—</div>
+        <button class="play-btn" id="playBtn" onclick="clicked()">Начать</button>
+        <div class="result" id="result"></div>
+        <div class="hint">Рекорд сохраняется в браузере. Меньше миллисекунд — лучше реакция.</div>
+    </div>
+</main>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+const playBtn = document.getElementById('playBtn');
+const timeShown = document.getElementById('timeShown');
+const resultEl = document.getElementById('result');
+let state = 'idle'; // idle, waiting, ready
+let startTime = 0;
+let timeoutId = null;
+
+function updateBest(){
+    const best = localStorage.getItem('bestReaction');
+    if(best){
+        resultEl.textContent = 'Твой рекорд: ' + best + ' мс';
+        resultEl.className = 'result good';
+    }
+}
+updateBest();
+
+function clicked(){
+    if(state === 'idle'){
+        state = 'waiting';
+        playBtn.textContent = 'Жди...';
+        playBtn.className = 'play-btn waiting';
+        playBtn.disabled = true;
+        resultEl.textContent = '';
+        timeShown.textContent = '—';
+        const delay = 1000 + Math.random() * 3000;
+        timeoutId = setTimeout(()=>{
+            state = 'ready';
+            playBtn.textContent = 'ЖМИ!';
+            playBtn.className = 'play-btn go';
+            playBtn.disabled = false;
+            startTime = Date.now();
+        }, delay);
+    } else if(state === 'waiting'){
+        clearTimeout(timeoutId);
+        state = 'idle';
+        playBtn.textContent = 'Начать';
+        playBtn.className = 'play-btn';
+        playBtn.disabled = false;
+        resultEl.textContent = 'Слишком рано!';
+        resultEl.className = 'result bad';
+        timeShown.textContent = '—';
+    } else if(state === 'ready'){
+        const ms = Date.now() - startTime;
+        timeShown.textContent = ms + ' мс';
+        state = 'idle';
+        playBtn.textContent = 'Заново';
+        playBtn.className = 'play-btn';
+        playBtn.disabled = false;
+
+        const best = parseInt(localStorage.getItem('bestReaction') || '999999');
+        if(ms < best){
+            localStorage.setItem('bestReaction', ms);
+            resultEl.textContent = '🏆 Новый рекорд: ' + ms + ' мс';
+            resultEl.className = 'result good';
+        } else {
+            resultEl.textContent = 'Рекорд: ' + best + ' мс';
+            resultEl.className = 'result';
+        }
+    }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Переписки — Админ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#313338;color:#dbdee1;height:100vh;display:flex;overflow:hidden}
+
+/* Слева — список чатов */
+.chats-panel{width:340px;background:#2b2d31;display:flex;flex-direction:column;border-right:1px solid #1e1f22;flex-shrink:0}
+.chats-header{padding:16px 20px;border-bottom:1px solid #1e1f22;background:#1e1f22}
+.chats-header h1{font-size:18px;font-weight:700;color:#f2f3f5;margin-bottom:4px}
+.chats-header p{color:#949ba4;font-size:12px}
+.chats-list{flex:1;overflow-y:auto;padding:8px}
+.chat-item{padding:12px 16px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background .1s}
+.chat-item:hover{background:#35373c}
+.chat-item.active{background:#404249}
+.chat-item .title{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.chat-item .icon{width:32px;height:32px;border-radius:50%;background:#5865f2;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0;overflow:hidden}
+.chat-item .icon img{width:100%;height:100%;object-fit:cover}
+.chat-item .icon.grp{background:#23a55a}
+.chat-item .name{color:#f2f3f5;font-size:14px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-item .type{font-size:10px;color:#949ba4;text-transform:uppercase;font-weight:700;padding:2px 6px;background:#1e1f22;border-radius:6px}
+.chat-item .meta{color:#949ba4;font-size:12px;display:flex;gap:8px;flex-wrap:wrap}
+.chat-item .meta b{color:#f2f3f5;font-weight:500}
+
+/* Справа — сообщения */
+.messages-panel{flex:1;display:flex;flex-direction:column;background:#313338}
+.messages-header{padding:16px 24px;border-bottom:1px solid #1e1f22;background:#2b2d31;display:flex;align-items:center;gap:12px}
+.messages-header .title{color:#f2f3f5;font-size:16px;font-weight:600}
+.messages-header .members{color:#949ba4;font-size:13px;margin-left:auto}
+.messages{flex:1;overflow-y:auto;padding:16px 0}
+.msg{display:flex;gap:14px;padding:6px 24px;margin-top:8px;border-radius:6px}
+.msg:hover{background:#2e3035}
+.msg-avatar{width:36px;height:36px;border-radius:50%;background:#5865f2;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;color:white;flex-shrink:0;overflow:hidden}
+.msg-avatar img{width:100%;height:100%;object-fit:cover}
+.msg-body{flex:1;min-width:0}
+.msg-head{display:flex;align-items:baseline;gap:10px;margin-bottom:3px;flex-wrap:wrap}
+.msg-author{color:#f2f3f5;font-weight:600;font-size:14px}
+.msg-time{color:#949ba4;font-size:11px}
+.msg-text{color:#dbdee1;font-size:14px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap}
+.msg-image{max-width:280px;max-height:280px;border-radius:8px;margin-top:6px;cursor:pointer;display:block}
+.msg-voice{display:flex;align-items:center;gap:8px;background:#1e1f22;border-radius:16px;padding:6px 12px 6px 6px;margin-top:6px;max-width:260px}
+.msg-voice audio{height:32px}
+.msg-voice .vtime{color:#b5bac1;font-size:12px;font-family:monospace}
+
+.empty{display:flex;align-items:center;justify-content:center;height:100%;color:#6d6f78;font-size:14px;text-align:center;padding:20px}
+.back-link{position:fixed;top:16px;right:16px;color:#00a8fc;text-decoration:none;font-size:13px;background:#2b2d31;padding:8px 16px;border-radius:8px}
+.back-link:hover{background:#3a3c42}
+</style>
+</head>
+<body>
+
+<div class="chats-panel">
+    <div class="chats-header">
+        <h1>👁️ Слежка за переписками</h1>
+        <p>Все личные чаты и группы</p>
+    </div>
+    <div class="chats-list" id="chatsList">Загрузка...</div>
+</div>
+
+<div class="messages-panel">
+    <div class="messages-header">
+        <span class="title" id="chatTitle">Выбери чат слева</span>
+        <span class="members" id="chatMembers"></span>
+    </div>
+    <div class="messages" id="messages">
+        <div class="empty">Кликни на чат слева, чтобы увидеть переписку</div>
+    </div>
+</div>
+
+<a href="/admin" class="back-link">← В админку</a>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+let currentChatId = null;
+let allChats = [];
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+function fmtTime(iso){return new Date(iso).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function fmtDur(sec){const m=Math.floor(sec/60),s=sec%60;return m+':'+(s<10?'0':'')+s;}
+
+async function loadChats(){
+    try{
+        const r = await fetch('/api/admin/dm-all');
+        if(!r.ok){document.getElementById('chatsList').innerHTML = '<div class="empty">Доступ запрещён</div>';return;}
+        allChats = await r.json();
+    }catch(e){ allChats = []; }
+
+    const list = document.getElementById('chatsList');
+    if(!allChats.length){
+        list.innerHTML = '<div class="empty">Пока ни одного личного чата нет</div>';
+        return;
+    }
+
+    list.innerHTML = allChats.map(c=>{
+        const initial = (c.name||'?').charAt(0).toUpperCase();
+        let icon;
+        if(c.type === 'group') icon = `<div class="icon grp">👥</div>`;
+        else if(c.avatar) icon = `<div class="icon"><img src="${c.avatar}" alt=""></div>`;
+        else icon = `<div class="icon">${initial}</div>`;
+
+        return `<div class="chat-item ${currentChatId===c.id?'active':''}" onclick="openChat('${c.id}')">
+            <div class="title">
+                ${icon}
+                <span class="name">${esc(c.name)}</span>
+                <span class="type">${c.type === 'group' ? 'Группа' : 'Личный'}</span>
+            </div>
+            <div class="meta">
+                <span>Участники: <b>${c.members.join(', ')}</b></span>
+                <span>Сообщений: <b>${c.count}</b></span>
+                <span>${fmtTime(c.last)}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function openChat(id){
+    currentChatId = id;
+    await loadChats();
+
+    const chat = allChats.find(c=>c.id===id);
+    document.getElementById('chatTitle').textContent = chat ? chat.name : '...';
+    document.getElementById('chatMembers').textContent = chat ? 'Участники: ' + chat.members.join(', ') : '';
+
+    const r = await fetch('/api/admin/dm-chat/'+id);
+    const msgs = await r.json();
+    const cont = document.getElementById('messages');
+
+    if(!msgs.length){
+        cont.innerHTML = '<div class="empty">Чат пуст</div>';
+        return;
+    }
+
+    cont.innerHTML = msgs.map(m=>{
+        const initial = (m.from_name||'?').charAt(0).toUpperCase();
+        const av = m.avatar ? `<div class="msg-avatar"><img src="${m.avatar}" alt=""></div>` : `<div class="msg-avatar">${esc(initial)}</div>`;
+
+        let content = '';
+        if(m.image) content = `<img class="msg-image" src="${m.image}" onclick="window.open('${m.image}','_blank')">`;
+        else if(m.voice) content = `<div class="msg-voice"><audio controls src="${m.voice}"></audio><span class="vtime">${fmtDur(m.duration||0)}</span></div>`;
+        else content = `<div class="msg-text">${esc(m.text)}</div>`;
+
+        return `<div class="msg">
+            ${av}
+            <div class="msg-body">
+                <div class="msg-head">
+                    <span class="msg-author">${esc(m.from_name)}</span>
+                    <span class="msg-time">@${esc(m.from_login)} · ${fmtTime(m.time)}</span>
+                </div>
+                ${content}
+            </div>
+        </div>`;
+    }).join('');
+
+    cont.scrollTop = cont.scrollHeight;
+}
+
+loadChats();
+setInterval(loadChats, 5000);
+</script>
+</body>
+</html>

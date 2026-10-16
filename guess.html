@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#5865f2">
+<link rel="manifest" href="/manifest.json">
+<title>Угадай число</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#313338;color:#dbdee1;height:100vh;display:flex;overflow:hidden}
+.servers{width:72px;background:#1e1f22;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px;flex-shrink:0}
+.server-icon{width:48px;height:48px;border-radius:16px;background:#313338;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .15s;color:#dbdee1;text-decoration:none}
+.server-icon:hover{border-radius:14px;background:#5865f2;color:white}
+.server-icon.active{background:#5865f2;color:white;border-radius:14px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.header{padding:20px 30px;border-bottom:1px solid #1e1f22;background:#2b2d31;display:flex;align-items:center;gap:12px}
+.header h1{font-size:22px;font-weight:700;color:#f2f3f5}
+.back{color:#00a8fc;text-decoration:none;font-size:14px;margin-left:auto}
+.content{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:30px;text-align:center}
+.title{font-size:26px;font-weight:700;color:#f2f3f5}
+.subtitle{font-size:15px;color:#949ba4;max-width:440px}
+.input-row{display:flex;gap:10px;align-items:center}
+.guess-input{width:180px;padding:16px;background:#1e1f22;border:2px solid #3f4147;border-radius:12px;color:#dbdee1;font-family:inherit;font-size:24px;font-weight:700;text-align:center;outline:none}
+.guess-input:focus{border-color:#5865f2}
+.check-btn{padding:16px 32px;background:#5865f2;color:white;border:none;border-radius:12px;cursor:pointer;font-family:inherit;font-size:18px;font-weight:700}
+.check-btn:hover{background:#4752c4}
+.check-btn:disabled{background:#4e5058;cursor:default}
+.result{font-size:22px;font-weight:700;min-height:34px}
+.result.hot{color:#f23f43}
+.result.warm{color:#f0a030}
+.result.cold{color:#00a8fc}
+.result.win{color:#23a55a}
+.history{color:#949ba4;font-size:14px;max-width:400px}
+.history b{color:#f2f3f5}
+.new-btn{padding:12px 24px;background:#23a55a;color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700}
+.new-btn:hover{background:#1e8a4a}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<nav class="servers">
+    <a href="/chat" class="server-icon" title="Чат">💬</a>
+    <a href="/games" class="server-icon active" title="Игры">🎮</a>
+    <a href="/shop" class="server-icon" title="Магазин">🛒</a>
+    <a href="/rating" class="server-icon" title="Рейтинг">🏆</a>
+    <a href="/quotes" class="server-icon" title="Цитаты">📝</a>
+    <a href="/profile" class="server-icon" title="Профиль">👤</a>
+</nav>
+
+<main class="main">
+    <div class="header">
+        <h1>🎯 Угадай число</h1>
+        <a href="/games" class="back">← К играм</a>
+    </div>
+    <div class="content">
+        <div class="title">Загадано число от 1 до 100</div>
+        <div class="subtitle">Введи число и нажми «Проверить». Я подскажу — больше или меньше. Чем меньше попыток, тем лучше.</div>
+
+        <div class="input-row">
+            <input class="guess-input" type="number" id="guessInput" min="1" max="100" placeholder="?">
+            <button class="check-btn" id="checkBtn" onclick="check()">Проверить</button>
+        </div>
+
+        <div class="result" id="result"></div>
+        <div class="history" id="history"></div>
+
+        <button class="new-btn hidden" id="newBtn" onclick="newGame()">🔄 Новая игра</button>
+    </div>
+</main>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+const input = document.getElementById('guessInput');
+const checkBtn = document.getElementById('checkBtn');
+const resultEl = document.getElementById('result');
+const historyEl = document.getElementById('history');
+const newBtn = document.getElementById('newBtn');
+
+let secret, attempts, guesses, gameOver;
+
+function newGame(){
+    secret = Math.floor(Math.random() * 100) + 1;
+    attempts = 0;
+    guesses = [];
+    gameOver = false;
+    input.value = '';
+    input.disabled = false;
+    checkBtn.disabled = false;
+    resultEl.textContent = '';
+    resultEl.className = 'result';
+    historyEl.textContent = '';
+    newBtn.classList.add('hidden');
+    input.focus();
+}
+
+function check(){
+    if(gameOver) return;
+    const val = parseInt(input.value);
+    if(!val || val < 1 || val > 100){
+        resultEl.textContent = 'Введи число от 1 до 100';
+        resultEl.className = 'result';
+        return;
+    }
+    attempts++;
+    guesses.push(val);
+    historyEl.innerHTML = 'Попытки: <b>' + guesses.join(', ') + '</b> · Всего: <b>' + attempts + '</b>';
+
+    if(val === secret){
+        resultEl.textContent = '🎉 Угадал! За ' + attempts + ' ' + plural(attempts, 'попытку', 'попытки', 'попыток');
+        resultEl.className = 'result win';
+        gameOver = true;
+        input.disabled = true;
+        checkBtn.disabled = true;
+        newBtn.classList.remove('hidden');
+    } else if(val < secret){
+        const diff = secret - val;
+        if(diff <= 5){ resultEl.textContent = '🔥 Горячо! Больше'; resultEl.className = 'result hot'; }
+        else if(diff <= 15){ resultEl.textContent = '🌡️ Тепло. Больше'; resultEl.className = 'result warm'; }
+        else { resultEl.textContent = '❄️ Холодно. Больше'; resultEl.className = 'result cold'; }
+    } else {
+        const diff = val - secret;
+        if(diff <= 5){ resultEl.textContent = '🔥 Горячо! Меньше'; resultEl.className = 'result hot'; }
+        else if(diff <= 15){ resultEl.textContent = '🌡️ Тепло. Меньше'; resultEl.className = 'result warm'; }
+        else { resultEl.textContent = '❄️ Холодно. Меньше'; resultEl.className = 'result cold'; }
+    }
+    input.value = '';
+    input.focus();
+}
+
+function plural(n, one, few, many){
+    if(n % 10 === 1 && n % 100 !== 11) return one;
+    if(n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return few;
+    return many;
+}
+
+input.addEventListener('keydown', e => { if(e.key === 'Enter') check(); });
+newGame();
+</script>
+</body>
+</html>

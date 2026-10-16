@@ -1,325 +1,244 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#5865f2">
-    <link rel="manifest" href="/manifest.json">
-    <title>Профиль</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #313338; color: #dbdee1; margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
-        .card { background: #2b2d31; border-radius: 12px; padding: 32px; width: 100%; max-width: 540px; box-shadow: 0 8px 16px rgba(0,0,0,0.24); text-align: center; }
-        .avatar-wrap { position: relative; width: 120px; height: 120px; margin: 0 auto 20px; }
-        .avatar-big { width: 120px; height: 120px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 600; object-fit: cover; }
-        img.avatar-big { display: block; }
-        .online-dot-big { position: absolute; bottom: 8px; right: 8px; width: 22px; height: 22px; background: #23a55a; border: 3px solid #2b2d31; border-radius: 50%; }
-        .upload-btn { position: absolute; bottom: 0; right: 0; width: 36px; height: 36px; border-radius: 50%; background: #5865f2; color: white; border: 3px solid #2b2d31; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; font-weight: 600; }
-        .upload-btn:hover { background: #4752c4; }
-        .upload-btn input { display: none; }
-        h1 { color: #f2f3f5; font-size: 22px; font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .badge-icon { font-size: 24px; }
-        .login-sub { color: #949ba4; font-size: 14px; margin-bottom: 8px; }
-        .status-view { color: #b5bac1; font-size: 14px; font-style: italic; margin-bottom: 12px; }
-        .coins-big { display: inline-block; background: linear-gradient(135deg, #f0d030, #b8860b); color: #1e1f22; padding: 10px 22px; border-radius: 20px; font-weight: 700; font-size: 18px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(240,208,48,0.3); }
-        .phrase-block { text-align: left; margin-top: 24px; background: #1e1f22; padding: 16px; border-radius: 8px; }
-        .phrase-label { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
-        .phrase-text { color: #dbdee1; font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
-        .phrase-empty { color: #6d6f78; font-style: italic; }
-        .section { text-align: left; margin-top: 24px; }
-        .section label { display: block; color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
-        .section textarea, .section input[type=text] { width: 100%; padding: 12px; background: #1e1f22; border: none; border-radius: 4px; color: #dbdee1; font-family: inherit; font-size: 15px; outline: none; margin-bottom: 8px; }
-        .section textarea { resize: vertical; min-height: 70px; }
-        .section textarea:focus, .section input[type=text]:focus { outline: 2px solid #5865f2; }
-        .btn { width: 100%; padding: 12px; margin-top: 4px; background: #5865f2; color: white; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; }
-        .btn:hover { background: #4752c4; }
-        .btn.gold { background: #f0d030; color: #1e1f22; }
-        .btn.gold:hover { background: #d4b62a; }
-        .status-msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
-        .ok { color: #23a55a; } .err { color: #fa777c; }
-        .back { display: block; margin-top: 24px; color: #00a8fc; text-decoration: none; font-size: 14px; }
-        .back:hover { text-decoration: underline; }
-        .ach-section { text-align: left; margin-top: 32px; }
-        .ach-section h3 { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 12px; }
-        .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
-        .ach-item { background: #1e1f22; border-radius: 8px; padding: 12px 8px; text-align: center; transition: transform 0.15s; }
-        .ach-item:hover { transform: scale(1.05); }
-        .ach-item .icon { font-size: 28px; margin-bottom: 4px; }
-        .ach-item .name { color: #dbdee1; font-size: 11px; font-weight: 600; line-height: 1.2; }
-        .ach-empty { color: #6d6f78; font-style: italic; font-size: 14px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-top: 16px; }
-        .stat-item { background: #1e1f22; border-radius: 8px; padding: 10px; text-align: center; }
-        .stat-item .n { color: #5865f2; font-size: 20px; font-weight: 700; }
-        .stat-item .l { color: #949ba4; font-size: 11px; margin-top: 2px; }
-        .daily-block { background: #1e1f22; border-radius: 8px; padding: 14px; margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .daily-block h4 { margin: 0 0 4px; color: #f2f3f5; font-size: 14px; }
-        .daily-block p { margin: 0; color: #949ba4; font-size: 12px; }
-        .daily-btn { padding: 8px 16px; background: #23a55a; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; }
-        .daily-btn:hover { background: #1e8a4a; }
-        .daily-btn:disabled { background: #4e5058; cursor: default; }
-        .shop-link { display: block; margin-top: 20px; padding: 12px; background: linear-gradient(135deg, #f0d030, #b8860b); color: #1e1f22; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; }
-        .shop-link:hover { filter: brightness(1.1); }
-
-        .purchases { text-align: left; margin-top: 32px; background: #1e1f22; border-radius: 8px; padding: 16px; }
-        .purchases h3 { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 12px; }
-        .purchases .group { margin-bottom: 18px; }
-        .purchases .group:last-child { margin-bottom: 0; }
-        .purchases .group-label { color: #949ba4; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
-        .purchases .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-        .chip { padding: 6px 12px; background: #2b2d31; border-radius: 20px; font-size: 13px; border: 3px solid transparent; transition: transform 0.1s, border-color 0.15s; }
-        .chip.color-chip { padding: 0; width: 36px; height: 36px; border-radius: 50%; }
-        .chip.badge-chip { font-size: 22px; padding: 6px 14px; }
-        .chip.reaction-chip { font-size: 22px; padding: 6px 14px; }
-        .chip.clickable { cursor: pointer; }
-        .chip.clickable:hover { transform: scale(1.15); border-color: #5865f2; }
-        .chip.current { border-color: #f0d030 !important; box-shadow: 0 0 12px rgba(240,208,48,0.6); }
-        .empty-purchases { color: #6d6f78; font-style: italic; font-size: 13px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#5865f2">
+<link rel="manifest" href="/manifest.json">
+<title>Профиль</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#313338;color:#dbdee1;height:100vh;display:flex;overflow:hidden}
+.servers{width:72px;background:#1e1f22;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px;flex-shrink:0}
+.server-icon{width:48px;height:48px;border-radius:16px;background:#313338;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .15s;color:#dbdee1;text-decoration:none}
+.server-icon:hover{border-radius:14px;background:#5865f2;color:white}
+.server-icon.active{background:#5865f2;color:white;border-radius:14px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.header{padding:20px 30px;border-bottom:1px solid #1e1f22;background:#2b2d31}
+.header h1{font-size:22px;font-weight:700;color:#f2f3f5}
+.content{flex:1;overflow-y:auto;padding:30px}
+.card{background:#2b2d31;border-radius:12px;padding:30px;max-width:640px;margin:0 auto;text-align:center}
+.av-wrap{position:relative;width:120px;height:120px;margin:0 auto 20px}
+.av-big{width:120px;height:120px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;object-fit:cover}
+img.av-big{display:block}
+.online-dot{position:absolute;bottom:6px;right:6px;width:24px;height:24px;background:#23a55a;border:3px solid #2b2d31;border-radius:50%}
+.upload-lbl{position:absolute;bottom:0;right:0;width:36px;height:36px;border-radius:50%;background:#5865f2;color:white;border:3px solid #2b2d31;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700}
+.upload-lbl:hover{background:#4752c4}
+.upload-lbl input{display:none}
+h1{color:#f2f3f5;font-size:24px;font-weight:700;margin:0 0 6px;display:flex;align-items:center;justify-content:center;gap:8px}
+.login-sub{color:#949ba4;font-size:14px;margin-bottom:10px}
+.status-view{color:#b5bac1;font-size:14px;font-style:italic;margin-bottom:14px}
+.coins{display:inline-block;background:linear-gradient(135deg,#f0d030,#b8860b);color:#1e1f22;padding:10px 24px;border-radius:20px;font-weight:700;font-size:18px;margin-bottom:24px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin:20px 0}
+.stat{background:#1e1f22;border-radius:8px;padding:12px;text-align:center}
+.stat .n{color:#5865f2;font-size:22px;font-weight:700}
+.stat .l{color:#949ba4;font-size:11px;margin-top:2px}
+.section{text-align:left;background:#1e1f22;border-radius:8px;padding:16px;margin-top:16px}
+.section h3{color:#b5bac1;font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:12px}
+.section input,.section textarea{width:100%;padding:10px;background:#2b2d31;border:none;border-radius:6px;color:#dbdee1;font-family:inherit;font-size:14px;margin-bottom:8px;outline:none}
+.section input:focus,.section textarea:focus{outline:2px solid #5865f2}
+.btn{width:100%;padding:10px;background:#5865f2;color:white;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;margin-top:4px}
+.btn:hover{background:#4752c4}
+.status-msg{font-size:13px;min-height:18px;margin-top:6px}
+.ok{color:#23a55a}.err{color:#fa777c}
+.ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px}
+.ach-item{background:#2b2d31;border-radius:8px;padding:12px 8px;text-align:center}
+.ach-item .ic{font-size:26px;margin-bottom:4px}
+.ach-item .nm{color:#dbdee1;font-size:11px;font-weight:600;line-height:1.2}
+.ach-empty{color:#6d6f78;font-style:italic;font-size:13px}
+.purchases{text-align:left;background:#1e1f22;border-radius:8px;padding:16px;margin-top:16px}
+.group{margin-bottom:16px}
+.group:last-child{margin-bottom:0}
+.glbl{color:#949ba4;font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:8px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:6px 12px;background:#2b2d31;border-radius:20px;font-size:13px;border:3px solid transparent;transition:transform .1s}
+.chip.color-chip{padding:0;width:36px;height:36px;border-radius:50%}
+.chip.clickable{cursor:pointer}
+.chip.clickable:hover{transform:scale(1.15);border-color:#5865f2}
+.chip.current{border-color:#f0d030;box-shadow:0 0 12px rgba(240,208,48,0.5)}
+.empty-p{color:#6d6f78;font-style:italic;font-size:13px}
+.shop-link{display:block;margin-top:16px;padding:12px;background:linear-gradient(135deg,#f0d030,#b8860b);color:#1e1f22;text-align:center;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px}
+.shop-link:hover{filter:brightness(1.1)}
+</style>
 </head>
 <body>
-    <div class="card" id="card">
-        <div class="avatar-wrap" id="avatarWrap">
-            <div id="avatarBox" class="avatar-big">?</div>
-        </div>
-        <h1 id="name"><span id="badgeSpan"></span><span id="nameText">...</span></h1>
-        <div class="login-sub" id="loginLabel"></div>
-        <div class="status-view" id="statusView" style="display:none;"></div>
-        <div class="coins-big" id="coinsBig">💰 0 монет</div>
 
-        <div class="stats-grid" id="statsGrid"></div>
+<nav class="servers">
+    <a href="/chat" class="server-icon" title="Чат">💬</a>
+    <a href="/games" class="server-icon" title="Игры">🎮</a>
+    <a href="/shop" class="server-icon" title="Магазин">🛒</a>
+    <a href="/rating" class="server-icon" title="Рейтинг">🏆</a>
+    <a href="/quotes" class="server-icon" title="Цитаты">📝</a>
+    <a href="/profile" class="server-icon active" title="Профиль">👤</a>
+</nav>
 
-        <div id="phraseView" style="display:none;">
-            <div class="phrase-block">
-                <div class="phrase-label">Любимая фраза</div>
-                <div class="phrase-text" id="phraseText"></div>
+<main class="main">
+    <div class="header"><h1>👤 Профиль</h1></div>
+    <div class="content">
+        <div class="card">
+            <div class="av-wrap" id="avWrap">
+                <div id="avBox" class="av-big">?</div>
             </div>
-        </div>
+            <h1><span id="badgeSpan"></span><span id="nameText">...</span></h1>
+            <div class="login-sub" id="loginLabel"></div>
+            <div class="status-view" id="statusView" style="display:none"></div>
+            <div class="coins" id="coinsBig">💰 0 монет</div>
 
-        <div id="editSection" style="display:none;">
-            <div class="section">
-                <label for="phrase">Любимая фраза</label>
-                <textarea id="phrase" placeholder="Напиши свою любимую фразу..."></textarea>
-                <button class="btn" id="savePhrase">Сохранить фразу</button>
-                <div class="status-msg" id="phraseStatus"></div>
-            </div>
-            <div class="section">
-                <label>Настройки аккаунта</label>
-                <input type="text" id="newLogin" placeholder="Новый логин (a-z, 0-9, _)">
-                <input type="text" id="newPassword" placeholder="Новый пароль">
-                <button class="btn" id="saveCredentials">Сохранить логин/пароль</button>
-                <div class="status-msg" id="credStatus"></div>
-            </div>
+            <div class="stats" id="statsGrid"></div>
 
-            <div class="daily-block">
-                <div>
-                    <h4>🎁 Ежедневная награда</h4>
-                    <p>+10 монет раз в 24 часа</p>
+            <div id="phraseView" style="display:none">
+                <div class="section">
+                    <h3>Любимая фраза</h3>
+                    <div id="phraseText" style="color:#dbdee1;font-size:15px"></div>
                 </div>
-                <button class="daily-btn" id="dailyBtn" onclick="claimDaily()">Получить</button>
+            </div>
+
+            <div id="editSection" style="display:none">
+                <div class="section">
+                    <h3>Любимая фраза</h3>
+                    <textarea id="phrase" placeholder="Твоя любимая фраза"></textarea>
+                    <button class="btn" id="savePhrase">Сохранить</button>
+                    <div class="status-msg" id="phraseStatus"></div>
+                </div>
+                <div class="section">
+                    <h3>Настройки аккаунта</h3>
+                    <input type="text" id="newLogin" placeholder="Новый логин">
+                    <input type="text" id="newPassword" placeholder="Новый пароль">
+                    <button class="btn" id="saveCred">Сохранить логин/пароль</button>
+                    <div class="status-msg" id="credStatus"></div>
+                </div>
+            </div>
+
+            <div class="purchases" id="purchBlock">
+                <h3 style="color:#b5bac1;font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:12px">🛍️ Мои покупки</h3>
+                <div id="purchList">Загрузка...</div>
+            </div>
+
+            <a href="/shop" class="shop-link">🛒 Открыть магазин</a>
+
+            <div class="section">
+                <h3>Ачивки</h3>
+                <div class="ach-grid" id="achGrid"></div>
             </div>
         </div>
-
-        <div class="purchases" id="purchasesBlock">
-            <h3>🛍️ Мои покупки</h3>
-            <div id="purchasesList">Загрузка...</div>
-        </div>
-
-        <a href="/shop" class="shop-link">🛒 Открыть магазин</a>
-
-        <div class="ach-section">
-            <h3>Ачивки</h3>
-            <div class="ach-grid" id="achGrid"></div>
-        </div>
-
-        <a href="/chat" class="back">← Вернуться в чат</a>
     </div>
+</main>
 
-    <script>
-        // PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+const ACH = {first_message:{n:'Первое слово',i:'💬'},ten_messages:{n:'Разговорчивый',i:'🗣️'},hundred_messages:{n:'Флудер',i:'📢'},first_voice:{n:'Голос',i:'🎤'},ten_voices:{n:'Болтун',i:'🔊'},first_image:{n:'Фотограф',i:'📷'},ten_images:{n:'Галерея',i:'🖼️'},first_reaction:{n:'Реакция',i:'😂'},hundred_reactions:{n:'Реактор',i:'⚡'},first_call:{n:'Дозвонился',i:'📞'},ten_calls:{n:'Телефонист',i:'☎️'},night_owl:{n:'Ночной житель',i:'🌙'},early_bird:{n:'Ранняя пташка',i:'🐦'},week_streak:{n:'Неделя в чате',i:'🔥'}};
+const params = new URLSearchParams(location.search);
+const requestedLogin = params.get('user');
+let myLogin = null, isOwn = false;
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+
+async function load(){
+    const me = await fetch('/api/me').then(r=>r.json());
+    myLogin = me.login;
+    const target = requestedLogin || myLogin;
+    const p = await fetch('/api/profile/'+target).then(r=>r.json());
+    if(p.error){document.getElementById('nameText').textContent='Не найден';return;}
+
+    document.getElementById('nameText').textContent = p.name;
+    if(p.color) document.getElementById('nameText').style.color = p.color;
+    if(p.badge) document.getElementById('badgeSpan').textContent = p.badge + ' ';
+    document.getElementById('loginLabel').textContent = '@' + p.login;
+    if(p.status){document.getElementById('statusView').textContent = '"'+p.status+'"';document.getElementById('statusView').style.display='block';}
+    document.getElementById('coinsBig').textContent = '💰 ' + (p.coins||0) + ' монет';
+
+    const av = document.getElementById('avBox');
+    if(p.avatar) av.outerHTML = `<img id="avBox" class="av-big" src="${p.avatar}" alt="">`;
+    else av.textContent = (p.name||'?').charAt(0).toUpperCase();
+
+    try{
+        const on = await fetch('/api/online').then(r=>r.json());
+        if(on.includes(target)){
+            const d = document.createElement('div'); d.className='online-dot';
+            document.getElementById('avWrap').appendChild(d);
         }
+    }catch(e){}
 
-        const ACHIEVEMENTS = {
-            first_message: { name: 'Первое слово', icon: '💬' }, ten_messages: { name: 'Разговорчивый', icon: '🗣️' },
-            hundred_messages: { name: 'Флудер', icon: '📢' }, first_voice: { name: 'Голос', icon: '🎤' },
-            ten_voices: { name: 'Болтун', icon: '🔊' }, first_image: { name: 'Фотограф', icon: '📷' },
-            ten_images: { name: 'Галерея', icon: '🖼️' }, first_reaction: { name: 'Реакция', icon: '😂' },
-            hundred_reactions: { name: 'Реактор', icon: '⚡' }, first_call: { name: 'Дозвонился', icon: '📞' },
-            ten_calls: { name: 'Телефонист', icon: '☎️' }, night_owl: { name: 'Ночной житель', icon: '🌙' },
-            early_bird: { name: 'Ранняя пташка', icon: '🐦' }, week_streak: { name: 'Неделя в чате', icon: '🔥' }
-        };
-        const avatarWrap = document.getElementById('avatarWrap');
-        const avatarBox = document.getElementById('avatarBox');
-        const nameText = document.getElementById('nameText');
-        const badgeSpan = document.getElementById('badgeSpan');
-        const loginLabel = document.getElementById('loginLabel');
-        const statusView = document.getElementById('statusView');
-        const coinsBig = document.getElementById('coinsBig');
-        const statsGrid = document.getElementById('statsGrid');
-        const phraseView = document.getElementById('phraseView');
-        const phraseText = document.getElementById('phraseText');
-        const editSection = document.getElementById('editSection');
-        const phraseEl = document.getElementById('phrase');
-        const savePhraseBtn = document.getElementById('savePhrase');
-        const phraseStatus = document.getElementById('phraseStatus');
-        const achGrid = document.getElementById('achGrid');
-        const purchasesList = document.getElementById('purchasesList');
-        const purchasesBlock = document.getElementById('purchasesBlock');
-        const params = new URLSearchParams(location.search);
-        const requestedLogin = params.get('user');
-        let myLogin = null;
-        let isOwn = false;
+    const stats = p.stats||{};
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat"><div class="n">${stats.messages||0}</div><div class="l">Сообщений</div></div>
+        <div class="stat"><div class="n">${stats.voices||0}</div><div class="l">Голосовых</div></div>
+        <div class="stat"><div class="n">${stats.images||0}</div><div class="l">Картинок</div></div>
+        <div class="stat"><div class="n">${stats.reactions||0}</div><div class="l">Реакций</div></div>
+        <div class="stat"><div class="n">${stats.calls||0}</div><div class="l">Звонков</div></div>`;
 
-        function renderStats(stats) {
-            stats = stats || {};
-            statsGrid.innerHTML = `
-                <div class="stat-item"><div class="n">${stats.messages||0}</div><div class="l">Сообщений</div></div>
-                <div class="stat-item"><div class="n">${stats.voices||0}</div><div class="l">Голосовых</div></div>
-                <div class="stat-item"><div class="n">${stats.images||0}</div><div class="l">Картинок</div></div>
-                <div class="stat-item"><div class="n">${stats.reactions||0}</div><div class="l">Реакций</div></div>
-                <div class="stat-item"><div class="n">${stats.calls||0}</div><div class="l">Звонков</div></div>
-            `;
-        }
-        function renderAchievements(list) {
-            if (!list || !list.length) { achGrid.innerHTML = `<div class="ach-empty">Пока нет ачивок</div>`; return; }
-            achGrid.innerHTML = list.map(key => {
-                const a = ACHIEVEMENTS[key]; if (!a) return '';
-                return `<div class="ach-item"><div class="icon">${a.icon}</div><div class="name">${a.name}</div></div>`;
-            }).join('');
-        }
-        function renderPurchases(p) {
-            if (!isOwn) { purchasesBlock.style.display = 'none'; return; }
-            purchasesBlock.style.display = 'block';
-            let html = '';
-            if (p.colors && p.colors.length) {
-                html += `<div class="group"><div class="group-label">🎨 Цвета (${p.colors.length}) — кликни</div><div class="chips">`;
-                p.colors.forEach(c => {
-                    const isCurrent = p.currentColor === c;
-                    html += `<div class="chip color-chip clickable ${isCurrent ? 'current' : ''}" style="background:${c}" onclick="setColor('${c}')"></div>`;
-                });
-                html += `</div></div>`;
-            } else html += `<div class="group"><div class="group-label">🎨 Цвета</div><div class="empty-purchases">Не куплено</div></div>`;
-            if (p.badges && p.badges.length) {
-                html += `<div class="group"><div class="group-label">⭐ Значки (${p.badges.length}) — кликни</div><div class="chips">`;
-                p.badges.forEach(b => {
-                    const isCurrent = p.currentBadge === b;
-                    html += `<div class="chip badge-chip clickable ${isCurrent ? 'current' : ''}" onclick="setBadge('${b}')">${b}</div>`;
-                });
-                html += `</div></div>`;
-            } else html += `<div class="group"><div class="group-label">⭐ Значки</div><div class="empty-purchases">Не куплено</div></div>`;
-            if (p.extraReactions && p.extraReactions.length) {
-                html += `<div class="group"><div class="group-label">😂 Реакции (${p.extraReactions.length})</div><div class="chips">`;
-                p.extraReactions.forEach(r => { html += `<div class="chip reaction-chip">${r}</div>`; });
-                html += `</div></div>`;
-            } else html += `<div class="group"><div class="group-label">😂 Реакции</div><div class="empty-purchases">Не куплено</div></div>`;
-            purchasesList.innerHTML = html;
-        }
-        async function setColor(color) {
-            const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'color', value: color }) });
-            const data = await r.json();
-            if (data.ok) location.reload(); else alert(data.error || 'Ошибка');
-        }
-        async function setBadge(badge) {
-            const p = await fetch('/api/profile/' + myLogin).then(r => r.json());
-            const value = (p.currentBadge === badge) ? null : badge;
-            const r = await fetch('/api/shop/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'badge', value }) });
-            const data = await r.json();
-            if (data.ok) location.reload(); else alert(data.error || 'Ошибка');
-        }
+    const ach = p.achievements||[];
+    document.getElementById('achGrid').innerHTML = ach.length ? ach.map(k=>{const a=ACH[k];if(!a)return'';return `<div class="ach-item"><div class="ic">${a.i}</div><div class="nm">${a.n}</div></div>`;}).join('') : '<div class="ach-empty">Пока нет ачивок</div>';
 
-        async function load() {
-            const me = await fetch('/api/me').then(r => r.json());
-            myLogin = me.login;
-            const targetLogin = requestedLogin || myLogin;
-            const p = await fetch('/api/profile/' + targetLogin).then(r => r.json());
-            if (p.error) { nameText.textContent = 'Профиль не найден'; return; }
+    isOwn = !!p.isOwn;
+    renderPurchases(p);
 
-            nameText.textContent = p.name;
-            if (p.color) nameText.style.color = p.color;
-            if (p.badge) badgeSpan.textContent = p.badge + ' ';
-            loginLabel.textContent = '@' + p.login;
-            if (p.status) { statusView.textContent = '"' + p.status + '"'; statusView.style.display = 'block'; }
-            coinsBig.textContent = '💰 ' + (p.coins || 0) + ' монет';
+    if(isOwn){
+        document.getElementById('editSection').style.display='block';
+        document.getElementById('phraseView').style.display='none';
+        document.getElementById('phrase').value = p.phrase || '';
 
-            if (p.avatar) avatarBox.outerHTML = `<img id="avatarBox" class="avatar-big" src="${p.avatar}" alt="">`;
-            else avatarBox.textContent = (p.name || '?').charAt(0).toUpperCase();
+        const lbl = document.createElement('label');
+        lbl.className = 'upload-lbl'; lbl.title = 'Загрузить аватарку';
+        lbl.innerHTML = '+<input type="file" id="avIn" accept="image/*">';
+        document.getElementById('avWrap').appendChild(lbl);
+        lbl.querySelector('input').addEventListener('change', async e=>{
+            const f = e.target.files[0]; if(!f)return;
+            const fd = new FormData(); fd.append('avatar', f);
+            const r = await fetch('/api/profile/avatar',{method:'POST',body:fd});
+            const d = await r.json();
+            if(d.ok){const img=document.getElementById('avBox');if(img.tagName==='IMG')img.src=d.avatar+'?t='+Date.now();else img.outerHTML=`<img id="avBox" class="av-big" src="${d.avatar}" alt="">`;}
+        });
 
-            // Онлайн-точка
-            try {
-                const online = await fetch('/api/online').then(r => r.json());
-                if (online.includes(targetLogin)) {
-                    const dot = document.createElement('div');
-                    dot.className = 'online-dot-big';
-                    dot.title = 'В сети';
-                    document.getElementById('avatarWrap').appendChild(dot);
-                }
-            } catch (e) {}
+        document.getElementById('savePhrase').addEventListener('click', async ()=>{
+            const st = document.getElementById('phraseStatus'); st.textContent='';st.className='status-msg';
+            const r = await fetch('/api/profile/phrase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phrase:document.getElementById('phrase').value})});
+            const d = await r.json();
+            if(d.ok){st.textContent='Сохранено';st.classList.add('ok');setTimeout(()=>st.textContent='',2000);}
+            else{st.textContent='Ошибка';st.classList.add('err');}
+        });
+        document.getElementById('saveCred').addEventListener('click', async ()=>{
+            const nl = document.getElementById('newLogin').value.trim();
+            const np = document.getElementById('newPassword').value;
+            const st = document.getElementById('credStatus'); st.textContent='';st.className='status-msg';
+            if(!nl && !np){st.textContent='Введи логин или пароль';st.classList.add('err');return;}
+            const r = await fetch('/api/profile/credentials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({newLogin:nl,newPassword:np})});
+            const d = await r.json();
+            if(d.ok){st.textContent='Сохранено!';st.classList.add('ok');setTimeout(()=>location.href='/chat',1500);}
+            else{st.textContent=d.error||'Ошибка';st.classList.add('err');}
+        });
+    } else {
+        document.getElementById('editSection').style.display='none';
+        document.getElementById('phraseView').style.display='block';
+        document.getElementById('phraseText').textContent = p.phrase || 'Пока ничего не написал';
+    }
+}
 
-            renderStats(p.stats);
-            renderAchievements(p.achievements);
-            isOwn = !!p.isOwn;
-            renderPurchases(p);
-
-            if (p.isOwn) {
-                editSection.style.display = 'block';
-                phraseView.style.display = 'none';
-                phraseEl.value = p.phrase || '';
-                const uploadLabel = document.createElement('label');
-                uploadLabel.className = 'upload-btn';
-                uploadLabel.title = 'Загрузить аватарку';
-                uploadLabel.innerHTML = '+<input type="file" id="avatarInput" accept="image/*">';
-                avatarWrap.appendChild(uploadLabel);
-                uploadLabel.querySelector('input').addEventListener('change', async e => {
-                    const file = e.target.files[0]; if (!file) return;
-                    const fd = new FormData(); fd.append('avatar', file);
-                    const r = await fetch('/api/profile/avatar', { method: 'POST', body: fd });
-                    const data = await r.json();
-                    if (data.ok) {
-                        const img = document.getElementById('avatarBox');
-                        if (img.tagName === 'IMG') img.src = data.avatar + '?t=' + Date.now();
-                        else img.outerHTML = `<img id="avatarBox" class="avatar-big" src="${data.avatar}" alt="">`;
-                    } else alert('Не удалось загрузить');
-                });
-                savePhraseBtn.addEventListener('click', async () => {
-                    phraseStatus.textContent = '';
-                    const r = await fetch('/api/profile/phrase', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phrase: phraseEl.value }) });
-                    const data = await r.json();
-                    if (data.ok) { phraseStatus.textContent = 'Сохранено!'; phraseStatus.classList.add('ok'); setTimeout(() => { phraseStatus.textContent = ''; }, 2000); }
-                    else { phraseStatus.textContent = 'Ошибка'; phraseStatus.classList.add('err'); }
-                });
-                document.getElementById('saveCredentials').addEventListener('click', async () => {
-                    const newLogin = document.getElementById('newLogin').value.trim();
-                    const newPassword = document.getElementById('newPassword').value;
-                    const st = document.getElementById('credStatus');
-                    st.textContent = ''; st.className = 'status-msg';
-                    if (!newLogin && !newPassword) { st.textContent = 'Введи новый логин или пароль'; st.classList.add('err'); return; }
-                    const r = await fetch('/api/profile/credentials', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newLogin, newPassword }) });
-                    const data = await r.json();
-                    if (data.ok) { st.textContent = 'Сохранено!'; st.classList.add('ok'); setTimeout(() => location.href = '/chat', 1500); }
-                    else { st.textContent = data.error || 'Ошибка'; st.classList.add('err'); }
-                });
-                if (!me.dailyReady) {
-                    const btn = document.getElementById('dailyBtn');
-                    btn.disabled = true;
-                    btn.textContent = 'Уже получено';
-                }
-            } else {
-                editSection.style.display = 'none';
-                phraseView.style.display = 'block';
-                if (p.phrase) { phraseText.textContent = p.phrase; phraseText.classList.remove('phrase-empty'); }
-                else { phraseText.textContent = 'Пока ничего не написал'; phraseText.classList.add('phrase-empty'); }
-            }
-        }
-
-        async function claimDaily() {
-            const r = await fetch('/api/daily', { method: 'POST' });
-            const data = await r.json();
-            if (data.ok) { alert('+' + data.reward + ' монет!'); location.reload(); }
-            else { alert(data.error || 'Ошибка'); }
-        }
-
-        load();
-    </script>
+function renderPurchases(p){
+    if(!isOwn){document.getElementById('purchBlock').style.display='none';return;}
+    document.getElementById('purchBlock').style.display='block';
+    let h = '';
+    if(p.colors && p.colors.length){
+        h += `<div class="group"><div class="glbl">🎨 Цвета — кликни</div><div class="chips">`;
+        p.colors.forEach(c=>{const cur=p.currentColor===c;h+=`<div class="chip color-chip clickable ${cur?'current':''}" style="background:${c}" onclick="setColor('${c}')"></div>`;});
+        h += `</div></div>`;
+    } else h += `<div class="group"><div class="glbl">🎨 Цвета</div><div class="empty-p">Не куплено</div></div>`;
+    if(p.badges && p.badges.length){
+        h += `<div class="group"><div class="glbl">⭐ Значки — кликни</div><div class="chips">`;
+        p.badges.forEach(b=>{const cur=p.currentBadge===b;h+=`<div class="chip clickable ${cur?'current':''}" style="font-size:20px;padding:4px 12px" onclick="setBadge('${b}')">${b}</div>`;});
+        h += `</div></div>`;
+    } else h += `<div class="group"><div class="glbl">⭐ Значки</div><div class="empty-p">Не куплено</div></div>`;
+    if(p.extraReactions && p.extraReactions.length){
+        h += `<div class="group"><div class="glbl">😂 Реакции</div><div class="chips">`;
+        p.extraReactions.forEach(r=>h+=`<div class="chip" style="font-size:20px;padding:4px 12px">${r}</div>`);
+        h += `</div></div>`;
+    } else h += `<div class="group"><div class="glbl">😂 Реакции</div><div class="empty-p">Не куплено</div></div>`;
+    document.getElementById('purchList').innerHTML = h;
+}
+async function setColor(c){const r=await fetch('/api/shop/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item:'color',value:c})});const d=await r.json();if(d.ok)location.reload();else alert(d.error);}
+async function setBadge(b){const p=await fetch('/api/profile/'+myLogin).then(r=>r.json());const v=p.currentBadge===b?null:b;const r=await fetch('/api/shop/set',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item:'badge',value:v})});const d=await r.json();if(d.ok)location.reload();else alert(d.error);}
+load();
+</script>
 </body>
 </html>
