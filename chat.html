@@ -169,6 +169,56 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .coin-toast{position:fixed;top:80px;right:20px;background:#2a2a1a;color:#f0d030;border:2px solid #f0d030;border-radius:8px;padding:12px 20px;font-weight:700;z-index:500}
 .mute-banner{background:#3a2a1a;color:#f0a030;padding:8px 20px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid #1e1f22}
 .empty-chat{text-align:center;padding:40px;color:#949ba4;font-size:14px}
+/* ====== МОБИЛЬНАЯ ВЕРСИЯ ====== */
+@media (max-width: 768px) {
+    .servers { display: none; }
+    .channels { width: 100%; border-right: none; }
+
+    body.mobile-chat-open .channels { display: none; }
+    body.mobile-chat-open .chat { display: flex; }
+    body:not(.mobile-chat-open) .chat { display: none; }
+
+    .chat { width: 100%; }
+
+    .chat-header { padding: 12px 16px; gap: 8px; }
+    .chat-header .back-btn {
+        display: flex;
+        background: transparent;
+        border: none;
+        color: #b5bac1;
+        font-size: 22px;
+        cursor: pointer;
+        padding: 4px 8px;
+        margin-right: 4px;
+    }
+    .chat-header h2 { font-size: 15px; }
+
+    .header-btn { padding: 6px 8px; font-size: 12px; }
+
+    .msg { padding: 4px 12px; gap: 10px; }
+    .msg-avatar { width: 36px; height: 36px; font-size: 14px; }
+    .msg-text { font-size: 14px; }
+    .msg-image { max-width: 100%; }
+
+    .chat-form { padding: 0 10px 12px; gap: 8px; }
+    .input-wrap { padding: 0 10px; }
+    .chat-input { padding: 10px 0; font-size: 15px; }
+    .icon-btn { font-size: 18px; padding: 4px; }
+    .send-btn { padding: 10px 14px; font-size: 13px; margin-left: 6px; }
+
+    .channels-list { padding: 4px; }
+    .channels-header { padding: 12px 16px; font-size: 16px; }
+    .channel { padding: 10px 12px; }
+
+    .user-panel { padding: 10px 12px; }
+
+    .cmd-hint { bottom: 72px; left: 10px; right: 10px; }
+}
+
+/* Кнопка «Назад» на десктопе — скрыта */
+@media (min-width: 769px) {
+    .chat-header .back-btn { display: none; }
+}
 </style>
 </head>
 <body>
@@ -203,7 +253,8 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 
 <!-- ЧАТ -->
 <main class="chat">
-    <div class="chat-header">
+       <div class="chat-header">
+        <button class="back-btn" onclick="closeMobileChat()" title="Назад">←</button>
         <span class="hash" id="chatHash">#</span>
         <h2 id="chatTitle">общий</h2>
         <span class="spacer"></span>
@@ -378,6 +429,10 @@ function switchChat(id){
     forceScrollBottom = true;
     lastMsgId = null;
     hasRenderedOnce = false;
+
+    // На телефоне — открываем чат, скрываем список
+    document.body.classList.add('mobile-chat-open');
+
     loadMessages();
     if(id !== 'general'){
         fetch('/api/dm/messages/'+id).then(()=>{});
@@ -392,6 +447,10 @@ function switchChat(id){
         document.getElementById('chatHash').textContent = c && c.type==='group' ? '👥' : '@';
         document.getElementById('chatTitle').textContent = c ? c.name : '...';
     }
+}
+function closeMobileChat(){
+    document.body.classList.remove('mobile-chat-open');
+    loadChats();
 }
 
 // ====== Рендер ======
@@ -902,7 +961,11 @@ fetch('/api/me').then(r=>r.json()).then(u=>{
     const av = document.getElementById('myAvatar');
     if(u.avatar) av.innerHTML = `<img src="${u.avatar}" alt="">`;
     else av.textContent = (u.name||'?').charAt(0).toUpperCase();
-    loadChats().then(()=>{ switchChat('general'); });
+        loadChats().then(()=>{
+        if (window.innerWidth > 768) {
+            switchChat('general');
+        }
+    });
     loadOnline();
     if(isAdmin) document.getElementById('adminIcon').style.display = 'flex';
     const warns = (u.warnings||[]).length;
