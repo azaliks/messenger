@@ -8,7 +8,7 @@
 <title>Чат банды</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#313338;color:#dbdee1;height:100vh;display:flex;overflow:hidden}
+body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#313338;color:#dbdee1;height:100vh;height:100dvh;display:flex;overflow:hidden}
 
 /* Серверы */
 .servers{width:72px;background:#1e1f22;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px;flex-shrink:0}
@@ -381,10 +381,20 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .msg-text { font-size: 15px; color: #dbdee1; }
     .msg-image { max-width: 100%; border-radius: 12px; }
 
-    /* Форма ввода — плавающая, снизу */
+    /* Форма ввода — фиксирована внизу */
     .chat-form {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 68px; /* высота нижней навигации */
         padding: 8px 12px 12px;
         background: #000000;
+        z-index: 90;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+            .messages {
+        background: #000000;
+        padding: 12px 0 90px 0; /* 90px снизу = место под поле + навигацию */
+    }
     }
     .input-wrap {
         padding: 4px 14px;
@@ -419,6 +429,20 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
         border-top: 1px solid #1a1a1a;
         z-index: 100;
         padding-bottom: env(safe-area-inset-bottom, 0);
+            /* Скрываем нижнюю навигацию, когда открыт конкретный чат */
+    body.mobile-chat-open .mobile-nav {
+        display: none;
+    }
+
+    /* Тогда поле ввода прижимаем к самому низу */
+    body.mobile-chat-open .chat-form {
+        bottom: 0;
+    }
+
+    /* И сообщениям не нужен огромный отступ */
+    body.mobile-chat-open .messages {
+        padding-bottom: 80px;
+    }
     }
     .mobile-nav .nav-item {
         flex: 1;
