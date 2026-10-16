@@ -1291,4 +1291,4 @@ app.post('/api/admin/clear-logins', async (req, res) => {
     res.json({ ok: true });
 });
 
-server.listen(PORT, () => console.log(`Сервер запущен: http://localhost:${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущен на порту ${PORT}`));
