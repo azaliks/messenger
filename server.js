@@ -1267,6 +1267,7 @@ app.get('/admin', async (req, res) => {
 
     <div class="footer">
         <a href="/chat">→ В чат</a>
+        <a href="/admin/abuse" style="color:#f23f43">→ ☠️ Абьюзы</a>
         <a href="/rating">→ Рейтинг</a>
         <a href="/quotes">→ Цитатник</a>
         <a href="/changelog">→ Журнал изменений</a>
