@@ -3,62 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#5865f2">
+<meta name="theme-color" content="#000000">
 <link rel="manifest" href="/manifest.json">
 <title>Профиль</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#313338;color:#dbdee1;height:100vh;display:flex;overflow:hidden}
+body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#000000;color:#dbdee1;height:100vh;height:100dvh;display:flex;overflow:hidden}
 .servers{width:72px;background:#1e1f22;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px;flex-shrink:0}
 .server-icon{width:48px;height:48px;border-radius:16px;background:#313338;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .15s;color:#dbdee1;text-decoration:none}
 .server-icon:hover{border-radius:14px;background:#5865f2;color:white}
 .server-icon.active{background:#5865f2;color:white;border-radius:14px}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.header{padding:20px 30px;border-bottom:1px solid #1e1f22;background:#2b2d31}
+.header{padding:20px 30px;border-bottom:1px solid #1a1a1a;background:#000000}
 .header h1{font-size:22px;font-weight:700;color:#f2f3f5}
-.content{flex:1;overflow-y:auto;padding:30px}
-.card{background:#2b2d31;border-radius:12px;padding:30px;max-width:640px;margin:0 auto;text-align:center}
+.content{flex:1;overflow-y:auto;padding:20px; padding-bottom: 90px;}
+.card{background:#1a1a1a;border-radius:16px;padding:24px;max-width:640px;margin:0 auto;text-align:center}
 .av-wrap{position:relative;width:120px;height:120px;margin:0 auto 20px}
 .av-big{width:120px;height:120px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;object-fit:cover}
 img.av-big{display:block}
-.online-dot{position:absolute;bottom:6px;right:6px;width:24px;height:24px;background:#23a55a;border:3px solid #2b2d31;border-radius:50%}
-.upload-lbl{position:absolute;bottom:0;right:0;width:36px;height:36px;border-radius:50%;background:#5865f2;color:white;border:3px solid #2b2d31;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700}
+.online-dot{position:absolute;bottom:6px;right:6px;width:24px;height:24px;background:#23a55a;border:3px solid #1a1a1a;border-radius:50%}
+.upload-lbl{position:absolute;bottom:0;right:0;width:36px;height:36px;border-radius:50%;background:#5865f2;color:white;border:3px solid #1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700}
 .upload-lbl:hover{background:#4752c4}
 .upload-lbl input{display:none}
 h1{color:#f2f3f5;font-size:24px;font-weight:700;margin:0 0 6px;display:flex;align-items:center;justify-content:center;gap:8px}
 .login-sub{color:#949ba4;font-size:14px;margin-bottom:10px}
 .status-view{color:#b5bac1;font-size:14px;font-style:italic;margin-bottom:14px}
 .coins{display:inline-block;background:linear-gradient(135deg,#f0d030,#b8860b);color:#1e1f22;padding:10px 24px;border-radius:20px;font-weight:700;font-size:18px;margin-bottom:24px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin:20px 0}
-.stat{background:#1e1f22;border-radius:8px;padding:12px;text-align:center}
-.stat .n{color:#5865f2;font-size:22px;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin:20px 0}
+.stat{background:#2a2a2a;border-radius:12px;padding:12px;text-align:center}
+.stat .n{color:#5865f2;font-size:20px;font-weight:700}
 .stat .l{color:#949ba4;font-size:11px;margin-top:2px}
-.section{text-align:left;background:#1e1f22;border-radius:8px;padding:16px;margin-top:16px}
+.section{text-align:left;background:#2a2a2a;border-radius:12px;padding:16px;margin-top:16px}
 .section h3{color:#b5bac1;font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:12px}
-.section input,.section textarea{width:100%;padding:10px;background:#2b2d31;border:none;border-radius:6px;color:#dbdee1;font-family:inherit;font-size:14px;margin-bottom:8px;outline:none}
+.section input,.section textarea{width:100%;padding:10px;background:#1a1a1a;border:none;border-radius:8px;color:#dbdee1;font-family:inherit;font-size:14px;margin-bottom:8px;outline:none}
 .section input:focus,.section textarea:focus{outline:2px solid #5865f2}
-.btn{width:100%;padding:10px;background:#5865f2;color:white;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;margin-top:4px}
+.btn{width:100%;padding:10px;background:#5865f2;color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;margin-top:4px}
 .btn:hover{background:#4752c4}
 .status-msg{font-size:13px;min-height:18px;margin-top:6px}
 .ok{color:#23a55a}.err{color:#fa777c}
-.ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px}
-.ach-item{background:#2b2d31;border-radius:8px;padding:12px 8px;text-align:center}
+.ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
+.ach-item{background:#2a2a2a;border-radius:12px;padding:12px 8px;text-align:center}
 .ach-item .ic{font-size:26px;margin-bottom:4px}
 .ach-item .nm{color:#dbdee1;font-size:11px;font-weight:600;line-height:1.2}
 .ach-empty{color:#6d6f78;font-style:italic;font-size:13px}
-.purchases{text-align:left;background:#1e1f22;border-radius:8px;padding:16px;margin-top:16px}
+.purchases{text-align:left;background:#2a2a2a;border-radius:12px;padding:16px;margin-top:16px}
 .group{margin-bottom:16px}
 .group:last-child{margin-bottom:0}
 .glbl{color:#949ba4;font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:8px}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{padding:6px 12px;background:#2b2d31;border-radius:20px;font-size:13px;border:3px solid transparent;transition:transform .1s}
+.chip{padding:6px 12px;background:#1a1a1a;border-radius:20px;font-size:13px;border:3px solid transparent;transition:transform .1s}
 .chip.color-chip{padding:0;width:36px;height:36px;border-radius:50%}
 .chip.clickable{cursor:pointer}
 .chip.clickable:hover{transform:scale(1.15);border-color:#5865f2}
 .chip.current{border-color:#f0d030;box-shadow:0 0 12px rgba(240,208,48,0.5)}
 .empty-p{color:#6d6f78;font-style:italic;font-size:13px}
-.shop-link{display:block;margin-top:16px;padding:12px;background:linear-gradient(135deg,#f0d030,#b8860b);color:#1e1f22;text-align:center;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px}
+.shop-link{display:block;margin-top:16px;padding:12px;background:linear-gradient(135deg,#f0d030,#b8860b);color:#1e1f22;text-align:center;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px}
 .shop-link:hover{filter:brightness(1.1)}
+
+/* Мобильная навигация */
+.mobile-nav {display: none;}
+@media (max-width: 768px) {
+    .servers { display: none; }
+    .header { padding: 20px 16px; }
+    .header h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+    .content { padding: 16px; padding-bottom: 90px; }
+    
+    .mobile-nav {
+        display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
+        background: #000000; border-top: 1px solid #1a1a1a; z-index: 100;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .mobile-nav .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #80848e; text-decoration: none; font-size: 11px; font-weight: 600; }
+    .mobile-nav .nav-item .nav-icon { font-size: 24px; line-height: 1; }
+    .mobile-nav .nav-item.active { color: #5865f2; }
+}
 </style>
 </head>
 <body>
@@ -123,6 +141,13 @@ h1{color:#f2f3f5;font-size:24px;font-weight:700;margin:0 0 6px;display:flex;alig
         </div>
     </div>
 </main>
+
+<nav class="mobile-nav">
+    <a href="/chat" class="nav-item"><span class="nav-icon">💬</span>Чаты</a>
+    <a href="/games" class="nav-item"><span class="nav-icon">🎮</span>Игры</a>
+    <a href="/shop" class="nav-item"><span class="nav-icon">🛒</span>Магазин</a>
+    <a href="/profile" class="nav-item active"><span class="nav-icon">👤</span>Профиль</a>
+</nav>
 
 <script>
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
