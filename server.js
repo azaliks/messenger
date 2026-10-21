@@ -342,6 +342,21 @@ io.on('connection', (socket) => {
     socket.on('call:end', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ended'); });
     socket.on('call:reject', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:rejected'); });
 
+        // ==== ЗАПУСК А-90 ====
+    socket.on('admin:start-abuse', ({ target }) => {
+        const user = socket.request.session && socket.request.session.user;
+        if (!user || user.role !== 'admin') return;
+        
+        if (target === 'all') {
+            io.emit('abuse:a90-start');
+        } else {
+            const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0];
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('abuse:a90-start');
+                socket.emit('abuse:a90-start'); // Чтобы админ тоже видел
+            }
+        }
+    });
     socket.on('disconnect', () => { onlineUsers.delete(socket.id); io.emit('online', Array.from(onlineUsers.values())); });
 });
 
@@ -897,6 +912,11 @@ app.get('/game', (req, res) => { if (!req.session.user) return res.redirect('/lo
 app.get('/tictactoe', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'tictactoe.html')); });
 app.get('/shop', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'shop.html')); });
 app.get('/admin/dms', (req, res) => {
+    app.post('/api/abuse/exit', (req, res) => {
+    if (!req.session.user) return res.status(401).json({error:'no'});
+    req.session.destroy();
+    res.json({ ok: true });
+});
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
     res.sendFile(path.join(__dirname, 'admin_dms.html'));
@@ -1172,6 +1192,11 @@ app.get('/admin', async (req, res) => {
             <td><button class="reset-btn" onclick="resetStats('${u.login}')">Сброс</button></td>
         </tr>`;
     }).join('');
+    app.get('/admin/abuse', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
+    res.sendFile(path.join(__dirname, 'admin_abuse.html'));
+});
 
     const cmdRows = COMMANDS_LIST.map(c => `<tr><td class="cmd-name">${c.cmd}</td><td class="muted">${c.desc}</td></tr>`).join('');
 
