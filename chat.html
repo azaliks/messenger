@@ -91,8 +91,29 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .sys-box{background:#1a1a1a;border-left:4px solid #f0d030;border-radius:12px;padding:12px 20px;color:#f0d030;font-size:14px;font-weight:600;max-width:80%;text-align:center;word-wrap:break-word}
 
 .chat-form{padding:16px 24px 24px;position:relative;background:#000000}
-.input-wrap{display:flex;align-items:center;gap:12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:0 16px;transition:all .2s}
-.input-wrap:focus-within{border-color:#5865f2;box-shadow:0 0 0 2px rgba(88,101,242,0.2)}
+.input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Вот этот параметр выровняет всё по красоте */
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 24px; /* Скругление как у капсулы */
+    padding: 0 8px 0 16px; /* Чуть меньше отступы */
+    transition: all .2s;
+}
+.input-wrap:focus-within { border-color: #5865f2; box-shadow: 0 0 0 2px rgba(88,101,242,0.2); }
+.chat-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 14px 0;
+    color: #f2f3f5;
+    font-family: inherit;
+    font-size: 16px;
+    outline: none;
+    min-width: 0; /* Чтобы поле не распирало контейнер */
+}
+.chat-input::placeholder { color: #6d6f78; }
 .chat-input{flex:1;background:transparent;border:none;padding:16px 0;color:#f2f3f5;font-family:inherit;font-size:16px;outline:none}
 .chat-input::placeholder{color:#6d6f78}
 .icon-btn{background:transparent;border:none;color:#949ba4;cursor:pointer;font-size:22px;padding:8px;border-radius:50%;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;flex-shrink:0;transition:all .2s}
@@ -101,24 +122,25 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .icon-btn:hover img{opacity:1}
 .voice-btn.recording{background:#f23f43;color:white}
 .send-btn {
-    background: #5865f2;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 42px;
-    height: 42px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 20px;
-    font-weight: 700;
-    flex-shrink: 0;
-    margin-left: 4px;
+    background: #5865f2; 
+    color: white; 
+    border: none; 
+    border-radius: 50%; 
+    width: 38px; 
+    height: 38px; 
+    cursor: pointer; 
+    font-family: inherit; 
+    font-size: 18px; 
+    font-weight: 700; 
+    flex-shrink: 0; 
+    margin-left: 4px; 
     transition: all .2s;
-    display: flex;
-    align-items: center;
+    display: flex; 
+    align-items: center; 
     justify-content: center;
-    padding-left: 4px;
+    padding-left: 3px; /* Центрируем стрелочку */
 }
+.send-btn:hover { background: #4752c4; transform: scale(1.05); box-shadow: 0 4px 12px rgba(88,101,242,0.4); }
 .send-btn:hover {
     background: #4752c4;
     transform: scale(1.05);
@@ -261,17 +283,11 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .msg-author { font-size: 15px; }
     .msg-text { font-size: 15px; color: #dbdee1; }
     .msg-image { max-width: 100%; border-radius: 12px; }
-        .chat-form { 
-        position: fixed; 
-        left: 0; 
-        right: 0; 
-        bottom: 68px; 
+           .chat-form { 
+        position: fixed; left: 0; right: 0; bottom: 68px; 
         padding: 4px 12px 12px; 
-        background: #000000; 
-        z-index: 90; 
+        background: #000000; z-index: 90; 
         padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); 
-        display: flex;
-        flex-direction: column;
     }
     
     /* Сам индикатор на мобилке */
@@ -360,7 +376,7 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     </div>
     <div class="mute-banner" id="muteBanner" style="display:none"></div>
     <div class="messages" id="messages"></div>
-        <form class="chat-form" id="form">
+        
         <div class="cmd-hint" id="cmdHint"></div>
             <form class="chat-form" id="form">
         <div class="cmd-hint" id="cmdHint"></div>
@@ -373,6 +389,7 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
             <input type="text" class="chat-input" id="text" placeholder="Написать сообщение" autocomplete="off">
             <button type="button" class="icon-btn voice-btn" id="voiceBtn" title="Удерживай для записи"><img src="/images/mic.png" alt="🎤"></button>
             <button type="submit" class="send-btn" title="Отправить">➤</button>
+            <form class="chat-form" id="form">
         </div>
     </form>
 </main>
