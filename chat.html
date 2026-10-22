@@ -604,7 +604,7 @@ async function forceReload(){forceScrollBottom=true;lastMsgId=null;await loadMes
 
 
 
-let typingClearTimer = null;
+
 socket.on('user:typing', ({ login, name, chatId }) => {
     if (chatId !== currentChatId || login === myLogin) return;
     const ind = document.getElementById('typingIndicator');
@@ -755,13 +755,30 @@ function toggleMute(){if(!localStream)return;muted=!muted;localStream.getAudioTr
 
 // ====== ИНДИКАТОР ПЕЧАТИ ======
 let typingTimeout = null;
+let typingClearTimer = null;
+
 textInput.addEventListener('input', () => {
     if (!textInput.value.trim()) return;
     socket.emit('typing', { chatId: currentChatId });
     clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => { /* ничего не делаем, просто ждём */ }, 1000);
+    typingTimeout = setTimeout(() => { /* пусто */ }, 1000);
 });
 
+socket.on('user:typing', ({ login, name, chatId }) => {
+    if (!myLogin) return; 
+    if (chatId !== currentChatId || login === myLogin) return;
+    
+    const ind = document.getElementById('typingIndicator');
+    if (!ind) return; 
+    
+    ind.innerHTML = `${esc(name)} печатает<span class="typing-dots"></span>`;
+    
+    clearTimeout(typingClearTimer);
+    typingClearTimer = setTimeout(() => {
+        ind.innerHTML = '';
+    }, 3000);
+});
+// ===============================
 // ====== А-90 МИНИ-ИГРА ======
 let a90Active = false;
 let a90Coins = 0;
