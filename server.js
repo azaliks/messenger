@@ -393,6 +393,29 @@ app.post('/login', async (req, res) => {
     if (user.role === 'admin') return res.redirect('/admin');
     res.redirect('/');
 });
+// Быстрый вход по сохранённому логину (без пароля)
+app.post('/api/quick-login', async (req, res) => {
+    const { login } = req.body;
+    if (!login) return res.status(400).json({ error: 'no login' });
+    
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    
+    // Проверяем, не забанен ли
+    const p = checkPunishments(user);
+    if (p.banned) return res.status(403).json({ error: 'banned' });
+    
+    // Обновляем время входа
+    user.lastLogin = new Date().toISOString();
+    ensureCoinFields(user);
+    await writeUsers(data);
+    
+    // Создаём сессию
+    req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
+    
+    res.json({ ok: true, redirect: user.role === 'admin' ? '/admin' : '/chat' });
+});
 
 app.get('/api/me', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
