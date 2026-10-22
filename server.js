@@ -74,7 +74,6 @@ async function writeQuotes(d) {
         await supabase.from('quotes').upsert(rows, { onConflict: 'id' });
     }
 }
-// ====== ЛИЧНЫЕ СООБЩЕНИЯ ======
 async function readDmChats() {
     const { data, error } = await supabase.from('dm_chats').select('*');
     if (error) { console.error('readDmChats:', error); return []; }
@@ -88,9 +87,6 @@ async function writeDmChat(chat) {
         members: chat.members,
         created_by: chat.created_by || null
     }, { onConflict: 'id' });
-}
-async function deleteDmChat(id) {
-    await supabase.from('dm_chats').delete().eq('id', id);
 }
 async function readDmMessages(chatId) {
     let q = supabase.from('dm_messages').select('*').order('time', { ascending: true });
@@ -117,7 +113,6 @@ async function deleteDmMessage(id) {
     await supabase.from('dm_messages').delete().eq('id', id);
 }
 function dmChatIdForPrivate(a, b) {
-    // один и тот же id для пары, независимо от порядка
     return 'dm-' + [a, b].sort().join('-');
 }
 async function readChangelog() {
@@ -255,10 +250,6 @@ io.on('connection', (socket) => {
     if (!user) { socket.disconnect(); return; }
     onlineUsers.set(socket.id, user.login);
     io.emit('online', Array.from(onlineUsers.values()));
-        // ==== ТАЙПЕР ====
-    socket.on('typing', ({ chatId }) => {
-        socket.broadcast.emit('user:typing', { login: user.login, name: user.name, chatId });
-    });
 
     // ==== ДУЭЛЬ (копейщики) ====
     socket.on('duel:invite', async ({ to }) => {
@@ -334,11 +325,13 @@ io.on('connection', (socket) => {
         io.emit('chat:refresh');
     });
     socket.on('ttt:leave', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('ttt:opponentLeft', { byName: user.name }); });
-    // ==== Уведомление о новом личном сообщении ====
+
+    // ==== Уведомление о новом ЛС ====
     socket.on('dm:notify', ({ to }) => {
         const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
         if (t) io.to(t).emit('dm:new', { from: user.login });
     });
+    
     // ==== ЗВОНКИ ====
     socket.on('call:offer', ({ to, offer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:incoming', { from: user.login, fromName: user.name, offer }); else socket.emit('call:offline', { to }); });
     socket.on('call:answer', ({ to, answer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:answered', { answer }); });
@@ -346,10 +339,15 @@ io.on('connection', (socket) => {
     socket.on('call:end', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ended'); });
     socket.on('call:reject', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:rejected'); });
 
-        // ==== ЗАПУСК А-90 ====
+    // ==== ТАЙПЕР ====
+    socket.on('typing', ({ chatId }) => {
+        socket.broadcast.emit('user:typing', { login: user.login, name: user.name, chatId });
+    });
+
+    // ==== ЗАПУСК А-90 ====
     socket.on('admin:start-abuse', ({ target }) => {
-        const user = socket.request.session && socket.request.session.user;
-        if (!user || user.role !== 'admin') return;
+        const u = socket.request.session && socket.request.session.user;
+        if (!u || u.role !== 'admin') return;
         
         if (target === 'all') {
             io.emit('abuse:a90-start');
@@ -361,6 +359,7 @@ io.on('connection', (socket) => {
             }
         }
     });
+
     socket.on('disconnect', () => { onlineUsers.delete(socket.id); io.emit('online', Array.from(onlineUsers.values())); });
 });
 
@@ -376,25 +375,7 @@ app.get('/login', (req, res) => {
     let errorMsg = '';
     if (req.query.error === '1') errorMsg = 'Неверный логин или пароль';
     if (req.query.error === 'banned') errorMsg = '🚫 Ты забанен.';
-    res.send(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Вход</title><style>
-        * { box-sizing: border-box; }
-        body { font-family: "gg sans","Helvetica Neue",Helvetica,Arial,sans-serif; background:#313338; color:#dbdee1; margin:0; height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
-        form { background:#313338; padding:32px; border-radius:8px; width:100%; max-width:420px; text-align:center; }
-        h2 { color:#f2f3f5; font-size:24px; font-weight:600; margin:0 0 8px; }
-        .sub { color:#b5bac1; font-size:15px; margin-bottom:24px; }
-        label { display:block; text-align:left; color:#b5bac1; font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; margin-top:16px; }
-        input { width:100%; padding:12px; background:#1e1f22; border:none; border-radius:4px; color:#dbdee1; font-family:inherit; font-size:15px; outline:none; }
-        input:focus { outline:2px solid #5865f2; }
-        button { width:100%; padding:12px; margin-top:24px; background:#5865f2; color:white; border:none; border-radius:4px; cursor:pointer; font-family:inherit; font-size:16px; font-weight:600; }
-        button:hover { background:#4752c4; }
-        .error { color:#fa777c; font-size:14px; margin-top:12px; min-height:20px; }
-    </style></head><body><form method="POST" action="/login">
-        <h2>С возвращением!</h2><p class="sub">Вход только для своих</p>
-        <label for="login">Логин</label><input type="text" id="login" name="login" placeholder="Введи логин" required autofocus>
-        <label for="password">Пароль</label><input type="password" id="password" name="password" placeholder="Введи пароль" required>
-        <button type="submit">Войти</button>
-        <p class="error">${errorMsg}</p>
-    </form></body></html>`);
+    res.sendFile(path.join(__dirname, 'login.html'));
 });
 
 app.post('/login', async (req, res) => {
@@ -536,9 +517,15 @@ app.post('/api/ping', async (req, res) => {
     res.json({ ok: true });
 });
 
-// ====== API ЛИЧНЫХ ЧАТОВ ======
+app.post('/api/abuse/exit', (req, res) => {
+    if (!req.session.user) return res.status(401).json({error:'no'});
+    const login = req.session.user.login;
+    io.emit('abuse:kicked', { login });
+    req.session.destroy();
+    res.json({ ok: true });
+});
 
-// Список моих чатов (общий + личные + группы)
+// ====== API ЛИЧНЫХ ЧАТОВ ======
 app.get('/api/dm/chats', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const me = req.session.user.login;
@@ -547,7 +534,6 @@ app.get('/api/dm/chats', async (req, res) => {
     const usersData = await readUsers();
     const dmMsgs = await readDmMessages();
 
-    // дополняем инфой: имя собеседника, аватарка, непрочитанные, последнее сообщение
     const result = mine.map(c => {
         let name = c.name;
         let avatar = null;
@@ -577,7 +563,6 @@ app.get('/api/dm/chats', async (req, res) => {
     res.json(result);
 });
 
-// Создать личный чат с другим пользователем
 app.post('/api/dm/open', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const me = req.session.user.login;
@@ -601,7 +586,6 @@ app.post('/api/dm/open', async (req, res) => {
     res.json({ ok: true, chatId: id });
 });
 
-// Создать группу
 app.post('/api/dm/create-group', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const me = req.session.user.login;
@@ -623,7 +607,6 @@ app.post('/api/dm/create-group', async (req, res) => {
     res.json({ ok: true, chatId: id });
 });
 
-// Сообщения конкретного чата
 app.get('/api/dm/messages/:chatId', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const me = req.session.user.login;
@@ -636,7 +619,6 @@ app.get('/api/dm/messages/:chatId', async (req, res) => {
     const usersData = await readUsers();
     const users = usersData.users;
 
-    // обновляем read_by — помечаем как прочитанные
     let changed = false;
     for (const m of msgs) {
         if (m.from_login !== me && !(m.read_by || []).includes(me)) {
@@ -660,7 +642,6 @@ app.get('/api/dm/messages/:chatId', async (req, res) => {
     res.json(enriched);
 });
 
-// Отправить сообщение в чат
 app.post('/api/dm/send', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const me = req.session.user.login;
@@ -689,7 +670,6 @@ app.post('/api/dm/send', async (req, res) => {
     res.json(msg);
 });
 
-// Удалить сообщение (своё или админ — любое)
 app.delete('/api/dm/message/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const me = req.session.user.login;
@@ -702,7 +682,6 @@ app.delete('/api/dm/message/:id', async (req, res) => {
     res.json({ ok: true });
 });
 
-// Список всех чатов и сообщений для админки
 app.get('/api/admin/dm-all', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
     const chats = await readDmChats();
@@ -734,7 +713,6 @@ app.get('/api/admin/dm-all', async (req, res) => {
     res.json(result);
 });
 
-// Сообщения для админ-просмотра (по chatId)
 app.get('/api/admin/dm-chat/:chatId', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
     const msgs = await readDmMessages(req.params.chatId);
@@ -746,6 +724,7 @@ app.get('/api/admin/dm-chat/:chatId', async (req, res) => {
     });
     res.json(enriched);
 });
+
 app.get('/api/online', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     res.json(Array.from(onlineUsers.values()));
@@ -916,16 +895,6 @@ app.get('/game', (req, res) => { if (!req.session.user) return res.redirect('/lo
 app.get('/tictactoe', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'tictactoe.html')); });
 app.get('/shop', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'shop.html')); });
 app.get('/admin/dms', (req, res) => {
-    app.post('/api/abuse/exit', (req, res) => {
-    if (!req.session.user) return res.status(401).json({error:'no'});
-    const login = req.session.user.login;
-    
-    // Отправляем всем сигнал, что игрок кикнут
-    io.emit('abuse:kicked', { login });
-    
-    req.session.destroy();
-    res.json({ ok: true });
-});
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
     res.sendFile(path.join(__dirname, 'admin_dms.html'));
@@ -1029,7 +998,9 @@ app.get('/api/messages', async (req, res) => {
     const data = await readMessages();
     const usersData = await readUsers();
     const users = usersData.users;
-    res.json(data.messages.map(m => {
+    const isAdmin = req.session.user.role === 'admin';
+    const filtered = data.messages.filter(m => !m.hidden || isAdmin || m.login === req.session.user.login);
+    res.json(filtered.map(m => {
         if (m.system) return { ...m, avatar: null, reactions: {} };
         const u = users.find(x => x.login === m.login);
         const isAdm = u && (u.role === 'admin');
@@ -1048,6 +1019,7 @@ app.post('/api/messages', async (req, res) => {
     if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
     const data = await readMessages();
     const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: text.trim(), time: new Date().toISOString(), reactions: {} };
+    if (user.shadowbanned) msg.hidden = true;
     data.messages.push(msg);
     await writeMessages(data);
     if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
@@ -1147,21 +1119,7 @@ app.post('/api/messages/:id/react', async (req, res) => {
     res.json({ ...msg, avatar });
 });
 
-const COMMANDS_LIST = [
-    { cmd: '/mute', desc: 'Замутить участника' },
-    { cmd: '/unmute', desc: 'Снять мут' },
-    { cmd: '/warn', desc: 'Предупреждение. 3 = автомут' },
-    { cmd: '/clearwarns', desc: 'Сбросить варны' },
-    { cmd: '/ban', desc: 'Забанить' },
-    { cmd: '/unban', desc: 'Снять бан' },
-    { cmd: '/kick', desc: 'Кикнуть' },
-    { cmd: '/give логин число', desc: 'Выдать монеты' },
-    { cmd: '/resetcoins', desc: 'Обнулить монеты ВСЕМ' },
-    { cmd: '/resetcoins логин', desc: 'Обнулить монеты игроку' },
-    { cmd: '/takecoins логин число', desc: 'Забрать монеты' },
-    { cmd: '/sys текст', desc: 'Написать от СИСТЕМЫ' }
-];
-
+// ====== АДМИНКА (СТАРЫЙ КОД + ССЫЛКА НА АБЬЮЗЫ) ======
 app.get('/admin', async (req, res) => {
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role !== 'admin') return res.status(403).send('Доступ только для админа');
@@ -1201,11 +1159,6 @@ app.get('/admin', async (req, res) => {
             <td><button class="reset-btn" onclick="resetStats('${u.login}')">Сброс</button></td>
         </tr>`;
     }).join('');
-    app.get('/admin/abuse', (req, res) => {
-    if (!req.session.user) return res.redirect('/login');
-    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
-    res.sendFile(path.join(__dirname, 'admin_abuse.html'));
-});
 
     const cmdRows = COMMANDS_LIST.map(c => `<tr><td class="cmd-name">${c.cmd}</td><td class="muted">${c.desc}</td></tr>`).join('');
 
@@ -1220,11 +1173,13 @@ app.get('/admin', async (req, res) => {
         .stat-card .num { font-size:26px; font-weight:700; color:#5865f2; }
         .stat-card .lbl { color:#949ba4; font-size:12px; margin-top:4px; }
         .actions { max-width:1200px; margin:0 auto 16px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-        .action-btn { padding:10px 18px; border-radius:6px; border:none; cursor:pointer; font-family:inherit; font-size:14px; font-weight:600; color:white; }
+        .action-btn { padding:10px 18px; border-radius:6px; border:none; cursor:pointer; font-family:inherit; font-size:14px; font-weight:600; color:white; text-decoration:none; display:inline-block; text-align:center; }
         .action-btn.danger { background:#f23f43; }
         .action-btn.danger:hover { background:#d63031; }
         .action-btn.gold { background:#f0d030; color:#1e1f22; }
         .action-btn.gold:hover { background:#d4b62a; }
+        .action-btn.abuse { background:#9b59b6; box-shadow: 0 0 15px rgba(155, 89, 182, 0.5); }
+        .action-btn.abuse:hover { background:#8e44ad; }
         .container { max-width:1200px; margin:0 auto; background:#2b2d31; border-radius:8px; overflow:hidden; box-shadow:0 8px 16px rgba(0,0,0,0.24); }
         table { border-collapse:collapse; width:100%; }
         th, td { padding:12px 16px; text-align:left; font-size:14px; }
@@ -1258,6 +1213,7 @@ app.get('/admin', async (req, res) => {
         <div class="stat-card"><div class="num">${quotes.quotes.length}</div><div class="lbl">В цитатнике</div></div>
     </div>
     <div class="actions">
+        <a href="/admin/abuse" class="action-btn abuse">☠️ АДМИН АБЬЮЗЫ (А-90)</a>
         <button class="action-btn danger" onclick="clearChat()">🗑️ Очистить чат</button>
         <button class="action-btn danger" onclick="clearQuotes()">🗑️ Очистить цитатник</button>
         <button class="action-btn danger" onclick="clearLogins()">🗑️ Очистить журнал входов</button>
@@ -1276,7 +1232,6 @@ app.get('/admin', async (req, res) => {
 
     <div class="footer">
         <a href="/chat">→ В чат</a>
-        <a href="/admin/abuse" style="color:#f23f43">→ ☠️ Абьюзы</a>
         <a href="/rating">→ Рейтинг</a>
         <a href="/quotes">→ Цитатник</a>
         <a href="/changelog">→ Журнал изменений</a>
@@ -1293,6 +1248,71 @@ app.get('/admin', async (req, res) => {
         async function resetAllCoins() { if (!confirm('Обнулить монеты ВСЕМ игрокам?')) return; const r = await fetch('/api/reset-coins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }); if (r.ok) { alert('Все монеты обнулены'); location.reload(); } else alert('Ошибка'); }
     </script>
     </body></html>`);
+});
+
+app.get('/admin/abuse', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
+    res.sendFile(path.join(__dirname, 'admin_abuse.html'));
+});
+
+// ====== API АБЬЮЗОВ ======
+app.post('/api/admin/abuse/fake', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { targetLogin, targetName, text, isSystem } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'empty text' });
+
+    const usersData = await readUsers();
+    const targetUser = usersData.users.find(u => u.login === targetLogin);
+
+    const data = await readMessages();
+    const msg = {
+        id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        login: isSystem ? '__system__' : targetLogin,
+        name: isSystem ? 'СИСТЕМА' : (targetUser ? targetUser.name : (targetName || targetLogin)),
+        text: text.trim(),
+        time: new Date().toISOString(),
+        reactions: {},
+        system: !!isSystem
+    };
+    data.messages.push(msg);
+    await writeMessages(data);
+    io.emit('chat:refresh');
+    res.json({ ok: true, msg });
+});
+
+app.post('/api/admin/abuse/shadowban', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target } = req.body;
+    const usersData = await readUsers();
+    const user = usersData.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+
+    user.shadowbanned = !user.shadowbanned; 
+    await writeUsers(usersData);
+    await addSystemMessage(`👻 Shadowban для ${user.name}: ${user.shadowbanned ? 'ВКЛ' : 'ВЫКЛ'} (только админ видит)`);
+    res.json({ ok: true, shadowbanned: user.shadowbanned });
+});
+
+app.post('/api/admin/abuse/hack', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target } = req.body;
+    const usersData = await readUsers();
+    const user = usersData.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+
+    ensureCoinFields(user);
+    user.coins += 999999;
+    user.colors = ['#5865f2','#23a55a','#f23f43','#f0d030','#eb459e','#9b59b6','#e67e22','#ffffff'];
+    user.badges = ['⭐','🔥','💎','🎯','⚡','🌟','🏆'];
+    user.extraReactions = ['🎉','💯','🤡','❤️'];
+    user.stats = { messages: 9999, voices: 999, images: 999, reactions: 9999, calls: 999 };
+    user.achievements = ['first_message','ten_messages','hundred_messages','first_voice','ten_voices','first_image','ten_images','first_reaction','hundred_reactions','first_call','ten_calls','night_owl','early_bird','week_streak'];
+    
+    await writeUsers(usersData);
+    await addSystemMessage(`💀 ${req.session.user.name} применил HACK на ${user.name}. Абсолютная власть.`);
+    io.emit('chat:refresh');
+    res.json({ ok: true, coins: user.coins });
 });
 
 app.post('/api/admin/reset/:login', async (req, res) => {

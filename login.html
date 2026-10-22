@@ -17,8 +17,6 @@ input:focus { border-color: #5865f2; }
 button[type="submit"] { width: 100%; padding: 14px; margin-top: 24px; background: #5865f2; color: white; border: none; border-radius: 12px; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 700; transition: all .2s; }
 button[type="submit"]:hover { background: #4752c4; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(88,101,242,0.4); }
 .error { color: #f23f43; font-size: 14px; margin-top: 16px; text-align: center; min-height: 20px; font-weight: 600; }
-
-/* Плашка сохранённого профиля */
 .saved-profile { display: none; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 16px; padding: 16px; margin-bottom: 24px; flex-direction: column; gap: 12px; animation: fadeIn .3s; }
 .saved-profile.active { display: flex; }
 .saved-top { display: flex; align-items: center; gap: 12px; }
@@ -33,14 +31,12 @@ button[type="submit"]:hover { background: #4752c4; transform: translateY(-2px); 
 .btn-sm.gray { background: #3a3a3a; }
 .btn-sm.gray:hover { background: #4a4a4a; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
 .form-hidden { display: none; }
 </style>
 </head>
 <body>
 <div class="container">
     <div class="card">
-        <!-- Плашка с сохранённым профилем -->
         <div class="saved-profile" id="savedProfile">
             <div class="saved-top">
                 <div class="saved-avatar" id="savedAvatar">?</div>
@@ -55,7 +51,6 @@ button[type="submit"]:hover { background: #4752c4; transform: translateY(-2px); 
             </div>
         </div>
 
-        <!-- Сама форма -->
         <div id="loginForm">
             <h2>С возвращением!</h2>
             <p class="sub">Вход только для своих</p>
@@ -72,33 +67,24 @@ button[type="submit"]:hover { background: #4752c4; transform: translateY(-2px); 
 </div>
 
 <script>
-const saved = localStorage.getItem('savedLogin'); // Читаем сохранённый логин
+const saved = localStorage.getItem('savedLogin');
 const savedName = localStorage.getItem('savedName') || saved;
 const savedAvatar = localStorage.getItem('savedAvatar');
 
 if (saved) {
-    // Показываем плашку
     document.getElementById('savedProfile').classList.add('active');
     document.getElementById('loginForm').classList.add('form-hidden');
-    
     document.getElementById('savedName').textContent = savedName;
     document.getElementById('savedLogin').textContent = '@' + saved;
     document.getElementById('btnLogin').textContent = '@' + saved;
-    
     const av = document.getElementById('savedAvatar');
     if (savedAvatar) av.innerHTML = `<img src="${savedAvatar}" alt="">`;
     else av.textContent = (savedName || saved).charAt(0).toUpperCase();
 } else {
-    // Если нет сохранённого — показываем форму
     document.getElementById('loginForm').classList.remove('form-hidden');
 }
 
-// Если нажали "Войти как..."
-function continueAsSaved() {
-    window.location.href = '/chat';
-}
-
-// Если нажали "Выйти"
+function continueAsSaved() { window.location.href = '/chat'; }
 function logoutSaved() {
     localStorage.removeItem('savedLogin');
     localStorage.removeItem('savedName');
@@ -106,10 +92,8 @@ function logoutSaved() {
     location.reload();
 }
 
-// Если в URL ошибка — показываем
 if (location.search.includes('error=1')) {
     document.getElementById('err').textContent = 'Неверный логин или пароль';
-    // Если была ошибка, но есть сохранённый логин — лучше показать форму
     document.getElementById('loginForm').classList.remove('form-hidden');
     document.getElementById('savedProfile').classList.remove('active');
 }
