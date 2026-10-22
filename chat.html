@@ -100,8 +100,30 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .icon-btn img{width:24px;height:24px;object-fit:contain;pointer-events:none;opacity:0.7;transition:opacity .2s}
 .icon-btn:hover img{opacity:1}
 .voice-btn.recording{background:#f23f43;color:white}
-.send-btn{background:#5865f2;color:white;border:none;border-radius:12px;padding:12px 20px;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;flex-shrink:0;margin-left:12px;transition:all .2s}
-.send-btn:hover{background:#4752c4;transform:translateY(-2px);box-shadow:0 4px 12px rgba(88,101,242,0.4)}
+.send-btn {
+    background: #5865f2;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-left: 4px;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 4px;
+}
+.send-btn:hover {
+    background: #4752c4;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(88,101,242,0.4);
+}
 
 .cmd-hint{position:absolute;bottom:90px;left:24px;right:24px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;max-height:280px;overflow-y:auto;display:none;z-index:50;box-shadow:0 -4px 24px rgba(0,0,0,0.6)}
 .cmd-hint.active{display:block}
@@ -247,12 +269,13 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .chat-input::placeholder { color: #6d6f78; }
       .icon-btn { font-size: 22px; color: #b5bac1; padding: 8px; }
     .send-btn { 
+            .send-btn { 
         display: flex; 
-        align-items: center; 
-        justify-content: center;
-        padding: 12px 16px; 
-        font-size: 20px; 
-        margin-left: 8px; 
+        width: 38px; 
+        height: 38px; 
+        font-size: 18px; 
+        margin-left: 2px;
+    } 
     }
     .cmd-hint { bottom: 76px; left: 12px; right: 12px; }
     .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: #000000; border-top: 1px solid #1a1a1a; z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0); }
@@ -317,15 +340,15 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     <div class="mute-banner" id="muteBanner" style="display:none"></div>
     <div class="messages" id="messages"></div>
     <div class="typing-indicator" id="typingIndicator"></div>
-    <form class="chat-form" id="form">
+        <form class="chat-form" id="form">
         <div class="cmd-hint" id="cmdHint"></div>
         <div class="input-wrap">
             <button type="button" class="icon-btn" id="imgBtn" title="Картинка">📎</button>
             <input type="file" id="imgInput" accept="image/*" style="display:none">
             <input type="text" class="chat-input" id="text" placeholder="Написать сообщение" autocomplete="off">
             <button type="button" class="icon-btn voice-btn" id="voiceBtn" title="Удерживай для записи"><img src="/images/mic.png" alt="🎤"></button>
+            <button type="submit" class="send-btn" title="Отправить">➤</button>
         </div>
-        <button type="submit" class="send-btn">Отправить</button>
     </form>
 </main>
 
