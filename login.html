@@ -1,118 +1,118 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход — Чат банды</title>
-    <style>
-        * { box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вход — Чат банды</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #000; color: #dbdee1; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+.container { width: 100%; max-width: 420px; }
+.card { background: #1a1a1a; border: 1px solid #2a2a2a; padding: 32px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+h2 { color: #f2f3f5; font-size: 24px; font-weight: 800; margin: 0 0 8px; text-align: center; }
+.sub { color: #949ba4; font-size: 15px; margin-bottom: 24px; text-align: center; }
+label { display: block; color: #949ba4; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; margin-top: 16px; }
+input { width: 100%; padding: 14px; background: #000; border: 1px solid #2a2a2a; border-radius: 12px; color: #f2f3f5; font-family: inherit; font-size: 15px; outline: none; transition: border-color .2s; }
+input:focus { border-color: #5865f2; }
+button[type="submit"] { width: 100%; padding: 14px; margin-top: 24px; background: #5865f2; color: white; border: none; border-radius: 12px; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 700; transition: all .2s; }
+button[type="submit"]:hover { background: #4752c4; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(88,101,242,0.4); }
+.error { color: #f23f43; font-size: 14px; margin-top: 16px; text-align: center; min-height: 20px; font-weight: 600; }
 
-        body {
-            font-family: "gg sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-            background: #313338;
-            color: #dbdee1;
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+/* Плашка сохранённого профиля */
+.saved-profile { display: none; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 16px; padding: 16px; margin-bottom: 24px; flex-direction: column; gap: 12px; animation: fadeIn .3s; }
+.saved-profile.active { display: flex; }
+.saved-top { display: flex; align-items: center; gap: 12px; }
+.saved-avatar { width: 48px; height: 48px; border-radius: 50%; background: #5865f2; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; overflow: hidden; }
+.saved-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.saved-info { flex: 1; }
+.saved-name { color: #f2f3f5; font-size: 16px; font-weight: 700; }
+.saved-login { color: #949ba4; font-size: 13px; }
+.saved-actions { display: flex; gap: 8px; margin-top: 4px; }
+.btn-sm { flex: 1; padding: 10px; background: #5865f2; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .2s; }
+.btn-sm:hover { background: #4752c4; }
+.btn-sm.gray { background: #3a3a3a; }
+.btn-sm.gray:hover { background: #4a4a4a; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-        form {
-            background: #313338;
-            padding: 32px;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 420px;
-            text-align: center;
-        }
-
-        h2 {
-            color: #f2f3f5;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0 0 8px;
-        }
-
-        .sub {
-            color: #b5bac1;
-            font-size: 15px;
-            margin-bottom: 24px;
-        }
-
-        label {
-            display: block;
-            text-align: left;
-            color: #b5bac1;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.02em;
-            margin-bottom: 8px;
-            margin-top: 16px;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            background: #1e1f22;
-            border: none;
-            border-radius: 4px;
-            color: #dbdee1;
-            font-family: inherit;
-            font-size: 15px;
-            outline: none;
-        }
-        input:focus {
-            outline: 2px solid #5865f2;
-        }
-        input::placeholder { color: #6d6f78; }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 24px;
-            background: #5865f2;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 16px;
-            font-weight: 600;
-            transition: background 0.15s;
-        }
-        button:hover { background: #4752c4; }
-        button:active { background: #3c45a5; }
-
-        .error {
-            color: #fa777c;
-            font-size: 14px;
-            margin-top: 12px;
-            min-height: 20px;
-        }
-    </style>
+.form-hidden { display: none; }
+</style>
 </head>
 <body>
-    <form method="POST" action="/login">
-        <h2>С возвращением!</h2>
-        <p class="sub">Вход только для своих</p>
+<div class="container">
+    <div class="card">
+        <!-- Плашка с сохранённым профилем -->
+        <div class="saved-profile" id="savedProfile">
+            <div class="saved-top">
+                <div class="saved-avatar" id="savedAvatar">?</div>
+                <div class="saved-info">
+                    <div class="saved-name" id="savedName">...</div>
+                    <div class="saved-login" id="savedLogin">@...</div>
+                </div>
+            </div>
+            <div class="saved-actions">
+                <button class="btn-sm" onclick="continueAsSaved()">Войти как <span id="btnLogin"></span></button>
+                <button class="btn-sm gray" onclick="logoutSaved()">Выйти</button>
+            </div>
+        </div>
 
-        <label for="login">Логин</label>
-        <input type="text" id="login" name="login" placeholder="Введи логин" required autofocus>
+        <!-- Сама форма -->
+        <div id="loginForm">
+            <h2>С возвращением!</h2>
+            <p class="sub">Вход только для своих</p>
+            <form method="POST" action="/login">
+                <label for="login">Логин</label>
+                <input type="text" id="login" name="login" placeholder="Введи логин" required>
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" placeholder="Введи пароль" required>
+                <button type="submit">Войти</button>
+                <p class="error" id="err"></p>
+            </form>
+        </div>
+    </div>
+</div>
 
-        <label for="password">Пароль</label>
-        <input type="password" id="password" name="password" placeholder="Введи пароль" required>
+<script>
+const saved = localStorage.getItem('savedLogin'); // Читаем сохранённый логин
+const savedName = localStorage.getItem('savedName') || saved;
+const savedAvatar = localStorage.getItem('savedAvatar');
 
-        <button type="submit">Войти</button>
-        <p class="error" id="err"></p>
-    </form>
+if (saved) {
+    // Показываем плашку
+    document.getElementById('savedProfile').classList.add('active');
+    document.getElementById('loginForm').classList.add('form-hidden');
+    
+    document.getElementById('savedName').textContent = savedName;
+    document.getElementById('savedLogin').textContent = '@' + saved;
+    document.getElementById('btnLogin').textContent = '@' + saved;
+    
+    const av = document.getElementById('savedAvatar');
+    if (savedAvatar) av.innerHTML = `<img src="${savedAvatar}" alt="">`;
+    else av.textContent = (savedName || saved).charAt(0).toUpperCase();
+} else {
+    // Если нет сохранённого — показываем форму
+    document.getElementById('loginForm').classList.remove('form-hidden');
+}
 
-    <script>
-        if (location.search.includes('error=1')) {
-            document.getElementById('err').textContent = 'Неверный логин или пароль';
-        }
-    </script>
+// Если нажали "Войти как..."
+function continueAsSaved() {
+    window.location.href = '/chat';
+}
+
+// Если нажали "Выйти"
+function logoutSaved() {
+    localStorage.removeItem('savedLogin');
+    localStorage.removeItem('savedName');
+    localStorage.removeItem('savedAvatar');
+    location.reload();
+}
+
+// Если в URL ошибка — показываем
+if (location.search.includes('error=1')) {
+    document.getElementById('err').textContent = 'Неверный логин или пароль';
+    // Если была ошибка, но есть сохранённый логин — лучше показать форму
+    document.getElementById('loginForm').classList.remove('form-hidden');
+    document.getElementById('savedProfile').classList.remove('active');
+}
+</script>
 </body>
 </html>

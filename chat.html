@@ -7,6 +7,36 @@
 <link rel="manifest" href="/manifest.json">
 <title>Чат банды</title>
 <style>
+    /* СКРИМЕР А-90 */
+.a90-jumpscare {
+    position: fixed;
+    inset: 0;
+    z-index: 10000; /* Поверх всего, даже поверх оверлея с монетами */
+    background: #000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* Чтобы клики проходили сквозь него, если вдруг */
+}
+.a90-jumpscare.active {
+    display: flex;
+    animation: scareShake 1.5s forwards;
+}
+.a90-jumpscare img {
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover; /* Картинка заполнит весь экран */
+}
+@keyframes scareShake {
+    0% { transform: scale(0.5) translate(0, 0); opacity: 0; }
+    10% { transform: scale(1.2) translate(10px, -10px); opacity: 1; }
+    20% { transform: scale(1.1) translate(-15px, 15px); }
+    30% { transform: scale(1.3) translate(15px, -15px); }
+    40% { transform: scale(1.2) translate(-10px, 10px); }
+    50% { transform: scale(1.3) translate(5px, -5px); }
+    60% { transform: scale(1.1) translate(-5px, 5px); }
+    100% { transform: scale(1) translate(0, 0); opacity: 1; }
+}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#000000;color:#dbdee1;height:100vh;height:100dvh;display:flex;overflow:hidden}
 
@@ -348,6 +378,10 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     </div>
     <div class="a90-playground" id="a90Playground"></div>
 </div>
+<!-- СКРИМЕР А-90 -->
+<div class="a90-jumpscare" id="a90Jumpscare">
+    <img src="./images/a-90.jpeg" alt="A-90">
+</div>
 <audio id="a90Siren" src="https://www.soundjay.com/misc/sounds/alarm-clock-01.mp3" preload="auto"></audio>
 
 <nav class="mobile-nav" id="mobileNav">
@@ -679,6 +713,19 @@ socket.on('abuse:a90-start', () => { if (a90Active) return; startA90(); });
 
 function startA90() {
     a90Active = true;
+        // === ЗАПУСК СКРИМЕРА ===
+    const scareEl = document.getElementById('a90Jumpscare');
+    scareEl.classList.add('active');
+    // Проигрываем страшный звук (если сирена уже есть, она тоже сыграет)
+    const scareAudio = new Audio('https://www.myinstants.com/media/sounds/roblox-oof.mp3'); // Можно заменить на любой страшный звук
+    scareAudio.volume = 1.0;
+    scareAudio.play().catch(()=>{});
+    
+    // Прячем скример через 1.5 секунды
+    setTimeout(() => {
+        scareEl.classList.remove('active');
+    }, 1500);
+    // ========================
     a90Coins = 0;
     a90TimeLeft = 60;
     const overlay = document.getElementById('a90Overlay');
@@ -765,6 +812,10 @@ function failA90() {
 // ====== init ======
 fetch('/api/me').then(r=>r.json()).then(u=>{
     meData = u; isAdmin = u.role === 'admin'; myLogin = u.login; myExtraReactions = u.extraReactions || [];
+        // СОХРАНЯЕМ ПРОФИЛЬ ДЛЯ ВХОДА
+    localStorage.setItem('savedLogin', u.login);
+    localStorage.setItem('savedName', u.name);
+    if (u.avatar) localStorage.setItem('savedAvatar', u.avatar);
     coinsTag.textContent = u.coins || 0;
     document.getElementById('myName').textContent = u.name;
     document.getElementById('myStatus').textContent = isAdmin ? 'админ' : 'в сети';
@@ -825,6 +876,7 @@ function failA90() {
         });
     }, 2000);
 }
+
 </script>
 </body>
 </html>
