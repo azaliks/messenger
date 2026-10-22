@@ -1118,7 +1118,20 @@ app.post('/api/messages/:id/react', async (req, res) => {
     const avatar = (users.users.find(x => x.login === msg.login) || {}).avatar || null;
     res.json({ ...msg, avatar });
 });
-
+const COMMANDS_LIST = [
+    { cmd: '/mute', desc: 'Замутить участника' },
+    { cmd: '/unmute', desc: 'Снять мут' },
+    { cmd: '/warn', desc: 'Предупреждение. 3 = автомут' },
+    { cmd: '/clearwarns', desc: 'Сбросить варны' },
+    { cmd: '/ban', desc: 'Забанить' },
+    { cmd: '/unban', desc: 'Снять бан' },
+    { cmd: '/kick', desc: 'Кикнуть' },
+    { cmd: '/give логин число', desc: 'Выдать монеты' },
+    { cmd: '/resetcoins', desc: 'Обнулить монеты ВСЕМ' },
+    { cmd: '/resetcoins логин', desc: 'Обнулить монеты игроку' },
+    { cmd: '/takecoins логин число', desc: 'Забрать монеты' },
+    { cmd: '/sys текст', desc: 'Написать от СИСТЕМЫ' }
+];
 // ====== АДМИНКА (СТАРЫЙ КОД + ССЫЛКА НА АБЬЮЗЫ) ======
 app.get('/admin', async (req, res) => {
     if (!req.session.user) return res.redirect('/login');

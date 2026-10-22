@@ -245,8 +245,15 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .input-wrap { padding: 4px 14px; background: #1a1a1a; border-radius: 24px; gap: 8px; }
     .chat-input { padding: 10px 0; font-size: 16px; color: #ffffff; }
     .chat-input::placeholder { color: #6d6f78; }
-    .icon-btn { font-size: 22px; color: #b5bac1; padding: 8px; }
-    .send-btn { display: none; }
+      .icon-btn { font-size: 22px; color: #b5bac1; padding: 8px; }
+    .send-btn { 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        padding: 12px 16px; 
+        font-size: 20px; 
+        margin-left: 8px; 
+    }
     .cmd-hint { bottom: 76px; left: 12px; right: 12px; }
     .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: #000000; border-top: 1px solid #1a1a1a; z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0); }
     body.mobile-chat-open .mobile-nav { display: none; }
