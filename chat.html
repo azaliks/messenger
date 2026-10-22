@@ -261,7 +261,28 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .msg-author { font-size: 15px; }
     .msg-text { font-size: 15px; color: #dbdee1; }
     .msg-image { max-width: 100%; border-radius: 12px; }
-    .chat-form { position: fixed; left: 0; right: 0; bottom: 68px; padding: 8px 12px 12px; background: #000000; z-index: 90; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); }
+        .chat-form { 
+        position: fixed; 
+        left: 0; 
+        right: 0; 
+        bottom: 68px; 
+        padding: 4px 12px 12px; 
+        background: #000000; 
+        z-index: 90; 
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); 
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Сам индикатор на мобилке */
+    .typing-indicator {
+        padding: 4px 12px 0;
+        font-size: 12px;
+        color: #949ba4;
+        font-style: italic;
+        min-height: 18px;
+        transition: opacity 0.3s;
+    }
     body.mobile-chat-open .chat-form { bottom: 0; }
     body.mobile-chat-open .messages { padding-bottom: 80px; }
     .input-wrap { padding: 4px 14px; background: #1a1a1a; border-radius: 24px; gap: 8px; }
@@ -339,9 +360,13 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     </div>
     <div class="mute-banner" id="muteBanner" style="display:none"></div>
     <div class="messages" id="messages"></div>
-    <div class="typing-indicator" id="typingIndicator"></div>
         <form class="chat-form" id="form">
         <div class="cmd-hint" id="cmdHint"></div>
+            <form class="chat-form" id="form">
+        <div class="cmd-hint" id="cmdHint"></div>
+        <div class="typing-indicator" id="typingIndicator"></div> <!-- ВОТ СЮДА -->
+        <div class="input-wrap">
+            ...
         <div class="input-wrap">
             <button type="button" class="icon-btn" id="imgBtn" title="Картинка">📎</button>
             <input type="file" id="imgInput" accept="image/*" style="display:none">
