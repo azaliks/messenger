@@ -294,6 +294,39 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 @keyframes floatCoin { from { transform: translateY(0); } to { transform: translateY(-10px); } }
 .a90-fail { animation: failShake 0.5s infinite; }
 @keyframes failShake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+/* ТАЙПЕР */
+.typing-indicator {
+    padding: 0 24px 10px;
+    font-size: 13px;
+    color: #949ba4;
+    font-style: italic;
+    min-height: 20px;
+    transition: opacity 0.3s;
+}
+.typing-dots::after {
+    content: '...';
+    animation: blinkDots 1.5s infinite;
+}
+@keyframes blinkDots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+}
+
+/* ЗВУК КИКА */
+.a90-jumpscare.kick {
+    animation: kickShake 0.8s forwards;
+    background: #f23f43;
+}
+@keyframes kickShake {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    20% { transform: translate(-20px, 20px) rotate(-5deg); }
+    40% { transform: translate(20px, -20px) rotate(5deg); }
+    60% { transform: translate(-20px, -20px) rotate(-5deg); }
+    80% { transform: translate(20px, 20px) rotate(5deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
 </style>
 </head>
 <body>
@@ -345,6 +378,7 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     </div>
     <div class="mute-banner" id="muteBanner" style="display:none"></div>
     <div class="messages" id="messages"></div>
+    <div class="typing-indicator" id="typingIndicator"></div>
     <form class="chat-form" id="form">
         <div class="cmd-hint" id="cmdHint"></div>
         <div class="input-wrap">
@@ -568,6 +602,26 @@ async function loadMessages(){
 async function loadOnline(){ try{const r=await fetch('/api/online');if(!r.ok)return;onlineList=await r.json();}catch(e){} }
 async function forceReload(){forceScrollBottom=true;lastMsgId=null;await loadMessages();}
 
+// ====== ИНДИКАТОР ПЕЧАТИ ======
+let typingTimeout = null;
+textInput.addEventListener('input', () => {
+    if (!textInput.value.trim()) return;
+    socket.emit('typing', { chatId: currentChatId });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => { /* ничего не делаем, просто ждём */ }, 1000);
+});
+
+let typingClearTimer = null;
+socket.on('user:typing', ({ login, name, chatId }) => {
+    if (chatId !== currentChatId || login === myLogin) return;
+    const ind = document.getElementById('typingIndicator');
+    ind.innerHTML = `${esc(name)} печатает<span class="typing-dots"></span>`;
+    
+    clearTimeout(typingClearTimer);
+    typingClearTimer = setTimeout(() => {
+        ind.innerHTML = '';
+    }, 3000);
+});
 form.addEventListener('submit', async e=>{
     e.preventDefault();
     const t = textInput.value; if(!t.trim()) return;
@@ -670,7 +724,11 @@ const callActions = document.getElementById('callActions');
 const remoteAudio = document.getElementById('remoteAudio');
 
 socket.on('kicked',()=>{alert('Тебя кикнули');location.href='/login';});
-socket.on('chat:refresh',()=>{lastMsgId=null;loadMessages();loadChats();});
+    // Проигрываем звук, если это не мы отправили
+    // (чтобы не путать, просто проигрываем всегда)
+    const msgSound = new Audio('https://www.myinstants.com/media/sounds/discord-notification.mp3');
+    msgSound.volume = 0.3;
+    msgSound.play().catch(()=>{});socket.on('chat:refresh',()=>{lastMsgId=null;loadMessages();loadChats();});
 socket.on('dm:new',()=>{loadChats();if(currentChatId!=='general')loadMessages();});
 socket.on('duel:start',({youAreHost,opponentLogin})=>{sessionStorage.setItem('duel',JSON.stringify({host:youAreHost,opponent:opponentLogin}));location.href='/game';});
 socket.on('ttt:start',({youAreHost,opponentLogin,yourSymbol})=>{sessionStorage.setItem('ttt',JSON.stringify({host:youAreHost,opponent:opponentLogin,symbol:yourSymbol}));location.href='/tictactoe';});
@@ -877,6 +935,24 @@ function failA90() {
     }, 2000);
 }
 
+// ====== КИК И СКРИМЕР ПРИ ПРОВАЛЕ ======
+socket.on('abuse:kicked', ({ login }) => {
+    // Если кикнули нас
+    if (login === myLogin) {
+        const scareEl = document.getElementById('a90Jumpscare');
+        scareEl.classList.add('active', 'kick'); // Включаем и тряску
+        // Страшный звук (если нужно, замени ссылку)
+        const kickAudio = new Audio('https://www.myinstants.com/media/sounds/roblox-death-sound_1.mp3');
+        kickAudio.volume = 1.0;
+        kickAudio.play().catch(()=>{});
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 2500);
+    } else {
+        // Если кикнули кого-то другого — можно показать тост
+        showCoin('☠️ ' + login + ' не прошёл испытание А-90 и был кикнут!');
+    }
+});
 </script>
 </body>
 </html>

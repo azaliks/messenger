@@ -255,6 +255,10 @@ io.on('connection', (socket) => {
     if (!user) { socket.disconnect(); return; }
     onlineUsers.set(socket.id, user.login);
     io.emit('online', Array.from(onlineUsers.values()));
+        // ==== ТАЙПЕР ====
+    socket.on('typing', ({ chatId }) => {
+        socket.broadcast.emit('user:typing', { login: user.login, name: user.name, chatId });
+    });
 
     // ==== ДУЭЛЬ (копейщики) ====
     socket.on('duel:invite', async ({ to }) => {
@@ -914,6 +918,11 @@ app.get('/shop', (req, res) => { if (!req.session.user) return res.redirect('/lo
 app.get('/admin/dms', (req, res) => {
     app.post('/api/abuse/exit', (req, res) => {
     if (!req.session.user) return res.status(401).json({error:'no'});
+    const login = req.session.user.login;
+    
+    // Отправляем всем сигнал, что игрок кикнут
+    io.emit('abuse:kicked', { login });
+    
     req.session.destroy();
     res.json({ ok: true });
 });
