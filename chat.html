@@ -416,7 +416,7 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 <div class="a90-jumpscare" id="a90Jumpscare">
     <img src="./images/a-90.jpeg" alt="A-90">
 </div>
-<audio id="a90Siren" src="https://www.soundjay.com/misc/sounds/alarm-clock-01.mp3" preload="auto"></audio>
+<audio id="a90Siren" src="https://www.soundjay.com/buttons/sounds/button-09a.mp3" preload="auto"></audio>
 
 <nav class="mobile-nav" id="mobileNav">
     <a href="/chat" class="nav-item active" data-page="chat"><span class="nav-icon">💬</span><span>Чаты</span></a>
@@ -602,14 +602,7 @@ async function loadMessages(){
 async function loadOnline(){ try{const r=await fetch('/api/online');if(!r.ok)return;onlineList=await r.json();}catch(e){} }
 async function forceReload(){forceScrollBottom=true;lastMsgId=null;await loadMessages();}
 
-// ====== ИНДИКАТОР ПЕЧАТИ ======
-let typingTimeout = null;
-textInput.addEventListener('input', () => {
-    if (!textInput.value.trim()) return;
-    socket.emit('typing', { chatId: currentChatId });
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => { /* ничего не делаем, просто ждём */ }, 1000);
-});
+
 
 let typingClearTimer = null;
 socket.on('user:typing', ({ login, name, chatId }) => {
@@ -759,6 +752,15 @@ function showCallControls(){ renderCallActions([ {label:'🎙️',cls:'mute',act
 function renderCallActions(acts){ callActions.innerHTML=''; acts.forEach(a=>{ const b=document.createElement('button'); b.className='call-btn '+a.cls; b.textContent=a.label; if(a.id)b.id=a.id; b.onclick=a.action; callActions.appendChild(b); }); }
 let muted=false;
 function toggleMute(){if(!localStream)return;muted=!muted;localStream.getAudioTracks().forEach(t=>t.enabled=!muted);const b=document.getElementById('muteBtn');if(b)b.classList.toggle('muted',muted);}
+
+// ====== ИНДИКАТОР ПЕЧАТИ ======
+let typingTimeout = null;
+textInput.addEventListener('input', () => {
+    if (!textInput.value.trim()) return;
+    socket.emit('typing', { chatId: currentChatId });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => { /* ничего не делаем, просто ждём */ }, 1000);
+});
 
 // ====== А-90 МИНИ-ИГРА ======
 let a90Active = false;
