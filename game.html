@@ -47,6 +47,64 @@
         .player-item .name { color: #f2f3f5; font-size: 16px; font-weight: 600; }
         .player-item .arrow { margin-left: auto; color: #5865f2; font-size: 20px; font-weight: 700; }
         .empty-msg { color: #6d6f78; font-style: italic; text-align: center; padding: 20px; }
+    /* ====== МОБИЛЬНАЯ ВЕРСИЯ ====== */
+@media (max-width: 768px) {
+    /* Скрываем левое меню с иконками */
+    .servers { display: none; }
+    
+    /* Основной блок на весь экран */
+    .main { width: 100%; }
+    
+    /* Заголовок */
+    .header { padding: 16px; }
+    .header h1 { font-size: 20px; }
+    .back { font-size: 13px; }
+    
+    /* Контент игры */
+    .content { padding: 20px 16px; gap: 20px; }
+    
+    /* Кубик (или любой другой элемент) */
+    .dice { width: 160px; height: 160px; font-size: 100px; border-radius: 20px; }
+    
+    /* Кнопка */
+    .roll-btn { width: 100%; padding: 16px; font-size: 18px; }
+    
+    /* История */
+    .history { font-size: 13px; }
+    
+    /* Нижняя навигация (добавляем её, чтобы можно было вернуться) */
+    .mobile-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 68px;
+        background: #000000;
+        border-top: 1px solid #1a1a1a;
+        z-index: 100;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .mobile-nav .nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: #80848e;
+        text-decoration: none;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .mobile-nav .nav-item .nav-icon { font-size: 24px; }
+    .mobile-nav .nav-item.active { color: #5865f2; }
+}
+
+/* На ПК нижнюю навигацию скрываем */
+@media (min-width: 769px) {
+    .mobile-nav { display: none; }
+}
     </style>
 </head>
 <body>
@@ -505,5 +563,11 @@
 
         init();
     </script>
+<nav class="mobile-nav">
+    <a href="/chat" class="nav-item"><span class="nav-icon">💬</span><span>Чаты</span></a>
+    <a href="/games" class="nav-item active"><span class="nav-icon">🎮</span><span>Игры</span></a>
+    <a href="/shop" class="nav-item"><span class="nav-icon">🛒</span><span>Магазин</span></a>
+    <a href="/profile" class="nav-item"><span class="nav-icon">👤</span><span>Профиль</span></a>
+</nav>
 </body>
 </html>
