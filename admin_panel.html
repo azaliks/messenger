@@ -22,6 +22,8 @@ h1{color:#f2f3f5;font-size:32px;font-weight:800;margin-bottom:8px;text-align:cen
 .btn.dark:hover{background:#3a3a3a}
 .back{color:#00a8fc;text-decoration:none;font-size:15px;font-weight:600;margin-top:30px}
 .back:hover{text-decoration:underline}
+.input-row{display:flex;gap:10px;margin-bottom:12px}
+.input-row input{flex:1;padding:12px;background:#000;border:1px solid #3a3a3a;border-radius:8px;color:#fff;outline:none}
 </style>
 </head>
 <body>
@@ -31,7 +33,7 @@ h1{color:#f2f3f5;font-size:32px;font-weight:800;margin-bottom:8px;text-align:cen
 <div class="grid">
     <div class="card">
         <h2>☠️ Абьюзы</h2>
-        <p>Запуск А-90, тряска экрана и кик игроков.</p>
+        <p>А-90, тряска, кик, взрыв, музыка, переворот.</p>
         <a href="/admin/abuse" class="btn abuse">Перейти в Абьюзы</a>
     </div>
     <div class="card">
@@ -45,6 +47,22 @@ h1{color:#f2f3f5;font-size:32px;font-weight:800;margin-bottom:8px;text-align:cen
         <a href="/changelog" class="btn dark">Открыть журнал</a>
     </div>
     <div class="card">
+        <h2>💰 Выдать монеты</h2>
+        <div class="input-row">
+            <input type="text" id="coinTarget" placeholder="Логин">
+            <input type="number" id="coinAmount" placeholder="Сумма">
+        </div>
+        <button class="btn dark" onclick="giveCoins()">Выдать</button>
+    </div>
+    <div class="card">
+        <h2>🔑 Сменить пароль</h2>
+        <div class="input-row">
+            <input type="text" id="passTarget" placeholder="Логин">
+            <input type="text" id="newPass" placeholder="Новый пароль">
+        </div>
+        <button class="btn dark" onclick="changePass()">Сменить</button>
+    </div>
+    <div class="card">
         <h2>🗑️ Очистка</h2>
         <p>Удаление сообщений и цитат.</p>
         <button class="btn dark" onclick="clearChat()">Очистить чат</button>
@@ -55,6 +73,24 @@ h1{color:#f2f3f5;font-size:32px;font-weight:800;margin-bottom:8px;text-align:cen
 <a href="/chat" class="back">← Вернуться в чат</a>
 
 <script>
+async function giveCoins() {
+    const target = document.getElementById('coinTarget').value;
+    const amount = document.getElementById('coinAmount').value;
+    if (!target || !amount) return alert('Заполни поля');
+    const r = await fetch('/api/admin/give-coins', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({target, amount}) });
+    const d = await r.json();
+    if (d.ok) { alert('Готово'); location.reload(); } else alert('Ошибка');
+}
+
+async function changePass() {
+    const target = document.getElementById('passTarget').value;
+    const newPassword = document.getElementById('newPass').value;
+    if (!target || !newPassword) return alert('Заполни поля');
+    const r = await fetch('/api/admin/change-password', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({target, newPassword}) });
+    const d = await r.json();
+    if (d.ok) { alert('Пароль изменён'); location.reload(); } else alert(d.error || 'Ошибка');
+}
+
 async function clearChat() {
     if (!confirm('Удалить ВСЕ сообщения?')) return;
     await fetch('/api/admin/clear-chat', { method: 'POST' });

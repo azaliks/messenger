@@ -17,6 +17,9 @@ h1{color:#f23f43;font-size:32px;font-weight:900;text-transform:uppercase;letter-
 .abuse-btn.a90{background:linear-gradient(135deg,#f23f43,#b91c1c);box-shadow:0 8px 20px rgba(242,63,67,0.4)}
 .abuse-btn.shock{background:linear-gradient(135deg,#f0d030,#b8860b);box-shadow:0 8px 20px rgba(240,208,48,0.4);color:#1e1f22}
 .abuse-btn.kick{background:linear-gradient(135deg,#5865f2,#4752c4);box-shadow:0 8px 20px rgba(88,101,242,0.4)}
+.abuse-btn.explode{background:linear-gradient(135deg,#fff,#ccc);color:#000;box-shadow:0 8px 20px rgba(255,255,255,0.4)}
+.abuse-btn.music{background:linear-gradient(135deg,#23a55a,#1e8a4a);box-shadow:0 8px 20px rgba(35,165,90,0.4)}
+.abuse-btn.flip{background:linear-gradient(135deg,#9b59b6,#8e44ad);box-shadow:0 8px 20px rgba(155,89,182,0.4)}
 .abuse-btn:hover{transform:translateY(-3px);filter:brightness(1.1); box-shadow: 0 10px 30px rgba(255,255,255,0.1)}
 .back{margin-top:30px;color:#00a8fc;text-decoration:none;font-size:16px;font-weight:600}
 .back:hover{text-decoration:underline}
@@ -36,6 +39,9 @@ h1{color:#f23f43;font-size:32px;font-weight:900;text-transform:uppercase;letter-
         <button class="abuse-btn a90" onclick="triggerAbuse('a90')">🚀 ПРИЗВАТЬ А-90</button>
         <button class="abuse-btn shock" onclick="triggerAbuse('shock')">⚡ УДАРИТЬ ТОКОМ</button>
         <button class="abuse-btn kick" onclick="triggerAbuse('kick')">👢 МГНОВЕННЫЙ КИК</button>
+        <button class="abuse-btn explode" onclick="triggerAbuse('explode')">💥 ВЗРЫВ</button>
+        <button class="abuse-btn music" onclick="triggerAbuse('music')">🎵 ВКЛЮЧИТЬ МУЗЫКУ</button>
+        <button class="abuse-btn flip" onclick="triggerAbuse('flip')">🔄 ПЕРЕВЕРНУТЬ ЭКРАН</button>
     </div>
 </div>
 
@@ -60,6 +66,9 @@ function triggerAbuse(type) {
     if (type === 'a90') socket.emit('admin:start-abuse', { target });
     if (type === 'shock') socket.emit('admin:shock', { target });
     if (type === 'kick') socket.emit('admin:kick', { target });
+    if (type === 'explode') socket.emit('admin:explode', { target });
+    if (type === 'music') socket.emit('admin:music', { target });
+    if (type === 'flip') socket.emit('admin:flip', { target });
 }
 </script>
 </body>
