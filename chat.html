@@ -90,37 +90,18 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .sys-msg{display:flex;justify-content:center;padding:8px 24px;margin:8px 0}
 .sys-box{background:#1a1a1a;border-left:4px solid #f0d030;border-radius:12px;padding:12px 20px;color:#f0d030;font-size:14px;font-weight:600;max-width:80%;text-align:center;word-wrap:break-word}
 
+/* Поле ввода */
 .chat-form{padding:16px 24px 24px;position:relative;background:#000000}
-.input-wrap {
-    display: flex;
-    align-items: center;
-    gap: 8px; /* Вот этот параметр выровняет всё по красоте */
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 24px; /* Скругление как у капсулы */
-    padding: 0 8px 0 16px; /* Чуть меньше отступы */
-    transition: all .2s;
-}
-.input-wrap:focus-within { border-color: #5865f2; box-shadow: 0 0 0 2px rgba(88,101,242,0.2); }
-.chat-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    padding: 14px 0;
-    color: #f2f3f5;
-    font-family: inherit;
-    font-size: 16px;
-    outline: none;
-    min-width: 0; /* Чтобы поле не распирало контейнер */
-}
-.chat-input::placeholder { color: #6d6f78; }
-.chat-input{flex:1;background:transparent;border:none;padding:16px 0;color:#f2f3f5;font-family:inherit;font-size:16px;outline:none}
+.input-wrap{display:flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:24px;padding:0 8px 0 16px;transition:all .2s}
+.input-wrap:focus-within{border-color:#5865f2;box-shadow:0 0 0 2px rgba(88,101,242,0.2)}
+.chat-input{flex:1;background:transparent;border:none;padding:14px 0;color:#f2f3f5;font-family:inherit;font-size:16px;outline:none;min-width:0}
 .chat-input::placeholder{color:#6d6f78}
 .icon-btn{background:transparent;border:none;color:#949ba4;cursor:pointer;font-size:22px;padding:8px;border-radius:50%;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;flex-shrink:0;transition:all .2s}
 .icon-btn:hover{color:#f2f3f5;background:#2a2a2a}
 .icon-btn img{width:24px;height:24px;object-fit:contain;pointer-events:none;opacity:0.7;transition:opacity .2s}
 .icon-btn:hover img{opacity:1}
 .voice-btn.recording{background:#f23f43;color:white}
+
 .send-btn {
     background: #5865f2; 
     color: white; 
@@ -141,11 +122,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     padding-left: 3px; /* Центрируем стрелочку */
 }
 .send-btn:hover { background: #4752c4; transform: scale(1.05); box-shadow: 0 4px 12px rgba(88,101,242,0.4); }
-.send-btn:hover {
-    background: #4752c4;
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(88,101,242,0.4);
-}
 
 .cmd-hint{position:absolute;bottom:90px;left:24px;right:24px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;max-height:280px;overflow-y:auto;display:none;z-index:50;box-shadow:0 -4px 24px rgba(0,0,0,0.6)}
 .cmd-hint.active{display:block}
@@ -160,7 +136,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .rec-dot{width:12px;height:12px;background:white;border-radius:50%;animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* Модалки и Оверлеи */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100}
 .modal-overlay.active{display:flex}
 .modal{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:24px;width:90%;max-width:480px;max-height:80vh;overflow-y:auto}
@@ -250,6 +225,8 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 @media (max-width: 768px) {
     body { background: #000000; color: #f2f3f5; }
     .servers { display: none; }
+    
+    /* Список чатов */
     .channels { width: 100%; background: #000000; border-right: none; padding-bottom: 80px; }
     .channels-header { display: none; }
     .mobile-messages-header { display: block; padding: 16px 16px 12px; background: #000000; flex-shrink: 0; }
@@ -258,6 +235,7 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .mobile-icon-btn { width: 44px; height: 44px; background: #1a1a1a; border: none; border-radius: 50%; color: #f2f3f5; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .mobile-icon-btn.plus { background: #5865f2; color: white; border-radius: 12px; }
     .mobile-add-friends { flex: 1; height: 44px; background: #1a1a1a; border: none; border-radius: 12px; color: #f2f3f5; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    
     .channel-group { margin-bottom: 12px; }
     .channel-group-title { padding: 10px 20px 6px; font-size: 13px; color: #80848e; text-transform: none; letter-spacing: 0; font-weight: 500; }
     .channel { padding: 10px 16px; border-radius: 16px; margin: 0 12px 2px; gap: 14px; background: transparent; min-height: 72px; align-items: center; border: none; }
@@ -267,15 +245,20 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .channel .ch-name { font-size: 17px; font-weight: 600; color: #ffffff; }
     .channel .unread { font-size: 13px; padding: 2px 9px; border-radius: 12px; background: #f23f43; min-width: 22px; text-align: center; }
     .user-panel { display: none; }
+
+    /* Переключение экранов */
     body.mobile-chat-open .channels { display: none; }
     body.mobile-chat-open .chat { display: flex; }
     body:not(.mobile-chat-open) .chat { display: none; }
+
+    /* Окно чата */
     .chat { width: 100%; background: #000000; }
     .chat-header { padding: 12px 12px; background: #000000; border-bottom: 1px solid #1a1a1a; gap: 8px; }
     .chat-header .back-btn { display: flex; background: transparent; border: none; color: #f2f3f5; font-size: 26px; cursor: pointer; padding: 4px 10px; border-radius: 50%; }
     .chat-header .hash { font-size: 20px; color: #80848e; }
     .chat-header h2 { font-size: 17px; font-weight: 700; }
     .header-btn { padding: 8px 10px; font-size: 13px; color: #b5bac1; background: transparent; border: none; }
+
     .messages { background: #000000; padding: 12px 0 90px 0; }
     .msg { padding: 4px 14px; gap: 12px; margin-top: 8px; }
     .msg:hover { background: #1a1a1a; }
@@ -283,42 +266,38 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .msg-author { font-size: 15px; }
     .msg-text { font-size: 15px; color: #dbdee1; }
     .msg-image { max-width: 100%; border-radius: 12px; }
-              .chat-form { 
-        position: fixed; 
-        left: 0; 
-        right: 0; 
-        bottom: 68px; 
+
+    /* Поле ввода */
+    .chat-form { 
+        position: fixed; left: 0; right: 0; bottom: 68px; 
         padding: 4px 12px 12px; 
-        background: #000000; 
-        z-index: 90; 
+        background: #000000; z-index: 90; 
         padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); 
-              }
-    /* Сам индикатор на мобилке */
-    .typing-indicator {
-        padding: 4px 12px 0;
-        font-size: 12px;
-        color: #949ba4;
-        font-style: italic;
-        min-height: 18px;
-        transition: opacity 0.3s;
     }
     body.mobile-chat-open .chat-form { bottom: 0; }
     body.mobile-chat-open .messages { padding-bottom: 80px; }
-    .input-wrap { padding: 4px 14px; background: #1a1a1a; border-radius: 24px; gap: 8px; }
+
+    .input-wrap { padding: 4px 8px 4px 14px; background: #1a1a1a; border-radius: 24px; gap: 8px; }
     .chat-input { padding: 10px 0; font-size: 16px; color: #ffffff; }
     .chat-input::placeholder { color: #6d6f78; }
-      .icon-btn { font-size: 22px; color: #b5bac1; padding: 8px; }
+    .icon-btn { font-size: 22px; color: #b5bac1; padding: 8px; }
+    
     .send-btn { 
-            .send-btn { 
         display: flex; 
         width: 38px; 
         height: 38px; 
         font-size: 18px; 
         margin-left: 2px;
-    } 
     }
+
     .cmd-hint { bottom: 76px; left: 12px; right: 12px; }
-    .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: #000000; border-top: 1px solid #1a1a1a; z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0); }
+
+    /* Нижняя навигация */
+    .mobile-nav {
+        display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
+        background: #000000; border-top: 1px solid #1a1a1a; z-index: 100;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
     body.mobile-chat-open .mobile-nav { display: none; }
     .mobile-nav .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #80848e; text-decoration: none; font-size: 11px; font-weight: 600; position: relative; }
     .mobile-nav .nav-item .nav-icon { font-size: 24px; line-height: 1; }
@@ -348,6 +327,7 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
         # Чат банды
         <button class="add-btn" onclick="openNewChatModal()" title="Новый чат">+</button>
     </div>
+    <!-- Мобильный заголовок -->
     <div class="mobile-messages-header">
         <div class="mobile-title">Сообщения</div>
         <div class="mobile-actions">
@@ -379,19 +359,16 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     </div>
     <div class="mute-banner" id="muteBanner" style="display:none"></div>
     <div class="messages" id="messages"></div>
-        
+    <div class="typing-indicator" id="typingIndicator"></div>
+    
+    <form class="chat-form" id="form">
         <div class="cmd-hint" id="cmdHint"></div>
-                <form class="chat-form" id="form">
-        <div class="cmd-hint" id="cmdHint"></div>
-        <div class="typing-indicator" id="typingIndicator"></div>
         <div class="input-wrap">
             <button type="button" class="icon-btn" id="imgBtn" title="Картинка">📎</button>
             <input type="file" id="imgInput" accept="image/*" style="display:none">
             <input type="text" class="chat-input" id="text" placeholder="Написать сообщение" autocomplete="off">
             <button type="button" class="icon-btn voice-btn" id="voiceBtn" title="Удерживай для записи"><img src="/images/mic.png" alt="🎤"></button>
             <button type="submit" class="send-btn" title="Отправить">➤</button>
-        </div>
-    </form>
         </div>
     </form>
 </main>
@@ -423,6 +400,7 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 </div>
 <audio id="a90Siren" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
 
+<!-- Нижняя навигация (только на мобилке) -->
 <nav class="mobile-nav" id="mobileNav">
     <a href="/chat" class="nav-item active" data-page="chat"><span class="nav-icon">💬</span><span>Чаты</span></a>
     <a href="/games" class="nav-item" data-page="games"><span class="nav-icon">🎮</span><span>Игры</span></a>
