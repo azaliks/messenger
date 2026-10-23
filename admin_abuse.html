@@ -48,7 +48,6 @@ const targetSelect = document.getElementById('targetSelect');
 
 fetch('/api/users').then(r=>r.json()).then(users=>{
     users.forEach(u => {
-        // Теперь добавляем ВСЕХ пользователей
         const opt = document.createElement('option');
         opt.value = u.login;
         opt.textContent = `${u.name} (@${u.login})`;

@@ -10,7 +10,6 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#000000;color:#dbdee1;height:100vh;height:100dvh;display:flex;overflow:hidden}
 
-/* Сайдбар */
 .servers{width:80px;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:12px;flex-shrink:0;border-right:1px solid #1a1a1a}
 .server-icon{width:48px;height:48px;border-radius:16px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .2s;color:#dbdee1;text-decoration:none}
 .server-icon:hover{border-radius:14px;background:#5865f2;color:white;transform:scale(1.05)}
@@ -18,7 +17,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .server-icon.admin{background:#f0d030;color:#1e1f22;box-shadow:0 0 15px rgba(240,208,48,0.4)}
 .divider{width:32px;height:2px;background:#2a2a2a;border-radius:1px;margin:4px 0}
 
-/* Каналы */
 .channels{width:280px;background:#0a0a0a;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid #1a1a1a}
 .channels-header{padding:20px;border-bottom:1px solid #1a1a1a;font-weight:800;font-size:18px;color:#f2f3f5;display:flex;align-items:center;gap:8px;flex-shrink:0;letter-spacing:-0.5px}
 .channels-header .add-btn{margin-left:auto;background:#5865f2;border:none;color:white;cursor:pointer;font-size:20px;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:all .2s}
@@ -35,7 +33,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .channel .ch-avatar::after{content:'';position:absolute;bottom:0;right:0;width:12px;height:12px;background:#23a55a;border:2px solid #1a1a1a;border-radius:50%}
 .channel .ch-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .channel .unread{background:#f23f43;color:white;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;flex-shrink:0}
-.channel .last-msg{font-size:12px;color:#6d6f78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .user-panel{padding:16px;background:#1a1a1a;display:flex;align-items:center;gap:12px;flex-shrink:0;border-top:1px solid #2a2a2a}
 .user-avatar{width:40px;height:40px;border-radius:50%;background:#5865f2;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:white;flex-shrink:0;overflow:hidden}
 .user-avatar img{width:100%;height:100%;object-fit:cover}
@@ -43,7 +40,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .user-name{font-size:15px;font-weight:700;color:#f2f3f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-status{font-size:12px;color:#949ba4;font-weight:500}
 
-/* Чат */
 .chat{flex:1;display:flex;flex-direction:column;background:#000000;min-width:0}
 .chat-header{padding:16px 24px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:12px;flex-shrink:0;background:#000000}
 .chat-header .hash{color:#80848e;font-size:24px}
@@ -90,7 +86,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .sys-msg{display:flex;justify-content:center;padding:8px 24px;margin:8px 0}
 .sys-box{background:#1a1a1a;border-left:4px solid #f0d030;border-radius:12px;padding:12px 20px;color:#f0d030;font-size:14px;font-weight:600;max-width:80%;text-align:center;word-wrap:break-word}
 
-/* Поле ввода */
 .chat-form{padding:16px 24px 24px;position:relative;background:#000000}
 .input-wrap{display:flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:24px;padding:0 8px 0 16px;transition:all .2s}
 .input-wrap:focus-within{border-color:#5865f2;box-shadow:0 0 0 2px rgba(88,101,242,0.2)}
@@ -103,23 +98,9 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .voice-btn.recording{background:#f23f43;color:white}
 
 .send-btn {
-    background: #5865f2; 
-    color: white; 
-    border: none; 
-    border-radius: 50%; 
-    width: 38px; 
-    height: 38px; 
-    cursor: pointer; 
-    font-family: inherit; 
-    font-size: 18px; 
-    font-weight: 700; 
-    flex-shrink: 0; 
-    margin-left: 4px; 
-    transition: all .2s;
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    padding-left: 3px; /* Центрируем стрелочку */
+    background: #5865f2; color: white; border: none; border-radius: 50%; width: 38px; height: 38px; cursor: pointer;
+    font-family: inherit; font-size: 18px; font-weight: 700; flex-shrink: 0; margin-left: 4px; transition: all .2s;
+    display: flex; align-items: center; justify-content: center; padding-left: 3px;
 }
 .send-btn:hover { background: #4752c4; transform: scale(1.05); box-shadow: 0 4px 12px rgba(88,101,242,0.4); }
 
@@ -225,8 +206,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 @media (max-width: 768px) {
     body { background: #000000; color: #f2f3f5; }
     .servers { display: none; }
-    
-    /* Список чатов */
     .channels { width: 100%; background: #000000; border-right: none; padding-bottom: 80px; }
     .channels-header { display: none; }
     .mobile-messages-header { display: block; padding: 16px 16px 12px; background: #000000; flex-shrink: 0; }
@@ -245,20 +224,15 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .channel .ch-name { font-size: 17px; font-weight: 600; color: #ffffff; }
     .channel .unread { font-size: 13px; padding: 2px 9px; border-radius: 12px; background: #f23f43; min-width: 22px; text-align: center; }
     .user-panel { display: none; }
-
-    /* Переключение экранов */
     body.mobile-chat-open .channels { display: none; }
     body.mobile-chat-open .chat { display: flex; }
     body:not(.mobile-chat-open) .chat { display: none; }
-
-    /* Окно чата */
     .chat { width: 100%; background: #000000; }
     .chat-header { padding: 12px 12px; background: #000000; border-bottom: 1px solid #1a1a1a; gap: 8px; }
     .chat-header .back-btn { display: flex; background: transparent; border: none; color: #f2f3f5; font-size: 26px; cursor: pointer; padding: 4px 10px; border-radius: 50%; }
     .chat-header .hash { font-size: 20px; color: #80848e; }
     .chat-header h2 { font-size: 17px; font-weight: 700; }
     .header-btn { padding: 8px 10px; font-size: 13px; color: #b5bac1; background: transparent; border: none; }
-
     .messages { background: #000000; padding: 12px 0 90px 0; }
     .msg { padding: 4px 14px; gap: 12px; margin-top: 8px; }
     .msg:hover { background: #1a1a1a; }
@@ -266,61 +240,25 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .msg-author { font-size: 15px; }
     .msg-text { font-size: 15px; color: #dbdee1; }
     .msg-image { max-width: 100%; border-radius: 12px; }
-
-    /* Поле ввода */
-    .chat-form { 
-        position: fixed; left: 0; right: 0; bottom: 68px; 
-        padding: 4px 12px 12px; 
-        background: #000000; z-index: 90; 
-        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); 
-    }
+    .chat-form { position: fixed; left: 0; right: 0; bottom: 68px; padding: 4px 12px 12px; background: #000000; z-index: 90; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); }
     body.mobile-chat-open .chat-form { bottom: 0; }
     body.mobile-chat-open .messages { padding-bottom: 80px; }
-
     .input-wrap { padding: 4px 8px 4px 14px; background: #1a1a1a; border-radius: 24px; gap: 8px; }
     .chat-input { padding: 10px 0; font-size: 16px; color: #ffffff; }
     .chat-input::placeholder { color: #6d6f78; }
     .icon-btn { font-size: 22px; color: #b5bac1; padding: 8px; }
     
-    .send-btn { 
-        display: flex; 
-        width: 38px; 
-        height: 38px; 
-        font-size: 18px; 
-        margin-left: 2px;
-    }
+    .send-btn { display: flex; width: 38px; height: 38px; font-size: 18px; margin-left: 2px; }
 
     .cmd-hint { bottom: 76px; left: 12px; right: 12px; }
-
-     /* Нижняя навигация */
-    .mobile-nav {
-        display: flex; 
-        position: fixed; 
-        bottom: 0; 
-        left: 0; 
-        right: 0; 
-        height: 68px;
-        background: #000000; 
-        border-top: 1px solid #1a1a1a; 
-        z-index: 9999; /* ВЫСОКИЙ Z-INDEX, чтобы быть поверх всего */
-        padding-bottom: env(safe-area-inset-bottom, 0);
-    }
+    .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: #000000; border-top: 1px solid #1a1a1a; z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0); }
     body.mobile-chat-open .mobile-nav { display: none; }
     .mobile-nav .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #80848e; text-decoration: none; font-size: 11px; font-weight: 600; position: relative; }
     .mobile-nav .nav-item .nav-icon { font-size: 24px; line-height: 1; }
     .mobile-nav .nav-item.active { color: #5865f2; }
 }
-    .mobile-messages-header { 
-        display: block !important; /* ПРИНУДИТЕЛЬНО ПОКАЗЫВАЕМ */
-        padding: 16px 16px 12px; 
-        background: #000000; 
-        flex-shrink: 0; 
-    }
-    /* Скрываем мобильные элементы на ПК */
 @media (min-width: 769px) {
-    .mobile-messages-header, .mobile-nav, .chat-header .back-btn { 
-        display: none !important; 
-    }
+    .mobile-messages-header, .mobile-nav, .chat-header .back-btn { display: none !important; }
 }
 </style>
 </head>
@@ -342,7 +280,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
         # Чат банды
         <button class="add-btn" onclick="openNewChatModal()" title="Новый чат">+</button>
     </div>
-    <!-- Мобильный заголовок -->
     <div class="mobile-messages-header">
         <div class="mobile-title">Сообщения</div>
         <div class="mobile-actions">
@@ -415,7 +352,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 </div>
 <audio id="a90Siren" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
 
-<!-- Нижняя навигация (только на мобилке) -->
 <nav class="mobile-nav" id="mobileNav">
     <a href="/chat" class="nav-item active" data-page="chat"><span class="nav-icon">💬</span><span>Чаты</span></a>
     <a href="/games" class="nav-item" data-page="games"><span class="nav-icon">🎮</span><span>Игры</span></a>
@@ -429,22 +365,6 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
 const messagesEl = document.getElementById('messages');
-// ==== РАЗБЛОКИРОВКА ЗВУКА ====
-let audioUnlocked = false;
-document.addEventListener('click', () => {
-    if (!audioUnlocked) {
-        audioUnlocked = true;
-        const a90Siren = document.getElementById('a90Siren');
-        if (a90Siren) {
-            a90Siren.volume = 0; // Беззвучно
-            a90Siren.play().then(() => {
-                a90Siren.pause();
-                a90Siren.currentTime = 0;
-                a90Siren.volume = 1.0; // Возвращаем звук
-            }).catch(()=>{});
-        }
-    }
-}, { once: true });
 const form = document.getElementById('form');
 const textInput = document.getElementById('text');
 const voiceBtn = document.getElementById('voiceBtn');
@@ -456,6 +376,23 @@ const imgViewer = document.getElementById('imgViewer');
 const imgViewerImg = document.getElementById('imgViewerImg');
 const coinsTag = document.getElementById('coinsTag');
 const cmdHint = document.getElementById('cmdHint');
+
+// ==== РАЗБЛОКИРОВКА ЗВУКА ====
+let audioUnlocked = false;
+document.addEventListener('click', () => {
+    if (!audioUnlocked) {
+        audioUnlocked = true;
+        const a90Siren = document.getElementById('a90Siren');
+        if (a90Siren) {
+            a90Siren.volume = 0;
+            a90Siren.play().then(() => {
+                a90Siren.pause();
+                a90Siren.currentTime = 0;
+                a90Siren.volume = 1.0;
+            }).catch(()=>{});
+        }
+    }
+}, { once: true });
 
 const BASE_EMOJIS = ['😂','🔥','👍','💀'];
 let myExtraReactions = [];
@@ -640,7 +577,6 @@ socket.on('user:typing', ({ login, name, chatId }) => {
         ind.innerHTML = '';
     }, 3000);
 });
-// ===============================
 
 form.addEventListener('submit', async e=>{
     e.preventDefault();
@@ -780,6 +716,30 @@ function renderCallActions(acts){ callActions.innerHTML=''; acts.forEach(a=>{ co
 let muted=false;
 function toggleMute(){if(!localStream)return;muted=!muted;localStream.getAudioTracks().forEach(t=>t.enabled=!muted);const b=document.getElementById('muteBtn');if(b)b.classList.toggle('muted',muted);}
 
+// ====== НОВЫЕ АБЬЮЗЫ ======
+socket.on('abuse:shock', () => {
+    document.body.style.animation = 'failShake 0.5s infinite';
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;background:rgba(240,208,48,0.3);z-index:9999;pointer-events:none;';
+    document.body.appendChild(flash);
+    const shockAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+    shockAudio.volume = 0.5;
+    shockAudio.play().catch(()=>{});
+    setTimeout(() => { document.body.style.animation = ''; flash.remove(); }, 3000);
+});
+
+socket.on('abuse:kicked', ({ login }) => {
+    if (login === myLogin) {
+        const scareEl = document.getElementById('a90Jumpscare');
+        if (scareEl) scareEl.classList.add('active');
+        const kickAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+        kickAudio.play().catch(()=>{});
+        setTimeout(() => { location.href = '/login?error=1'; }, 2000);
+    } else {
+        showCoin(`👢 ${login} был кикнут!`);
+    }
+});
+
 // ====== А-90 МИНИ-ИГРА ======
 let a90Active = false;
 let a90Coins = 0;
@@ -793,28 +753,22 @@ function startA90() {
     a90Active = true;
     a90Coins = 0;
     a90TimeLeft = 60;
-    
-    // ЗАПУСК СКРИМЕРА
     const scareEl = document.getElementById('a90Jumpscare');
     scareEl.classList.add('active');
     setTimeout(() => { scareEl.classList.remove('active'); }, 1500);
-    
     const overlay = document.getElementById('a90Overlay');
     const playground = document.getElementById('a90Playground');
     const coinsEl = document.getElementById('a90Coins');
     const timerEl = document.getElementById('a90Timer');
     const siren = document.getElementById('a90Siren');
-    
     overlay.classList.add('active');
     playground.innerHTML = '';
     coinsEl.textContent = '0';
     timerEl.textContent = '60';
     timerEl.style.color = '#f0d030';
     timerEl.style.animation = 'none';
-    
     siren.currentTime = 0;
-    siren.play().catch(()=>{}); 
-    
+    siren.play().catch(()=>{});
     a90SpawnInterval = setInterval(() => {
         if (!a90Active) return;
         const coin = document.createElement('div');
@@ -823,140 +777,39 @@ function startA90() {
         coin.style.left = Math.random() * 85 + '%';
         coin.style.top = Math.random() * 85 + '%';
         coin.style.animationDelay = (Math.random() * 0.5) + 's';
-        
-        coin.onclick = (e) => {
-            e.stopPropagation();
-            a90Coins += 50;
-            coinsEl.textContent = a90Coins;
-            coin.remove();
-            if (a90Coins >= 500) winA90();
-        };
+        coin.onclick = (e) => { e.stopPropagation(); a90Coins += 50; coinsEl.textContent = a90Coins; coin.remove(); if (a90Coins >= 500) winA90(); };
         playground.appendChild(coin);
-        
         setTimeout(() => { if(coin.parentNode) coin.remove(); }, 2000);
     }, 400);
-    
     a90Interval = setInterval(() => {
         if (!a90Active) return;
         a90TimeLeft--;
         timerEl.textContent = a90TimeLeft;
-        if (a90TimeLeft <= 10) {
-            timerEl.style.color = '#f23f43';
-            timerEl.style.animation = 'pulseRed 0.5s infinite alternate';
-        }
+        if (a90TimeLeft <= 10) { timerEl.style.color = '#f23f43'; timerEl.style.animation = 'pulseRed 0.5s infinite alternate'; }
         if (a90TimeLeft <= 0) failA90();
     }, 1000);
 }
 
 function winA90() {
-    a90Active = false;
-    clearInterval(a90Interval);
-    clearInterval(a90SpawnInterval);
+    a90Active = false; clearInterval(a90Interval); clearInterval(a90SpawnInterval);
     document.getElementById('a90Siren').pause();
     const overlay = document.getElementById('a90Overlay');
     overlay.innerHTML = '<h1 style="color:#23a55a; font-size:80px; font-weight:900; text-shadow:0 0 40px rgba(35,165,90,0.8);">ТЫ ВЫЖИЛ! 🎉</h1>';
     setTimeout(() => {
         overlay.classList.remove('active');
-        overlay.innerHTML = `
-            <div class="a90-header">
-                <h1>☠️ А-90 ☠️</h1>
-                <p>Набери <b>500 монет</b> за минуту, иначе тебя кикнет!</p>
-            </div>
-            <div class="a90-stats">
-                <div class="a90-stat"><span id="a90Timer">60</span> сек</div>
-                <div class="a90-stat"><span id="a90Coins">0</span> / 500</div>
-            </div>
-            <div class="a90-playground" id="a90Playground"></div>`;
+        overlay.innerHTML = `<div class="a90-header"><h1>☠️ А-90 ☠️</h1><p>Набери <b>500 монет</b> за минуту, иначе тебя кикнет!</p></div><div class="a90-stats"><div class="a90-stat"><span id="a90Timer">60</span> сек</div><div class="a90-stat"><span id="a90Coins">0</span> / 500</div></div><div class="a90-playground" id="a90Playground"></div>`;
     }, 3000);
 }
 
 function failA90() {
-    a90Active = false;
-    clearInterval(a90Interval);
-    clearInterval(a90SpawnInterval);
-    const overlay = document.getElementById('a90Overlay');
-    const siren = document.getElementById('a90Siren');
+    a90Active = false; clearInterval(a90Interval); clearInterval(a90SpawnInterval);
+    const overlay = document.getElementById('a90Overlay'); const siren = document.getElementById('a90Siren');
     siren.pause();
-    
     overlay.classList.add('a90-fail');
     overlay.innerHTML = '<h1 style="color:#f23f43; font-size:80px; font-weight:900; text-shadow:0 0 40px rgba(242,63,67,0.8);">ТЫ НЕ УСПЕЛ! 💀</h1>';
-    
-    setTimeout(() => {
-        fetch('/api/abuse/exit', {method:'POST'}).finally(() => {
-            location.href = '/login?error=1';
-        });
-    }, 2000);
+    setTimeout(() => { fetch('/api/abuse/exit', {method:'POST'}).finally(() => { location.href = '/login?error=1'; }); }, 2000);
 }
-// ====== ОБРАБОТКА НОВЫХ АБЬЮЗОВ ======
-socket.on('abuse:shock', () => {
-    // Тряска и желтая вспышка
-    document.body.style.animation = 'failShake 0.5s infinite';
-    const flash = document.createElement('div');
-    flash.style.cssText = 'position:fixed;inset:0;background:rgba(240,208,48,0.3);z-index:9999;pointer-events:none;';
-    document.body.appendChild(flash);
-    
-    // Проигрываем звук разряда (если есть)
-    const shockAudio = new Audio('https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3');
-    shockAudio.volume = 0.5;
-    shockAudio.play().catch(()=>{});
 
-    setTimeout(() => {
-        document.body.style.animation = '';
-        flash.remove();
-    }, 3000);
-});
-
-socket.on('abuse:kicked', ({ login }) => {
-    if (login === myLogin) {
-        // Если кикнули нас — скример и вылет
-        const scareEl = document.getElementById('a90Jumpscare');
-        scareEl.classList.add('active');
-        const kickAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
-        kickAudio.play().catch(()=>{});
-        setTimeout(() => {
-            location.href = '/login?error=1';
-        }, 2000);
-    } else {
-        // Если кикнули другого — просто тост
-        showCoin(`👢 ${login} был кикнут!`);
-    }
-});
-// ====== НОВЫЕ АБЬЮЗЫ ======
-socket.on('abuse:shock', () => {
-    // Тряска экрана
-    document.body.style.animation = 'failShake 0.5s infinite';
-    
-    // Желтая вспышка
-    const flash = document.createElement('div');
-    flash.style.cssText = 'position:fixed;inset:0;background:rgba(240,208,48,0.3);z-index:9999;pointer-events:none;';
-    document.body.appendChild(flash);
-    
-    // Звук (гугловский надежный)
-    const shockAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
-    shockAudio.volume = 0.5;
-    shockAudio.play().catch(()=>{});
-
-    setTimeout(() => {
-        document.body.style.animation = '';
-        flash.remove();
-    }, 3000); // Трясет 3 секунды
-});
-
-socket.on('abuse:kicked', ({ login }) => {
-    if (login === myLogin) {
-        // Нас кикнули — скример и редирект
-        const scareEl = document.getElementById('a90Jumpscare');
-        if (scareEl) scareEl.classList.add('active');
-        const kickAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
-        kickAudio.play().catch(()=>{});
-        setTimeout(() => {
-            location.href = '/login?error=1';
-        }, 2000);
-    } else {
-        // Кикнули кого-то другого
-        showCoin(`👢 ${login} был кикнут!`);
-    }
-});
 // ====== init ======
 fetch('/api/me').then(r=>r.json()).then(u=>{
     meData = u; isAdmin = u.role === 'admin'; myLogin = u.login; myExtraReactions = u.extraReactions || [];
@@ -966,12 +819,9 @@ fetch('/api/me').then(r=>r.json()).then(u=>{
     const av = document.getElementById('myAvatar');
     if(u.avatar) av.innerHTML = `<img src="${u.avatar}" alt="">`;
     else av.textContent = (u.name||'?').charAt(0).toUpperCase();
-    
-    // СОХРАНЯЕМ ПРОФИЛЬ ДЛЯ ВХОДА
     localStorage.setItem('savedLogin', u.login);
     localStorage.setItem('savedName', u.name);
     if (u.avatar) localStorage.setItem('savedAvatar', u.avatar);
-
     loadChats().then(()=>{ if (window.innerWidth > 768) { switchChat('general'); } });
     loadOnline();
     if(isAdmin) document.getElementById('adminIcon').style.display = 'flex';
@@ -979,7 +829,6 @@ fetch('/api/me').then(r=>r.json()).then(u=>{
     if(warns){const t=document.getElementById('warnTag');t.textContent='⚠️ '+warns;t.style.display='inline-block';}
     if(u.muted){const t=document.getElementById('muteTag');t.textContent='🔇 до '+fmtUntil(u.mutedUntil);t.style.display='inline-block';const b=document.getElementById('muteBanner');b.textContent='🔇 Ты в муте до '+fmtUntil(u.mutedUntil);b.style.display='block';}
 });
-
 setInterval(()=>{fetch('/api/me').then(r=>r.json()).then(u=>{coinsTag.textContent=u.coins||0;});},10000);
 setInterval(loadMessages, 1000);
 setInterval(loadOnline, 3000);

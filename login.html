@@ -87,27 +87,18 @@ if (saved) {
 async function continueAsSaved() {
     const saved = localStorage.getItem('savedLogin');
     if (!saved) return location.reload();
-    
     try {
         const res = await fetch('/api/quick-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ login: saved })
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: saved })
         });
         const data = await res.json();
-        
-        if (data.ok) {
-            window.location.href = data.redirect;
-        } else {
-            // Если не пускает (например, бан), показываем форму
-            localStorage.removeItem('savedLogin');
-            location.reload();
-        }
-    } catch (e) {
-        alert('Ошибка сети, попробуй перезагрузить');
-    }
+        if (data.ok) window.location.href = data.redirect;
+        else { localStorage.removeItem('savedLogin'); location.reload(); }
+    } catch (e) { alert('Ошибка сети'); }
 }
-
+function logoutSaved() {
+    localStorage.removeItem('savedLogin'); localStorage.removeItem('savedName'); localStorage.removeItem('savedAvatar'); location.reload();
+}
 if (location.search.includes('error=1')) {
     document.getElementById('err').textContent = 'Неверный логин или пароль';
     document.getElementById('loginForm').classList.remove('form-hidden');
