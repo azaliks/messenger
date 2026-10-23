@@ -42,12 +42,10 @@ const startBtn = document.getElementById('startAbuseBtn');
 const statusEl = document.getElementById('status');
 fetch('/api/users').then(r=>r.json()).then(users=>{
     users.forEach(u => {
-        if(u.login !== 'azaliks') {
-            const opt = document.createElement('option');
-            opt.value = u.login;
-            opt.textContent = `${u.name} (@${u.login})`;
-            targetSelect.appendChild(opt);
-        }
+        const opt = document.createElement('option');
+        opt.value = u.login;
+        opt.textContent = `${u.name} (@${u.login})`;
+        targetSelect.appendChild(opt);
     });
 });
 startBtn.addEventListener('click', () => {
