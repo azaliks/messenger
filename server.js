@@ -391,5 +391,44 @@ app.post('/api/admin/change-password', async (req, res) => {
 });
 
 // ... (Остальные маршруты как были)
+// ====== РОУТЫ ДЛЯ СТРАНИЦ ======
+app.get('/', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role === 'admin') return res.redirect('/admin');
+    res.redirect('/chat');
+});
 
+app.get('/login', (req, res) => { res.sendFile(path.join(__dirname, 'login.html')); });
+app.get('/chat', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'chat.html')); });
+app.get('/profile', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'profile.html')); });
+app.get('/rating', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'rating.html')); });
+app.get('/quotes', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'quotes.html')); });
+app.get('/game', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'game.html')); });
+app.get('/tictactoe', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'tictactoe.html')); });
+app.get('/shop', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'shop.html')); });
+app.get('/games', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'games.html')); });
+app.get('/dice', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'dice.html')); });
+app.get('/faster', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'faster.html')); });
+app.get('/guess', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'guess.html')); });
+
+app.get('/admin', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role !== 'admin') return res.status(403).send('Доступ только для админа');
+    res.sendFile(path.join(__dirname, 'admin_panel.html'));
+});
+app.get('/admin/abuse', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
+    res.sendFile(path.join(__dirname, 'admin_abuse.html'));
+});
+app.get('/admin/dms', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
+    res.sendFile(path.join(__dirname, 'admin_dms.html'));
+});
+app.get('/changelog', (req, res) => { 
+    if (!req.session.user) return res.redirect('/login'); 
+    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); 
+    res.sendFile(path.join(__dirname, 'changelog.html')); 
+});
 server.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущен на порту ${PORT}`));
