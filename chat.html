@@ -567,13 +567,24 @@ socket.on('user:typing', ({ login, name, chatId }) => {
 form.addEventListener('submit', async e=>{
     e.preventDefault();
     const t = textInput.value; if(!t.trim()) return;
-    if(t.startsWith('/') && currentChatId === 'general'){
+        if(t.startsWith('/') && currentChatId === 'general'){
         textInput.value=''; cmdHint.classList.remove('active');
         const tr = t.trim();
         if(tr.startsWith('/sys ')) await sendSys(tr.slice(5));
         else if(tr.startsWith('/give ')) await giveCoins(tr);
         else if(tr.startsWith('/resetcoins')) await resetCoins(tr);
         else if(tr.startsWith('/takecoins ')) await takeCoins(tr);
+        else if(tr === '/roulette') { 
+            await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text: '/roulette'})});
+            forceReload();
+        }
+        else if(tr.startsWith('/mimic ')) {
+            if(!isAdmin) return alert('Только админ');
+            const p = tr.split(' '); 
+            if(p.length < 3) return alert('/mimic логин текст');
+            await fetch('/api/admin/abuse/fake', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ targetLogin: p[1], text: p.slice(2).join(' ') })});
+            forceReload();
+        }
         else handleCommand(tr);
         return;
     }
