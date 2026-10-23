@@ -268,6 +268,7 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 @media (min-width: 769px) {
     .mobile-messages-header, .mobile-nav, .chat-header .back-btn { display: none !important; }
 }
+#anonBtn.active { background: #5865f2; color: white; box-shadow: 0 0 10px rgba(88,101,242,0.5); }
 </style>
 </head>
 <body>
@@ -317,8 +318,9 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     
     <form class="chat-form" id="form">
         <div class="cmd-hint" id="cmdHint"></div>
-        <div class="input-wrap">
+               <div class="input-wrap">
             <button type="button" class="icon-btn" id="imgBtn" title="Картинка">📎</button>
+            <button type="button" class="icon-btn" id="anonBtn" title="Отправить анонимно" style="color:#80848e; transition:all .2s;">🕵️‍♂️</button>
             <input type="file" id="imgInput" accept="image/*" style="display:none">
             <input type="text" class="chat-input" id="text" placeholder="Написать сообщение" autocomplete="off">
             <button type="button" class="icon-btn voice-btn" id="voiceBtn" title="Удерживай для записи"><img src="/images/mic.png" alt="🎤"></button>
@@ -577,7 +579,8 @@ form.addEventListener('submit', async e=>{
     }
     textInput.value='';
     if(currentChatId === 'general'){
-        const r = await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
+        const r = await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t, anon: isAnonMode})});
+        isAnonMode = false; document.getElementById('anonBtn').classList.remove('active');
         const data = await r.json();
         if(data.error === 'Ты в муте'){alert('Ты в муте');return;}
         showNewAch(data.newAchievements);
@@ -824,7 +827,11 @@ function failA90() {
     overlay.innerHTML = '<h1 style="color:#f23f43; font-size:80px; font-weight:900; text-shadow:0 0 40px rgba(242,63,67,0.8);">ТЫ НЕ УСПЕЛ! 💀</h1>';
     setTimeout(() => { fetch('/api/abuse/exit', {method:'POST'}).finally(() => { location.href = '/login?error=1'; }); }, 2000);
 }
-
+let isAnonMode = false;
+document.getElementById('anonBtn').addEventListener('click', function() {
+    isAnonMode = !isAnonMode;
+    this.classList.toggle('active', isAnonMode);
+});
 // ====== init ======
 fetch('/api/me').then(r=>r.json()).then(u=>{
     meData = u; isAdmin = u.role === 'admin'; myLogin = u.login; myExtraReactions = u.extraReactions || [];

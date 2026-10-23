@@ -182,7 +182,10 @@ app.get('/api/messages', async (req, res) => {
         if (m.system) return { ...m, avatar: null, reactions: {} };
         const u = users.find(x => x.login === m.login);
         const isAdm = u && (u.role === 'admin');
-        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null, reactions: m.reactions || {} };
+       if (m.login === '__anon__' || m.isAnon) {
+    return { ...m, avatar: null, badge: '🕵️‍♂️', color: '#80848e', status: null, reactions: m.reactions || {} };
+}
+return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null, reactions: m.reactions || {} };
     }));
 });
 
@@ -196,7 +199,16 @@ app.post('/api/messages', async (req, res) => {
     const { text } = req.body;
     if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
     const data = await readMessages();
-    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: text.trim(), time: new Date().toISOString(), reactions: {} };
+    const isAnon = req.body.anon === true;
+const msg = { 
+    id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), 
+    login: isAnon ? '__anon__' : req.session.user.login, 
+    name: isAnon ? 'Аноним' : req.session.user.name, 
+    text: text.trim(), 
+    time: new Date().toISOString(), 
+    reactions: {},
+    isAnon: isAnon // Сохраняем флаг
+};
     if (user.shadowbanned) msg.hidden = true;
     data.messages.push(msg);
     await writeMessages(data);
