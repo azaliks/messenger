@@ -29,339 +29,80 @@ const uploadVoice = multer({ storage: multer.diskStorage({ destination: (req, fi
 const uploadImage = multer({ storage: multer.diskStorage({ destination: (req, file, cb) => cb(null, IMAGES_DIR), filename: (req, file, cb) => cb(null, 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + path.extname(file.originalname).toLowerCase()) }), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (req, file, cb) => cb(null, ['image/jpeg','image/png','image/gif','image/webp'].includes(file.mimetype)) });
 
 // ====== SUPABASE CRUD ======
-async function readUsers() {
-    const { data, error } = await supabase.from('users').select('data');
-    if (error) { console.error('readUsers error:', error); return { users: [] }; }
-    return { users: data.map(r => r.data) };
-}
-async function writeUsers(d) {
-    const rows = d.users.map(u => ({ login: u.login, data: u, updated_at: new Date().toISOString() }));
-    const { error } = await supabase.from('users').upsert(rows, { onConflict: 'login' });
-    if (error) console.error('writeUsers error:', error);
-}
-async function readMessages() {
-    const { data, error } = await supabase.from('messages').select('data').order('created_at', { ascending: true });
-    if (error) return { messages: [] };
-    return { messages: data.map(r => r.data) };
-}
-async function writeMessages(d) {
-    const { data: existing } = await supabase.from('messages').select('id');
-    const existingIds = new Set((existing || []).map(r => r.id));
-    const newIds = new Set(d.messages.map(m => m.id));
-    const toDelete = [...existingIds].filter(id => !newIds.has(id));
-    if (toDelete.length) await supabase.from('messages').delete().in('id', toDelete);
-    if (d.messages.length) {
-        const rows = d.messages.map(m => ({ id: m.id, data: m, created_at: m.time || new Date().toISOString() }));
-        await supabase.from('messages').upsert(rows, { onConflict: 'id' });
-    }
-}
-async function readQuotes() {
-    const { data, error } = await supabase.from('quotes').select('data').order('created_at', { ascending: true });
-    if (error) return { quotes: [] };
-    return { quotes: data.map(r => r.data) };
-}
-async function writeQuotes(d) {
-    const { data: existing } = await supabase.from('quotes').select('id');
-    const existingIds = new Set((existing || []).map(r => r.id));
-    const newIds = new Set(d.quotes.map(q => q.id));
-    const toDelete = [...existingIds].filter(id => !newIds.has(id));
-    if (toDelete.length) await supabase.from('quotes').delete().in('id', toDelete);
-    if (d.quotes.length) {
-        const rows = d.quotes.map(q => ({ id: q.id, data: q, created_at: q.savedAt || new Date().toISOString() }));
-        await supabase.from('quotes').upsert(rows, { onConflict: 'id' });
-    }
-}
-async function readDmChats() {
-    const { data, error } = await supabase.from('dm_chats').select('*');
-    if (error) { console.error('readDmChats:', error); return []; }
-    return data.map(r => ({ id: r.id, type: r.type, name: r.name, members: r.members, created_at: r.created_at, created_by: r.created_by }));
-}
-async function writeDmChat(chat) {
-    await supabase.from('dm_chats').upsert({
-        id: chat.id, type: chat.type, name: chat.name || null, members: chat.members, created_by: chat.created_by || null
-    }, { onConflict: 'id' });
-}
-async function readDmMessages(chatId) {
-    let q = supabase.from('dm_messages').select('*').order('time', { ascending: true });
-    if (chatId) q = q.eq('chat_id', chatId);
-    const { data, error } = await q;
-    if (error) { console.error('readDmMessages:', error); return []; }
-    return data;
-}
-async function writeDmMessage(msg) {
-    await supabase.from('dm_messages').upsert({
-        id: msg.id, chat_id: msg.chat_id, from_login: msg.from_login, from_name: msg.from_name,
-        text: msg.text || null, image: msg.image || null, voice: msg.voice || null, duration: msg.duration || null,
-        time: msg.time, read_by: msg.read_by || []
-    }, { onConflict: 'id' });
-}
+async function readUsers() { const { data, error } = await supabase.from('users').select('data'); if (error) { console.error('readUsers error:', error); return { users: [] }; } return { users: data.map(r => r.data) }; }
+async function writeUsers(d) { const rows = d.users.map(u => ({ login: u.login, data: u, updated_at: new Date().toISOString() })); const { error } = await supabase.from('users').upsert(rows, { onConflict: 'login' }); if (error) console.error('writeUsers error:', error); }
+async function readMessages() { const { data, error } = await supabase.from('messages').select('data').order('created_at', { ascending: true }); if (error) return { messages: [] }; return { messages: data.map(r => r.data) }; }
+async function writeMessages(d) { const { data: existing } = await supabase.from('messages').select('id'); const existingIds = new Set((existing || []).map(r => r.id)); const newIds = new Set(d.messages.map(m => m.id)); const toDelete = [...existingIds].filter(id => !newIds.has(id)); if (toDelete.length) await supabase.from('messages').delete().in('id', toDelete); if (d.messages.length) { const rows = d.messages.map(m => ({ id: m.id, data: m, created_at: m.time || new Date().toISOString() })); await supabase.from('messages').upsert(rows, { onConflict: 'id' }); } }
+async function readQuotes() { const { data, error } = await supabase.from('quotes').select('data').order('created_at', { ascending: true }); if (error) return { quotes: [] }; return { quotes: data.map(r => r.data) }; }
+async function writeQuotes(d) { const { data: existing } = await supabase.from('quotes').select('id'); const existingIds = new Set((existing || []).map(r => r.id)); const newIds = new Set(d.quotes.map(q => q.id)); const toDelete = [...existingIds].filter(id => !newIds.has(id)); if (toDelete.length) await supabase.from('quotes').delete().in('id', toDelete); if (d.quotes.length) { const rows = d.quotes.map(q => ({ id: q.id, data: q, created_at: q.savedAt || new Date().toISOString() })); await supabase.from('quotes').upsert(rows, { onConflict: 'id' }); } }
+async function readDmChats() { const { data, error } = await supabase.from('dm_chats').select('*'); if (error) { console.error('readDmChats:', error); return []; } return data.map(r => ({ id: r.id, type: r.type, name: r.name, members: r.members, created_at: r.created_at, created_by: r.created_by })); }
+async function writeDmChat(chat) { await supabase.from('dm_chats').upsert({ id: chat.id, type: chat.type, name: chat.name || null, members: chat.members, created_by: chat.created_by || null }, { onConflict: 'id' }); }
+async function readDmMessages(chatId) { let q = supabase.from('dm_messages').select('*').order('time', { ascending: true }); if (chatId) q = q.eq('chat_id', chatId); const { data, error } = await q; if (error) { console.error('readDmMessages:', error); return []; } return data; }
+async function writeDmMessage(msg) { await supabase.from('dm_messages').upsert({ id: msg.id, chat_id: msg.chat_id, from_login: msg.from_login, from_name: msg.from_name, text: msg.text || null, image: msg.image || null, voice: msg.voice || null, duration: msg.duration || null, time: msg.time, read_by: msg.read_by || [] }, { onConflict: 'id' }); }
 async function deleteDmMessage(id) { await supabase.from('dm_messages').delete().eq('id', id); }
 function dmChatIdForPrivate(a, b) { return 'dm-' + [a, b].sort().join('-'); }
 
-async function readChangelog() {
-    const { data, error } = await supabase.from('changelog').select('data').order('created_at', { ascending: true });
-    if (error) return { changes: [] };
-    return { changes: data.map(r => r.data) };
-}
-async function writeChangelog(d) {
-    const { data: existing } = await supabase.from('changelog').select('id');
-    const existingIds = new Set((existing || []).map(r => r.id));
-    const newIds = new Set(d.changes.map(c => c.id));
-    const toDelete = [...existingIds].filter(id => !newIds.has(id));
-    if (toDelete.length) await supabase.from('changelog').delete().in('id', toDelete);
-    if (d.changes.length) {
-        const rows = d.changes.map(c => ({ id: c.id, data: c, created_at: c.time || new Date().toISOString() }));
-        await supabase.from('changelog').upsert(rows, { onConflict: 'id' });
-    }
-}
+async function readChangelog() { const { data, error } = await supabase.from('changelog').select('data').order('created_at', { ascending: true }); if (error) return { changes: [] }; return { changes: data.map(r => r.data) }; }
+async function writeChangelog(d) { const { data: existing } = await supabase.from('changelog').select('id'); const existingIds = new Set((existing || []).map(r => r.id)); const newIds = new Set(d.changes.map(c => c.id)); const toDelete = [...existingIds].filter(id => !newIds.has(id)); if (toDelete.length) await supabase.from('changelog').delete().in('id', toDelete); if (d.changes.length) { const rows = d.changes.map(c => ({ id: c.id, data: c, created_at: c.time || new Date().toISOString() })); await supabase.from('changelog').upsert(rows, { onConflict: 'id' }); } }
 
-async function addSystemMessage(text) {
-    const data = await readMessages();
-    const msg = { id: 'sys-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), login: '__system__', name: 'СИСТЕМА', text: text, time: new Date().toISOString(), reactions: {}, system: true };
-    data.messages.push(msg);
-    await writeMessages(data);
-    return msg;
-}
+async function addSystemMessage(text) { const data = await readMessages(); const msg = { id: 'sys-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), login: '__system__', name: 'СИСТЕМА', text: text, time: new Date().toISOString(), reactions: {}, system: true }; data.messages.push(msg); await writeMessages(data); return msg; }
 
-function checkPunishments(user) {
-    if (!user) return { muted: false, banned: false };
-    const now = Date.now();
-    let changed = false;
-    let result = { muted: false, banned: false, mutedUntil: null, bannedUntil: null };
-    if (user.mutedUntil) {
-        if (new Date(user.mutedUntil).getTime() > now) { result.muted = true; result.mutedUntil = user.mutedUntil; }
-        else { user.mutedUntil = null; changed = true; }
-    }
-    if (user.bannedUntil) {
-        if (new Date(user.bannedUntil).getTime() > now) { result.banned = true; result.bannedUntil = user.bannedUntil; }
-        else { user.bannedUntil = null; changed = true; }
-    }
-    return { ...result, changed };
-}
+function checkPunishments(user) { if (!user) return { muted: false, banned: false }; const now = Date.now(); let changed = false; let result = { muted: false, banned: false, mutedUntil: null, bannedUntil: null }; if (user.mutedUntil) { if (new Date(user.mutedUntil).getTime() > now) { result.muted = true; result.mutedUntil = user.mutedUntil; } else { user.mutedUntil = null; changed = true; } } if (user.bannedUntil) { if (new Date(user.bannedUntil).getTime() > now) { result.banned = true; result.bannedUntil = user.bannedUntil; } else { user.bannedUntil = null; changed = true; } } return { ...result, changed }; }
+function parseDuration(str) { const map = { '5m': 5*60*1000, '15m': 15*60*1000, '1h': 60*60*1000, '1d': 24*60*60*1000, '7d': 7*24*60*60*1000, 'forever': null }; return map[str] !== undefined ? map[str] : undefined; }
+function parseDurationRu(str) { const map = { '5m': '5 минут', '15m': '15 минут', '1h': '1 час', '1d': '1 день', '7d': '7 дней', 'forever': 'навсегда' }; return map[str] || str; }
 
-function parseDuration(str) {
-    const map = { '5m': 5*60*1000, '15m': 15*60*1000, '1h': 60*60*1000, '1d': 24*60*60*1000, '7d': 7*24*60*60*1000, 'forever': null };
-    return map[str] !== undefined ? map[str] : undefined;
-}
-function parseDurationRu(str) {
-    const map = { '5m': '5 минут', '15m': '15 минут', '1h': '1 час', '1d': '1 день', '7d': '7 дней', 'forever': 'навсегда' };
-    return map[str] || str;
-}
+async function checkAchievements(login) { const users = await readUsers(); const user = users.users.find(u => u.login === login); if (!user) return []; if (!user.achievements) user.achievements = []; if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 }; const newOnes = []; const add = (k) => { if (!user.achievements.includes(k)) { user.achievements.push(k); newOnes.push(k); } }; const s = user.stats; if (s.messages >= 1) add('first_message'); if (s.messages >= 10) add('ten_messages'); if (s.messages >= 100) add('hundred_messages'); if (s.voices >= 1) add('first_voice'); if (s.voices >= 10) add('ten_voices'); if (s.images >= 1) add('first_image'); if (s.images >= 10) add('ten_images'); if (s.reactions >= 1) add('first_reaction'); if (s.reactions >= 100) add('hundred_reactions'); if (s.calls >= 1) add('first_call'); if (s.calls >= 10) add('ten_calls'); const hour = new Date().getHours(); if (hour >= 3 && hour < 5) add('night_owl'); if (hour >= 5 && hour < 7) add('early_bird'); await writeUsers(users); return newOnes; }
 
-async function checkAchievements(login) {
-    const users = await readUsers();
-    const user = users.users.find(u => u.login === login);
-    if (!user) return [];
-    if (!user.achievements) user.achievements = [];
-    if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
-    const newOnes = [];
-    const add = (k) => { if (!user.achievements.includes(k)) { user.achievements.push(k); newOnes.push(k); } };
-    const s = user.stats;
-    if (s.messages >= 1) add('first_message');
-    if (s.messages >= 10) add('ten_messages');
-    if (s.messages >= 100) add('hundred_messages');
-    if (s.voices >= 1) add('first_voice');
-    if (s.voices >= 10) add('ten_voices');
-    if (s.images >= 1) add('first_image');
-    if (s.images >= 10) add('ten_images');
-    if (s.reactions >= 1) add('first_reaction');
-    if (s.reactions >= 100) add('hundred_reactions');
-    if (s.calls >= 1) add('first_call');
-    if (s.calls >= 10) add('ten_calls');
-    const hour = new Date().getHours();
-    if (hour >= 3 && hour < 5) add('night_owl');
-    if (hour >= 5 && hour < 7) add('early_bird');
-    await writeUsers(users);
-    return newOnes;
-}
+const DAILY_REWARD = 10; const DAILY_COOLDOWN = 24 * 60 * 60 * 1000; const DUEL_REWARD = 20; const COLOR_PRICE = 50; const BADGE_PRICE = 30; const STATUS_PRICE = 10; const REACTION_PRICE = 20; const FORBIDDEN_STATUS_WORDS = ['админ', 'admin', 'azaliks', 'система', 'system'];
 
-const DAILY_REWARD = 10;
-const DAILY_COOLDOWN = 24 * 60 * 60 * 1000;
-const DUEL_REWARD = 20;
-const COLOR_PRICE = 50;
-const BADGE_PRICE = 30;
-const STATUS_PRICE = 10;
-const REACTION_PRICE = 20;
-const FORBIDDEN_STATUS_WORDS = ['админ', 'admin', 'azaliks', 'система', 'system'];
-
-function ensureCoinFields(user) {
-    if (typeof user.coins !== 'number') user.coins = 0;
-    if (!user.lastDaily) user.lastDaily = null;
-    if (!user.lastDuelReward) user.lastDuelReward = null;
-    if (!Array.isArray(user.colors)) user.colors = [];
-    if (!Array.isArray(user.badges)) user.badges = [];
-    if (!user.currentColor) user.currentColor = null;
-    if (!user.currentBadge) user.currentBadge = null;
-    if (!user.status) user.status = null;
-    if (!Array.isArray(user.extraReactions)) user.extraReactions = [];
-    if (typeof user.isAdmin === 'undefined') user.isAdmin = (user.role === 'admin');
-}
-function isForbiddenStatus(text) {
-    if (!text) return false;
-    const low = text.toLowerCase();
-    return FORBIDDEN_STATUS_WORDS.some(w => low.includes(w));
-}
+function ensureCoinFields(user) { if (typeof user.coins !== 'number') user.coins = 0; if (!user.lastDaily) user.lastDaily = null; if (!user.lastDuelReward) user.lastDuelReward = null; if (!Array.isArray(user.colors)) user.colors = []; if (!Array.isArray(user.badges)) user.badges = []; if (!user.currentColor) user.currentColor = null; if (!user.currentBadge) user.currentBadge = null; if (!user.status) user.status = null; if (!Array.isArray(user.extraReactions)) user.extraReactions = []; if (typeof user.isAdmin === 'undefined') user.isAdmin = (user.role === 'admin'); }
+function isForbiddenStatus(text) { if (!text) return false; const low = text.toLowerCase(); return FORBIDDEN_STATUS_WORDS.some(w => low.includes(w)); }
 function isAdminUser(user) { return user && (user.role === 'admin' || user.isAdmin === true); }
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true })); app.use(express.json());
 const sessionMiddleware = session({ secret: 'pacan-secret-key', resave: false, saveUninitialized: false });
-app.use(sessionMiddleware);
-app.use(express.static(__dirname));
-
+app.use(sessionMiddleware); app.use(express.static(__dirname));
 app.get('/manifest.json', (req, res) => { res.setHeader('Content-Type', 'application/manifest+json'); res.sendFile(path.join(__dirname, 'manifest.json')); });
 app.get('/sw.js', (req, res) => { res.setHeader('Content-Type', 'application/javascript'); res.setHeader('Service-Worker-Allowed', '/'); res.sendFile(path.join(__dirname, 'sw.js')); });
-app.use('/avatars', express.static(AVATARS_DIR));
-app.use('/voice', express.static(VOICE_DIR));
-app.use('/images', express.static(IMAGES_DIR));
+app.use('/avatars', express.static(AVATARS_DIR)); app.use('/voice', express.static(VOICE_DIR)); app.use('/images', express.static(IMAGES_DIR));
 io.engine.use(sessionMiddleware);
 
-const onlineUsers = new Map();
-const duelInvites = new Map();
-const tttInvites = new Map();
+const onlineUsers = new Map(); const duelInvites = new Map(); const tttInvites = new Map();
 
 io.on('connection', (socket) => {
     const user = socket.request.session && socket.request.session.user;
     if (!user) { socket.disconnect(); return; }
-    onlineUsers.set(socket.id, user.login);
-    io.emit('online', Array.from(onlineUsers.values()));
+    onlineUsers.set(socket.id, user.login); io.emit('online', Array.from(onlineUsers.values()));
 
-    // ==== ДУЭЛЬ ====
-    socket.on('duel:invite', async ({ to }) => {
-        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (!targetSocketId) { socket.emit('duel:offline', { to }); return; }
-        const key = `${user.login}:${to}`;
-        duelInvites.set(key, Date.now());
-        await addSystemMessage(`⚔️ ${user.name} вызывает ${to} на битву копейщиков! ${to}, зайди в /game и вызови ${user.name} в ответ.`);
-        io.emit('chat:refresh');
-        const reverseKey = `${to}:${user.login}`;
-        if (duelInvites.has(reverseKey)) {
-            duelInvites.delete(key); duelInvites.delete(reverseKey);
-            await addSystemMessage(`⚔️ Битва началась: ${user.login} vs ${to}!`);
-            io.emit('chat:refresh');
-            const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === user.login)?.[0];
-            const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-            if (hostSocketId) io.to(hostSocketId).emit('duel:start', { youAreHost: true, opponentLogin: to });
-            if (clientSocketId) io.to(clientSocketId).emit('duel:start', { youAreHost: false, opponentLogin: user.login });
-        }
-    });
+    socket.on('duel:invite', async ({ to }) => { const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0]; if (!targetSocketId) { socket.emit('duel:offline', { to }); return; } const key = `${user.login}:${to}`; duelInvites.set(key, Date.now()); await addSystemMessage(`⚔️ ${user.name} вызывает ${to} на битву копейщиков! ${to}, зайди в /game и вызови ${user.name} в ответ.`); io.emit('chat:refresh'); const reverseKey = `${to}:${user.login}`; if (duelInvites.has(reverseKey)) { duelInvites.delete(key); duelInvites.delete(reverseKey); await addSystemMessage(`⚔️ Битва началась: ${user.login} vs ${to}!`); io.emit('chat:refresh'); const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === user.login)?.[0]; const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0]; if (hostSocketId) io.to(hostSocketId).emit('duel:start', { youAreHost: true, opponentLogin: to }); if (clientSocketId) io.to(clientSocketId).emit('duel:start', { youAreHost: false, opponentLogin: user.login }); } });
     socket.on('duel:state', ({ to, state }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('duel:state', { state }); });
-    socket.on('duel:end', async ({ to, winnerLogin, winnerName, loserName }) => {
-        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
-        if (t) io.to(t).emit('duel:ended', { winnerName, loserName });
-        const usersData = await readUsers();
-        const winner = usersData.users.find(u => u.login === winnerLogin);
-        let rewardText = '';
-        if (winner && !isAdminUser(winner)) {
-            ensureCoinFields(winner);
-            const now = Date.now();
-            if (!winner.lastDuelReward || now - new Date(winner.lastDuelReward).getTime() > DAILY_COOLDOWN) {
-                winner.coins += DUEL_REWARD;
-                winner.lastDuelReward = new Date().toISOString();
-                rewardText = ` (+${DUEL_REWARD} монет)`;
-            }
-        }
-        await writeUsers(usersData);
-        await addSystemMessage(`⚔️ ${winnerName} победил ${loserName} в битве копейщиков!${rewardText}`);
-        io.emit('chat:refresh');
-    });
+    socket.on('duel:end', async ({ to, winnerLogin, winnerName, loserName }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('duel:ended', { winnerName, loserName }); const usersData = await readUsers(); const winner = usersData.users.find(u => u.login === winnerLogin); let rewardText = ''; if (winner && !isAdminUser(winner)) { ensureCoinFields(winner); const now = Date.now(); if (!winner.lastDuelReward || now - new Date(winner.lastDuelReward).getTime() > DAILY_COOLDOWN) { winner.coins += DUEL_REWARD; winner.lastDuelReward = new Date().toISOString(); rewardText = ` (+${DUEL_REWARD} монет)`; } } await writeUsers(usersData); await addSystemMessage(`⚔️ ${winnerName} победил ${loserName} в битве копейщиков!${rewardText}`); io.emit('chat:refresh'); });
     socket.on('duel:leave', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('duel:opponentLeft', { byName: user.name }); });
 
-    // ==== КРЕСТИКИ-НОЛИКИ ====
-    socket.on('ttt:invite', async ({ to }) => {
-        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-        if (!targetSocketId) { socket.emit('ttt:offline', { to }); return; }
-        const key = `${user.login}:${to}`;
-        tttInvites.set(key, Date.now());
-        await addSystemMessage(`⭕ ${user.name} вызывает ${to} в крестики-нолики! ${to}, зайди в /tictactoe и вызови в ответ.`);
-        io.emit('chat:refresh');
-        const reverseKey = `${to}:${user.login}`;
-        if (tttInvites.has(reverseKey)) {
-            tttInvites.delete(key); tttInvites.delete(reverseKey);
-            await addSystemMessage(`❌ Началась игра в крестики-нолики: ${user.login} vs ${to}!`);
-            io.emit('chat:refresh');
-            const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === user.login)?.[0];
-            const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0];
-            if (hostSocketId) io.to(hostSocketId).emit('ttt:start', { youAreHost: true, opponentLogin: to, yourSymbol: 'X' });
-            if (clientSocketId) io.to(clientSocketId).emit('ttt:start', { youAreHost: false, opponentLogin: user.login, yourSymbol: 'O' });
-        }
-    });
-    socket.on('ttt:move', ({ to, board, nextTurn }) => {
-        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
-        if (t) io.to(t).emit('ttt:state', { board, nextTurn });
-    });
-    socket.on('ttt:end', async ({ to, winnerName, loserName, draw }) => {
-        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
-        if (t) io.to(t).emit('ttt:ended', { winnerName, loserName, draw });
-        if (draw) await addSystemMessage(`🤝 Ничья в крестиках-ноликах: ${winnerName} vs ${loserName}`);
-        else await addSystemMessage(`🏆 ${winnerName} победил ${loserName} в крестиках-ноликах!`);
-        io.emit('chat:refresh');
-    });
+    socket.on('ttt:invite', async ({ to }) => { const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0]; if (!targetSocketId) { socket.emit('ttt:offline', { to }); return; } const key = `${user.login}:${to}`; tttInvites.set(key, Date.now()); await addSystemMessage(`⭕ ${user.name} вызывает ${to} в крестики-нолики! ${to}, зайди в /tictactoe и вызови в ответ.`); io.emit('chat:refresh'); const reverseKey = `${to}:${user.login}`; if (tttInvites.has(reverseKey)) { tttInvites.delete(key); tttInvites.delete(reverseKey); await addSystemMessage(`❌ Началась игра в крестики-нолики: ${user.login} vs ${to}!`); io.emit('chat:refresh'); const hostSocketId = [...onlineUsers.entries()].find(([, login]) => login === user.login)?.[0]; const clientSocketId = [...onlineUsers.entries()].find(([, login]) => login === to)?.[0]; if (hostSocketId) io.to(hostSocketId).emit('ttt:start', { youAreHost: true, opponentLogin: to, yourSymbol: 'X' }); if (clientSocketId) io.to(clientSocketId).emit('ttt:start', { youAreHost: false, opponentLogin: user.login, yourSymbol: 'O' }); } });
+    socket.on('ttt:move', ({ to, board, nextTurn }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('ttt:state', { board, nextTurn }); });
+    socket.on('ttt:end', async ({ to, winnerName, loserName, draw }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('ttt:ended', { winnerName, loserName, draw }); if (draw) await addSystemMessage(`🤝 Ничья в крестиках-ноликах: ${winnerName} vs ${loserName}`); else await addSystemMessage(`🏆 ${winnerName} победил ${loserName} в крестиках-ноликах!`); io.emit('chat:refresh'); });
     socket.on('ttt:leave', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('ttt:opponentLeft', { byName: user.name }); });
 
-    // ==== УВЕДОМЛЕНИЯ ====
-    socket.on('dm:notify', ({ to }) => {
-        const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0];
-        if (t) io.to(t).emit('dm:new', { from: user.login });
-    });
+    socket.on('dm:notify', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('dm:new', { from: user.login }); });
+    socket.on('typing', ({ chatId }) => { socket.broadcast.emit('user:typing', { login: user.login, name: user.name, chatId }); });
 
-    // ==== ТАЙПЕР ====
-    socket.on('typing', ({ chatId }) => {
-        socket.broadcast.emit('user:typing', { login: user.login, name: user.name, chatId });
-    });
-
-    // ==== ЗВОНКИ ====
     socket.on('call:offer', ({ to, offer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:incoming', { from: user.login, fromName: user.name, offer }); else socket.emit('call:offline', { to }); });
     socket.on('call:answer', ({ to, answer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:answered', { answer }); });
     socket.on('call:ice', ({ to, candidate }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ice', { candidate }); });
     socket.on('call:end', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:ended'); });
     socket.on('call:reject', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:rejected'); });
 
-    // ==== АБЬЮЗЫ ====
-    socket.on('admin:start-abuse', ({ target }) => {
-        const u = socket.request.session && socket.request.session.user;
-        if (!u || u.role !== 'admin') return;
-        if (target === 'all') io.emit('abuse:a90-start');
-        else {
-            const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0];
-            if (targetSocketId) { io.to(targetSocketId).emit('abuse:a90-start'); socket.emit('abuse:a90-start'); }
-        }
-    });
-    socket.on('admin:shock', ({ target }) => {
-        const u = socket.request.session && socket.request.session.user;
-        if (!u || u.role !== 'admin') return;
-        if (target === 'all') io.emit('abuse:shock');
-        else {
-            const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0];
-            if (targetSocketId) { io.to(targetSocketId).emit('abuse:shock'); socket.emit('abuse:shock'); }
-        }
-    });
-    socket.on('admin:kick', ({ target }) => {
-        const u = socket.request.session && socket.request.session.user;
-        if (!u || u.role !== 'admin') return;
-        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0];
-        if (targetSocketId) io.to(targetSocketId).emit('abuse:kicked', { login: target });
-    });
-    socket.on('admin:explode', ({ target }) => {
-        if (socket.request.session.user.role !== 'admin') return;
-        if (target === 'all') io.emit('abuse:explode');
-        else { const sid = [...onlineUsers.entries()].find(([, l]) => l === target)?.[0]; if (sid) io.to(sid).emit('abuse:explode'); }
-    });
-    socket.on('admin:music', ({ target }) => {
-        if (socket.request.session.user.role !== 'admin') return;
-        if (target === 'all') io.emit('abuse:music');
-        else { const sid = [...onlineUsers.entries()].find(([, l]) => l === target)?.[0]; if (sid) io.to(sid).emit('abuse:music'); }
-    });
-    socket.on('admin:flip', ({ target }) => {
-        if (socket.request.session.user.role !== 'admin') return;
-        if (target === 'all') io.emit('abuse:flip');
-        else { const sid = [...onlineUsers.entries()].find(([, l]) => l === target)?.[0]; if (sid) io.to(sid).emit('abuse:flip'); }
-    });
+    socket.on('admin:start-abuse', ({ target }) => { const u = socket.request.session && socket.request.session.user; if (!u || u.role !== 'admin') return; if (target === 'all') io.emit('abuse:a90-start'); else { const ts = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0]; if (ts) { io.to(ts).emit('abuse:a90-start'); socket.emit('abuse:a90-start'); } } });
+    socket.on('admin:shock', ({ target }) => { const u = socket.request.session && socket.request.session.user; if (!u || u.role !== 'admin') return; if (target === 'all') io.emit('abuse:shock'); else { const ts = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0]; if (ts) { io.to(ts).emit('abuse:shock'); socket.emit('abuse:shock'); } } });
+    socket.on('admin:kick', ({ target }) => { const u = socket.request.session && socket.request.session.user; if (!u || u.role !== 'admin') return; const ts = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0]; if (ts) io.to(ts).emit('abuse:kicked', { login: target }); });
+    socket.on('admin:explode', ({ target }) => { if (socket.request.session.user.role !== 'admin') return; if (target === 'all') io.emit('abuse:explode'); else { const sid = [...onlineUsers.entries()].find(([, l]) => l === target)?.[0]; if (sid) io.to(sid).emit('abuse:explode'); } });
+    socket.on('admin:music', ({ target }) => { if (socket.request.session.user.role !== 'admin') return; if (target === 'all') io.emit('abuse:music'); else { const sid = [...onlineUsers.entries()].find(([, l]) => l === target)?.[0]; if (sid) io.to(sid).emit('abuse:music'); } });
+    socket.on('admin:flip', ({ target }) => { if (socket.request.session.user.role !== 'admin') return; if (target === 'all') io.emit('abuse:flip'); else { const sid = [...onlineUsers.entries()].find(([, l]) => l === target)?.[0]; if (sid) io.to(sid).emit('abuse:flip'); } });
 
     socket.on('disconnect', () => { onlineUsers.delete(socket.id); io.emit('online', Array.from(onlineUsers.values())); });
 });
-
-// ====== API ======
+// ====== API ЗВОНКОВ И АВТОРИЗАЦИИ ======
 app.get('/api/turn', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     res.json({ iceServers: [
@@ -370,7 +111,6 @@ app.get('/api/turn', (req, res) => {
     ]});
 });
 
-// ====== АВТОРИЗАЦИЯ ======
 app.get('/login', (req, res) => { res.sendFile(path.join(__dirname, 'login.html')); });
 
 app.post('/login', async (req, res) => {
@@ -426,28 +166,9 @@ app.get('/api/me', async (req, res) => {
     });
 });
 
-app.get('/api/online', (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    res.json(Array.from(onlineUsers.values()));
-});
-
-app.get('/api/users', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = await readUsers();
-    res.json(data.users.map(u => ({
-        login: u.login, name: u.name, avatar: u.avatar || null,
-        coins: u.coins || 0,
-        badge: u.role === 'admin' ? '👑' : (u.currentBadge || null),
-        color: u.currentColor || null
-    })));
-});
-
-app.get('/api/rating', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = await readUsers();
-    const rating = data.users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null, coins: u.coins || 0, messages: (u.stats && u.stats.messages) || 0, voices: (u.stats && u.stats.voices) || 0, images: (u.stats && u.stats.images) || 0, reactions: (u.stats && u.stats.reactions) || 0, calls: (u.stats && u.stats.calls) || 0, achievements: (u.achievements || []).length })).sort((a, b) => (b.messages + b.voices * 2 + b.images * 2) - (a.messages + a.voices * 2 + a.images * 2));
-    res.json(rating);
-});
+app.get('/api/online', (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'not logged in' }); res.json(Array.from(onlineUsers.values())); });
+app.get('/api/users', async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'not logged in' }); const data = await readUsers(); res.json(data.users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null, coins: u.coins || 0, badge: u.role === 'admin' ? '👑' : (u.currentBadge || null), color: u.currentColor || null }))); });
+app.get('/api/rating', async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'not logged in' }); const data = await readUsers(); const rating = data.users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null, coins: u.coins || 0, messages: (u.stats && u.stats.messages) || 0, voices: (u.stats && u.stats.voices) || 0, images: (u.stats && u.stats.images) || 0, reactions: (u.stats && u.stats.reactions) || 0, calls: (u.stats && u.stats.calls) || 0, achievements: (u.achievements || []).length })).sort((a, b) => (b.messages + b.voices * 2 + b.images * 2) - (a.messages + a.voices * 2 + a.images * 2)); res.json(rating); });
 
 // ====== СООБЩЕНИЯ ======
 app.get('/api/messages', async (req, res) => {
@@ -607,10 +328,7 @@ app.post('/api/dm/open', async (req, res) => {
     const id = dmChatIdForPrivate(me, other);
     const all = await readDmChats();
     let chat = all.find(c => c.id === id);
-    if (!chat) {
-        chat = { id, type: 'private', name: null, members: [me, other], created_by: me };
-        await writeDmChat(chat);
-    }
+    if (!chat) { chat = { id, type: 'private', name: null, members: [me, other], created_by: me }; await writeDmChat(chat); }
     res.json({ ok: true, chatId: id });
 });
 
@@ -671,8 +389,7 @@ app.delete('/api/dm/message/:id', async (req, res) => {
     await deleteDmMessage(req.params.id);
     res.json({ ok: true });
 });
-
-// ====== ОСТАЛЬНЫЕ API ======
+// ====== ЦИТАТЫ И ЖУРНАЛ ======
 app.get('/api/quotes', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const data = await readQuotes();
@@ -705,12 +422,29 @@ app.get('/api/changelog', async (req, res) => {
     res.json(log.changes.slice().reverse());
 });
 
+// ====== СИСТЕМА И МОНЕТЫ ======
+app.post('/api/ping', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
+    if (user) { user.lastPing = new Date().toISOString(); await writeUsers(data); }
+    res.json({ ok: true });
+});
+
 app.post('/api/sys', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
     const { text } = req.body;
     if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
     const msg = await addSystemMessage(text.trim().slice(0, 500));
     res.json(msg);
+});
+
+app.post('/api/abuse/exit', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'no' });
+    const login = req.session.user.login;
+    io.emit('abuse:kicked', { login });
+    req.session.destroy();
+    res.json({ ok: true });
 });
 
 app.post('/api/give-coins', async (req, res) => {
@@ -783,40 +517,24 @@ app.post('/api/moderate', async (req, res) => {
         case 'ban': user.bannedUntil = until; await addSystemMessage(`🚫 ${user.nickname} забанен на ${durRu}`); break;
         case 'unban': user.bannedUntil = null; await addSystemMessage(`✅ ${user.nickname} разбанен`); break;
         case 'kick': for (const [sid, login] of onlineUsers.entries()) { if (login === target) io.to(sid).emit('kicked'); } await addSystemMessage(`👢 ${user.nickname} кикнут`); break;
-        case 'warn': if (!user.warnings) user.warnings = []; user.warnings.push({ by: req.session.user.login, time: new Date().toISOString() }); if (user.warnings.length === 3) { user.mutedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString(); user.warnings = []; await writeUsers(data); await addSystemMessage(`⚠️ ${user.nickname} получил 3-й варн → автомут`); return res.json({ ok: true, autoMuted: true }); } await addSystemMessage(`⚠️ ${user.nickname} получил предупреждение.`); break;
+        case 'warn': 
+            if (!user.warnings) user.warnings = []; 
+            user.warnings.push({ by: req.session.user.login, time: new Date().toISOString() }); 
+            if (user.warnings.length === 3) { 
+                user.mutedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString(); 
+                user.warnings = []; 
+                await writeUsers(data); 
+                await addSystemMessage(`⚠️ ${user.nickname} получил 3-й варн → автомут`); 
+                return res.json({ ok: true, autoMuted: true }); 
+            } 
+            await addSystemMessage(`⚠️ ${user.nickname} получил предупреждение.`); 
+            break;
         case 'clearWarns': user.warnings = []; await addSystemMessage(`🧹 ${user.nickname}: варны сброшены`); break;
         default: return res.status(400).json({ error: 'unknown action' });
     }
     await writeUsers(data);
     res.json({ ok: true, action, target, duration: duration || null });
 });
-
-// ====== ПРОФИЛЬ ======
-app.get('/api/profile/:login', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = await readUsers();
-    const user = data.users.find(u => u.login === req.params.login);
-    if (!user) return res.status(404).json({ error: 'user not found' });
-    ensureCoinFields(user);
-    const p = checkPunishments(user);
-    const isAdmin = isAdminUser(user);
-    res.json({
-        login: user.login, name: user.name, nickname: user.nickname,
-        avatar: user.avatar || null, phrase: user.phrase || '',
-        achievements: user.achievements || [], stats: user.stats || {},
-        warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil,
-        banned: p.banned, bannedUntil: p.bannedUntil,
-        coins: user.coins || 0, colors: user.colors || [], badges: user.badges || [],
-        extraReactions: user.extraReactions || [], currentColor: user.currentColor || null,
-        currentBadge: isAdmin ? '👑' : (user.currentBadge || null),
-        color: user.currentColor || null, badge: isAdmin ? '👑' : (user.currentBadge || null),
-        isAdmin: isAdmin, status: user.status || null, isOwn: user.login === req.session.user.login
-    });
-});
-
-app.post('/api/profile/avatar', uploadAvatar.single('avatar'), async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); if (!req.file) return res.status(400).json({ error: 'no file' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); if (user.avatar) { const old = path.join(AVATARS_DIR, path.basename(user.avatar)); if (fs.existsSync(old)) fs.unlinkSync(old); } user.avatar = '/avatars/' + req.file.filename; await writeUsers(data); res.json({ ok: true, avatar: user.avatar }); });
-app.post('/api/profile/phrase', async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); const { phrase } = req.body; if (typeof phrase !== 'string') return res.status(400).json({ error: 'invalid' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); user.phrase = phrase.trim().slice(0, 200); await writeUsers(data); res.json({ ok: true, phrase: user.phrase }); });
-app.post('/api/profile/credentials', async (req, res) => { /* ... */ });
 
 // ====== АДМИНКА ======
 const COMMANDS_LIST = [
@@ -831,142 +549,7 @@ const COMMANDS_LIST = [
 app.get('/admin', async (req, res) => {
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role !== 'admin') return res.status(403).send('Доступ только для админа');
-    
-    const data = await readUsers();
-    const msgs = await readMessages();
-    const quotes = await readQuotes();
-    const now = Date.now();
-    const ONE_MINUTE = 60 * 1000;
-    const totalMessages = msgs.messages.length;
-    const totalVoice = msgs.messages.filter(m => m.voice).length;
-    const totalImages = msgs.messages.filter(m => m.image).length;
-
-    const rows = data.users.map(u => {
-        let status, statusColor;
-        if (!u.lastLogin) { status = 'Не заходил'; statusColor = '#80848e'; }
-        else if (u.lastPing && (now - new Date(u.lastPing).getTime() < ONE_MINUTE)) { status = 'В сети'; statusColor = '#23a55a'; }
-        else { status = 'Заходил'; statusColor = '#949ba4'; }
-        const p = checkPunishments(u);
-        let punish = '';
-        if (p.banned) punish += `<span class="pun ban">🚫 БАН</span>`;
-        if (p.muted) punish += `<span class="pun mute">🔇 МУТ</span>`;
-        const warns = (u.warnings || []).length;
-        if (warns) punish += `<span class="pun warn">⚠️ ${warns}</span>`;
-        const lastTime = u.lastLogin ? new Date(u.lastLogin).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-        const initial = (u.nickname || '?').charAt(0).toUpperCase();
-        const avatarHtml = u.avatar ? `<img src="${u.avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #2a2a2a;">` : `<div class="avatar">${initial}</div>`;
-        const stats = u.stats || {};
-        return `<tr>
-            <td><div class="user-cell">${avatarHtml}<span class="nickname">${u.nickname}</span>${punish}</div></td>
-            <td class="muted">${u.login}</td>
-            <td class="muted" style="color:#f0d030">💰 ${u.coins || 0}</td>
-            <td class="muted">${lastTime}</td>
-            <td><span class="status" style="color:${statusColor};"><span class="dot" style="background:${statusColor};"></span>${status}</span></td>
-            <td class="muted">${stats.messages || 0}</td>
-            <td class="muted">${stats.voices || 0}</td>
-            <td class="muted">${stats.images || 0}</td>
-            <td><button class="reset-btn" onclick="resetStats('${u.login}')">Сброс</button></td>
-        </tr>`;
-    }).join('');
-
-    const cmdRows = COMMANDS_LIST.map(c => `<tr><td class="cmd-name">${c.cmd}</td><td class="muted">${c.desc}</td></tr>`).join('');
-
-    res.send(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Админка</title><style>
-        * { box-sizing: border-box; }
-        body { font-family: "gg sans","Helvetica Neue",Helvetica,Arial,sans-serif; background:#000000; color:#dbdee1; margin:0; padding:40px 20px; min-height:100vh; display:flex; flex-direction:column; align-items:center; }
-        h1 { color:#f2f3f5; font-size:32px; font-weight:800; text-align:center; margin:0 0 8px; letter-spacing:-1px; }
-        h2 { color:#f2f3f5; font-size:24px; font-weight:700; margin:40px 0 16px; text-align:center; }
-        .sub { text-align:center; color:#949ba4; font-size:15px; margin-bottom:32px; }
-        
-        .stats-grid { max-width:1200px; width:100%; margin:0 auto 24px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; }
-        .stat-card { background:#1a1a1a; border:1px solid #2a2a2a; padding:20px; border-radius:16px; text-align:center; transition:all .2s; }
-        .stat-card:hover { border-color:#5865f2; transform:translateY(-2px); }
-        .stat-card .num { font-size:32px; font-weight:800; color:#5865f2; }
-        .stat-card .lbl { color:#949ba4; font-size:13px; margin-top:4px; font-weight:600; }
-        
-        .actions { max-width:1200px; width:100%; margin:0 auto 24px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-        .action-btn { padding:12px 24px; border-radius:12px; border:none; cursor:pointer; font-family:inherit; font-size:15px; font-weight:700; color:white; text-decoration:none; display:inline-block; text-align:center; transition:all .2s; }
-        .action-btn.danger { background:#f23f43; }
-        .action-btn.danger:hover { background:#d63031; transform:translateY(-2px); box-shadow:0 4px 12px rgba(242,63,67,0.4); }
-        .action-btn.gold { background:#f0d030; color:#1e1f22; }
-        .action-btn.gold:hover { background:#d4b62a; transform:translateY(-2px); }
-        .action-btn.abuse { background:linear-gradient(135deg,#9b59b6,#8e44ad); box-shadow:0 4px 15px rgba(155,89,182,0.4); }
-        .action-btn.abuse:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(155,89,182,0.6); }
-        .action-btn.blue { background:#5865f2; }
-        .action-btn.blue:hover { background:#4752c4; transform:translateY(-2px); }
-        
-        .container { max-width:1200px; width:100%; margin:0 auto; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:16px; overflow-x:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
-        table { border-collapse:collapse; width:100%; min-width: 800px; }
-        th, td { padding:16px; text-align:left; font-size:14px; }
-        th { background:#0a0a0a; color:#949ba4; font-size:12px; font-weight:800; text-transform:uppercase; border-bottom:1px solid #2a2a2a; }
-        tr { border-bottom:1px solid #2a2a2a; transition:background .2s; }
-        tr:last-child { border-bottom:none; }
-        tr:hover td { background:#2a2a2a; }
-        
-        .user-cell { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-        .avatar { width:40px; height:40px; border-radius:50%; background:#5865f2; color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; flex-shrink:0; }
-        .nickname { color:#f2f3f5; font-weight:700; font-size:15px; }
-        .pun { padding:4px 10px; border-radius:8px; font-size:11px; font-weight:800; }
-        .pun.ban { background:rgba(242,63,67,0.15); color:#f23f43; border:1px solid rgba(242,63,67,0.3); }
-        .pun.mute { background:rgba(240,160,48,0.15); color:#f0a030; border:1px solid rgba(240,160,48,0.3); }
-        .pun.warn { background:rgba(240,208,48,0.15); color:#f0d030; border:1px solid rgba(240,208,48,0.3); }
-        .muted { color:#b5bac1; }
-        .status { display:inline-flex; align-items:center; gap:8px; font-weight:600; }
-        .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
-        
-        .reset-btn { background:#2a2a2a; color:#fff; border:1px solid #3a3a3a; border-radius:8px; padding:6px 12px; cursor:pointer; font-size:12px; font-weight:600; transition:all .2s; }
-        .reset-btn:hover { background:#3a3a3a; border-color:#5865f2; }
-        
-        .footer { text-align:center; margin-top:40px; display:flex; gap:20px; justify-content:center; flex-wrap:wrap; }
-        .footer a { color:#00a8fc; text-decoration:none; font-size:15px; font-weight:600; transition:color .2s; }
-        .footer a:hover { color:#fff; }
-    </style></head><body>
-    
-    <h1>Админка</h1>
-    <p class="sub">Полная статистика и управление</p>
-    
-    <div class="stats-grid">
-        <div class="stat-card"><div class="num">${totalMessages}</div><div class="lbl">Сообщений</div></div>
-        <div class="stat-card"><div class="num">${totalVoice}</div><div class="lbl">Голосовых</div></div>
-        <div class="stat-card"><div class="num">${totalImages}</div><div class="lbl">Картинок</div></div>
-        <div class="stat-card"><div class="num">${quotes.quotes.length}</div><div class="lbl">В цитатнике</div></div>
-    </div>
-
-    <div class="actions">
-        <a href="/admin/abuse" class="action-btn abuse">☠️ АДМИН АБЬЮЗЫ</a>
-        <a href="/admin/dms" class="action-btn blue">👁️ Слежка за ЛС</a>
-        <a href="/changelog" class="action-btn blue" style="background:#2a2a2a">📋 Журнал изменений</a>
-    </div>
-    <div class="actions">
-        <button class="action-btn danger" onclick="clearChat()">🗑️ Очистить чат</button>
-        <button class="action-btn danger" onclick="clearQuotes()">🗑️ Очистить цитатник</button>
-        <button class="action-btn danger" onclick="clearLogins()">🗑️ Сбросить входы</button>
-        <button class="action-btn gold" onclick="resetAllCoins()">💰 Обнулить монеты</button>
-    </div>
-
-    <div class="container"><table>
-        <tr><th>Кличка</th><th>Логин</th><th>Монеты</th><th>Последний вход</th><th>Статус</th><th>Сообщ.</th><th>Голос.</th><th>Карт.</th><th></th></tr>
-        ${rows}
-    </table></div>
-    
-    <h2>📖 Список команд</h2>
-    <div class="container"><table>
-        <tr><th>Команда</th><th>Описание</th></tr>
-        ${cmdRows}
-    </table></div>
-
-    <div class="footer"><a href="/chat">← Вернуться в чат</a></div>
-
-    <script>
-        fetch('/api/ping', { method: 'POST' });
-        setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
-        async function resetStats(login) { if (!confirm('Сбросить статистику ' + login + '?')) return; const r = await fetch('/api/admin/reset/' + login, { method: 'POST' }); if (r.ok) location.reload(); else alert('Ошибка'); }
-        async function clearChat() { if (!confirm('Удалить ВСЕ сообщения?')) return; const r = await fetch('/api/admin/clear-chat', { method: 'POST' }); if (r.ok) alert('Чат очищен'); else alert('Ошибка'); }
-        async function clearQuotes() { if (!confirm('Удалить ВСЕ цитаты?')) return; const r = await fetch('/api/admin/clear-quotes', { method: 'POST' }); if (r.ok) alert('Цитатник очищен'); else alert('Ошибка'); }
-        async function clearLogins() { if (!confirm('Сбросить даты последнего входа?')) return; const r = await fetch('/api/admin/clear-logins', { method: 'POST' }); if (r.ok) { alert('Журнал входов очищен'); location.reload(); } else alert('Ошибка'); }
-        async function resetAllCoins() { if (!confirm('Обнулить монеты ВСЕМ игрокам?')) return; const r = await fetch('/api/reset-coins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }); if (r.ok) { alert('Все монеты обнулены'); location.reload(); } else alert('Ошибка'); }
-    </script>
-    </body></html>`);
+    res.sendFile(path.join(__dirname, 'admin_panel.html'));
 });
 
 app.get('/admin/abuse', (req, res) => {
@@ -975,6 +558,7 @@ app.get('/admin/abuse', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin_abuse.html'));
 });
 
+// ====== API АБЬЮЗОВ ======
 app.post('/api/admin/abuse/fake', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
     const { targetLogin, targetName, text, isSystem } = req.body;
@@ -995,7 +579,7 @@ app.post('/api/admin/abuse/shadowban', async (req, res) => {
     const usersData = await readUsers();
     const user = usersData.users.find(u => u.login === target);
     if (!user) return res.status(404).json({ error: 'user not found' });
-    user.shadowbanned = !user.shadowbanned; 
+    user.shadowbanned = !user.shadowbanned;
     await writeUsers(usersData);
     await addSystemMessage(`👻 Shadowban для ${user.name}: ${user.shadowbanned ? 'ВКЛ' : 'ВЫКЛ'}`);
     res.json({ ok: true, shadowbanned: user.shadowbanned });
@@ -1045,19 +629,18 @@ app.post('/api/admin/change-password', async (req, res) => {
     res.json({ ok: true });
 });
 
+app.post('/api/admin/reset/:login', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.params.login); if (!user) return res.status(404).json({ error: 'not found' }); user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 }; user.achievements = []; await writeUsers(data); res.json({ ok: true }); });
+app.post('/api/admin/clear-chat', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('messages').delete().neq('id', ''); res.json({ ok: true }); });
+app.post('/api/admin/clear-quotes', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('quotes').delete().neq('id', ''); res.json({ ok: true }); });
+app.post('/api/admin/clear-logins', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); data.users.forEach(u => { u.lastLogin = null; u.lastPing = null; }); await writeUsers(data); res.json({ ok: true }); });
+
+// ====== ЛС ДЛЯ АДМИНКИ ======
 app.get('/api/admin/dm-all', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
-    const chats = await readDmChats();
-    const msgs = await readDmMessages();
-    const usersData = await readUsers();
-    const users = usersData.users;
+    const chats = await readDmChats(); const msgs = await readDmMessages(); const usersData = await readUsers(); const users = usersData.users;
     const result = chats.map(c => {
         let name = c.name; let avatar = null;
-        if (c.type === 'private') {
-            const other = c.members.find(l => l !== c.created_by) || c.members[0];
-            const u = users.find(x => x.login === other);
-            name = u ? u.name : other; avatar = u ? u.avatar : null;
-        }
+        if (c.type === 'private') { const other = c.members.find(l => l !== c.created_by) || c.members[0]; const u = users.find(x => x.login === other); name = u ? u.name : other; avatar = u ? u.avatar : null; }
         const chatMsgs = msgs.filter(m => m.chat_id === c.id);
         return { id: c.id, type: c.type, name, avatar, members: c.members, count: chatMsgs.length, last: chatMsgs.length ? chatMsgs[chatMsgs.length - 1].time : c.created_at };
     }).sort((a, b) => new Date(b.last) - new Date(a.last));
@@ -1067,16 +650,132 @@ app.get('/api/admin/dm-all', async (req, res) => {
 app.get('/api/admin/dm-chat/:chatId', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
     const msgs = await readDmMessages(req.params.chatId);
-    const usersData = await readUsers();
-    const users = usersData.users;
+    const usersData = await readUsers(); const users = usersData.users;
     const enriched = msgs.map(m => { const u = users.find(x => x.login === m.from_login); return { ...m, avatar: u && u.avatar ? u.avatar : null }; });
     res.json(enriched);
 });
 
-app.post('/api/admin/reset/:login', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.params.login); if (!user) return res.status(404).json({ error: 'not found' }); user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 }; user.achievements = []; await writeUsers(data); res.json({ ok: true }); });
-app.post('/api/admin/clear-chat', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('messages').delete().neq('id', ''); res.json({ ok: true }); });
-app.post('/api/admin/clear-quotes', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('quotes').delete().neq('id', ''); res.json({ ok: true }); });
-app.post('/api/admin/clear-logins', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); data.users.forEach(u => { u.lastLogin = null; u.lastPing = null; }); await writeUsers(data); res.json({ ok: true }); });
+// ====== ПРОФИЛЬ ======
+app.get('/api/profile/:login', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === req.params.login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
+    const p = checkPunishments(user);
+    const isAdmin = isAdminUser(user);
+    res.json({
+        login: user.login, name: user.name, nickname: user.nickname,
+        avatar: user.avatar || null, phrase: user.phrase || '',
+        achievements: user.achievements || [], stats: user.stats || {},
+        warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil,
+        banned: p.banned, bannedUntil: p.bannedUntil,
+        coins: user.coins || 0, colors: user.colors || [], badges: user.badges || [],
+        extraReactions: user.extraReactions || [], currentColor: user.currentColor || null,
+        currentBadge: isAdmin ? '👑' : (user.currentBadge || null),
+        color: user.currentColor || null, badge: isAdmin ? '👑' : (user.currentBadge || null),
+        isAdmin: isAdmin, status: user.status || null, isOwn: user.login === req.session.user.login
+    });
+});
+
+app.post('/api/profile/avatar', uploadAvatar.single('avatar'), async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); if (!req.file) return res.status(400).json({ error: 'no file' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); if (user.avatar) { const old = path.join(AVATARS_DIR, path.basename(user.avatar)); if (fs.existsSync(old)) fs.unlinkSync(old); } user.avatar = '/avatars/' + req.file.filename; await writeUsers(data); res.json({ ok: true, avatar: user.avatar }); });
+app.post('/api/profile/phrase', async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); const { phrase } = req.body; if (typeof phrase !== 'string') return res.status(400).json({ error: 'invalid' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); user.phrase = phrase.trim().slice(0, 200); await writeUsers(data); res.json({ ok: true, phrase: user.phrase }); });
+app.post('/api/profile/credentials', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { newLogin, newPassword } = req.body;
+    if (!newLogin && !newPassword) return res.status(400).json({ error: 'no' });
+    const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login);
+    if (!user) return res.status(404).json({ error: 'no' });
+    const oldLogin = user.login; const oldPassword = user.password; const changes = [];
+    if (newLogin && newLogin.trim() && newLogin !== oldLogin) {
+        const trimmed = newLogin.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+        if (trimmed.length < 3) return res.status(400).json({ error: 'Логин минимум 3' });
+        if (data.users.find(u => u.login === trimmed)) return res.status(400).json({ error: 'Занят' });
+        await supabase.from('users').delete().eq('login', oldLogin);
+        user.login = trimmed; user.name = trimmed;
+        changes.push({ field: 'login', from: oldLogin, to: trimmed });
+        const msgs = await readMessages(); msgs.messages.forEach(m => { if (m.login === oldLogin) m.login = trimmed; }); await writeMessages(msgs);
+        const quotes = await readQuotes(); quotes.quotes.forEach(q => { if (q.authorLogin === oldLogin) q.authorLogin = trimmed; }); await writeQuotes(quotes);
+    }
+    if (newPassword && newPassword !== oldPassword) { if (newPassword.length < 3) return res.status(400).json({ error: 'Пароль минимум 3' }); user.password = newPassword; changes.push({ field: 'password', from: oldPassword, to: newPassword }); }
+    if (changes.length === 0) return res.json({ ok: true, changes: [] });
+    await writeUsers(data);
+    const log = await readChangelog(); changes.forEach(c => { log.changes.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), user: user.login, oldLogin, field: c.field, from: c.from, to: c.to, time: new Date().toISOString() }); }); await writeChangelog(log);
+    if (newLogin && newLogin.trim()) { req.session.user.login = user.login; req.session.user.name = user.name; }
+    res.json({ ok: true, changes: changes.map(c => c.field), newLogin: user.login });
+});
+
+// ====== МАГАЗИН / ДЕЙЛИКИ ======
+app.post('/api/daily', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login);
+    ensureCoinFields(user);
+    if (isAdminUser(user)) return res.json({ ok: true, coins: user.coins, reward: 0, admin: true });
+    const now = Date.now();
+    if (user.lastDaily && now - new Date(user.lastDaily).getTime() < DAILY_COOLDOWN) return res.status(400).json({ error: 'Уже получено сегодня' });
+    user.lastDaily = new Date().toISOString(); user.coins += DAILY_REWARD;
+    await writeUsers(data);
+    res.json({ ok: true, coins: user.coins, reward: DAILY_REWARD });
+});
+
+app.post('/api/shop/buy', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { item, value } = req.body;
+    const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login);
+    ensureCoinFields(user);
+    const admin = isAdminUser(user); let price = 0;
+    if (item === 'color') {
+        if (!/^#[0-9a-fA-F]{6}$/.test(value)) return res.status(400).json({ error: 'Неверный цвет' });
+        if (user.colors.includes(value)) return res.status(400).json({ error: 'Уже куплено' });
+        price = admin ? 0 : COLOR_PRICE;
+        if (user.coins < price) return res.status(400).json({ error: 'Недостаточно монет' });
+        user.coins -= price; user.colors.push(value); user.currentColor = value;
+    } else if (item === 'badge') {
+        const allowed = ['⭐', '🔥', '💎', '🎯', '⚡', '🌟', '🏆'];
+        if (!allowed.includes(value)) return res.status(400).json({ error: 'Неверный значок' });
+        if (user.badges.includes(value)) return res.status(400).json({ error: 'Уже куплено' });
+        price = admin ? 0 : BADGE_PRICE;
+        if (user.coins < price) return res.status(400).json({ error: 'Недостаточно монет' });
+        user.coins -= price; user.badges.push(value); user.currentBadge = value;
+    } else if (item === 'extraReactions') {
+        const allowed = ['🎉', '💯', '🤡', '❤️'];
+        if (!allowed.includes(value)) return res.status(400).json({ error: 'Неверная реакция' });
+        if (user.extraReactions.includes(value)) return res.status(400).json({ error: 'Уже куплено' });
+        price = admin ? 0 : REACTION_PRICE;
+        if (user.coins < price) return res.status(400).json({ error: 'Недостаточно монет' });
+        user.coins -= price; user.extraReactions.push(value);
+    } else return res.status(400).json({ error: 'unknown item' });
+    await writeUsers(data);
+    res.json({ ok: true, coins: user.coins, item, value, price });
+});
+
+app.post('/api/shop/set', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { item, value } = req.body;
+    const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login);
+    ensureCoinFields(user);
+    if (item === 'color') { if (!user.colors.includes(value)) return res.status(400).json({ error: 'Не куплено' }); user.currentColor = value; }
+    else if (item === 'badge') { if (value === null) { user.currentBadge = null; } else { if (!user.badges.includes(value)) return res.status(400).json({ error: 'Не куплено' }); user.currentBadge = value; } }
+    await writeUsers(data); res.json({ ok: true });
+});
+
+app.post('/api/status/set', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { status } = req.body;
+    if (typeof status !== 'string') return res.status(400).json({ error: 'invalid' });
+    const trimmed = status.trim().slice(0, 50);
+    if (isForbiddenStatus(trimmed)) return res.status(400).json({ error: 'Статус содержит запрещённое слово' });
+    const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login);
+    ensureCoinFields(user);
+    const admin = isAdminUser(user);
+    if (trimmed.length > 0 && !admin) {
+        if (user.coins < STATUS_PRICE) return res.status(400).json({ error: 'Недостаточно монет' });
+        user.coins -= STATUS_PRICE;
+    }
+    user.status = trimmed || null;
+    await writeUsers(data);
+    res.json({ ok: true, status: user.status, coins: user.coins, price: admin ? 0 : STATUS_PRICE });
+});
 
 // ====== РОУТЫ ДЛЯ СТРАНИЦ ======
 app.get('/', (req, res) => {
@@ -1095,26 +794,10 @@ app.get('/games', (req, res) => { if (!req.session.user) return res.redirect('/l
 app.get('/dice', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'dice.html')); });
 app.get('/faster', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'faster.html')); });
 app.get('/guess', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'guess.html')); });
+app.get('/admin', (req, res) => { if (!req.session.user) return res.redirect('/login'); if (req.session.user.role !== 'admin') return res.status(403).send('Доступ только для админа'); res.sendFile(path.join(__dirname, 'admin_panel.html')); });
+app.get('/admin/abuse', (req, res) => { if (!req.session.user) return res.redirect('/login'); if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); res.sendFile(path.join(__dirname, 'admin_abuse.html')); });
+app.get('/admin/dms', (req, res) => { if (!req.session.user) return res.redirect('/login'); if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); res.sendFile(path.join(__dirname, 'admin_dms.html')); });
+app.get('/changelog', (req, res) => { if (!req.session.user) return res.redirect('/login'); if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); res.sendFile(path.join(__dirname, 'changelog.html')); });
 
-app.get('/admin', (req, res) => {
-    if (!req.session.user) return res.redirect('/login');
-    if (req.session.user.role !== 'admin') return res.status(403).send('Доступ только для админа');
-    res.sendFile(path.join(__dirname, 'admin_panel.html'));
-});
-app.get('/admin/abuse', (req, res) => {
-    if (!req.session.user) return res.redirect('/login');
-    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
-    res.sendFile(path.join(__dirname, 'admin_abuse.html'));
-});
-app.get('/admin/dms', (req, res) => {
-    if (!req.session.user) return res.redirect('/login');
-    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
-    res.sendFile(path.join(__dirname, 'admin_dms.html'));
-});
-app.get('/changelog', (req, res) => { 
-    if (!req.session.user) return res.redirect('/login'); 
-    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); 
-    res.sendFile(path.join(__dirname, 'changelog.html')); 
-});
-
+// ====== ЗАПУСК ======
 server.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущен на порту ${PORT}`));
