@@ -838,4 +838,94 @@ app.post('/api/dm/send', async (req, res) => {
     await writeDmMessage(msg);
     res.json(msg);
 });
+// ====== СООБЩЕНИЯ ОБЩЕГО ЧАТА ======
+app.get('/api/messages', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readMessages();
+    const usersData = await readUsers();
+    const users = usersData.users;
+    const isAdmin = req.session.user.role === 'admin';
+    const filtered = data.messages.filter(m => !m.hidden || isAdmin || m.login === req.session.user.login);
+    res.json(filtered.map(m => {
+        if (m.system) return { ...m, avatar: null, reactions: {} };
+        const u = users.find(x => x.login === m.login);
+        const isAdm = u && (u.role === 'admin');
+        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null, reactions: m.reactions || {} };
+    }));
+});
+
+app.post('/api/messages', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const usersData = await readUsers();
+    const user = usersData.users.find(u => u.login === req.session.user.login);
+    const p = checkPunishments(user);
+    if (p.changed) await writeUsers(usersData);
+    if (p.muted) return res.status(403).json({ error: 'Ты в муте' });
+    const { text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
+    const data = await readMessages();
+    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: text.trim(), time: new Date().toISOString(), reactions: {} };
+    if (user.shadowbanned) msg.hidden = true;
+    data.messages.push(msg);
+    await writeMessages(data);
+    if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    user.stats.messages = (user.stats.messages || 0) + 1;
+    await writeUsers(usersData);
+    const newAch = await checkAchievements(req.session.user.login);
+    res.json({ ...msg, newAchievements: newAch });
+});
+// ====== ЛИЧНЫЕ ЧАТЫ ======
+app.get('/api/dm/chats', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const all = await readDmChats();
+    const mine = all.filter(c => Array.isArray(c.members) && c.members.includes(me));
+    const usersData = await readUsers();
+    const dmMsgs = await readDmMessages();
+    const result = mine.map(c => {
+        let name = c.name; let avatar = null;
+        if (c.type === 'private') {
+            const otherLogin = c.members.find(l => l !== me);
+            const other = usersData.users.find(u => u.login === otherLogin);
+            if (other) { name = other.name; avatar = other.avatar || null; }
+        }
+        const chatMsgs = dmMsgs.filter(m => m.chat_id === c.id);
+        const last = chatMsgs[chatMsgs.length - 1];
+        const unread = chatMsgs.filter(m => m.from_login !== me && !(m.read_by || []).includes(me)).length;
+        return { id: c.id, type: c.type, name: name || 'Чат', avatar, members: c.members, lastMessage: last ? (last.text || 'Медиа') : null, lastTime: last ? last.time : c.created_at, unread };
+    }).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
+    res.json(result);
+});
+
+app.get('/api/dm/messages/:chatId', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const chats = await readDmChats();
+    const chat = chats.find(c => c.id === req.params.chatId);
+    if (!chat) return res.status(404).json({ error: 'chat not found' });
+    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
+    const msgs = await readDmMessages(req.params.chatId);
+    const usersData = await readUsers();
+    const users = usersData.users;
+    const enriched = msgs.map(m => {
+        const u = users.find(x => x.login === m.from_login);
+        const isAdm = u && u.role === 'admin';
+        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null };
+    });
+    res.json(enriched);
+});
+
+app.post('/api/dm/send', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const { chatId, text, image, voice, duration } = req.body;
+    const chats = await readDmChats();
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return res.status(404).json({ error: 'chat not found' });
+    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
+    if (!text && !image && !voice) return res.status(400).json({ error: 'empty' });
+    const msg = { id: 'dm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), chat_id: chatId, from_login: me, from_name: req.session.user.name, text: text ? text.trim().slice(0, 2000) : null, image: image || null, voice: voice || null, duration: duration || null, time: new Date().toISOString(), read_by: [me] };
+    await writeDmMessage(msg);
+    res.json(msg);
+});
 server.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущен на порту ${PORT}`));
