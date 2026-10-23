@@ -15,7 +15,6 @@ const PORT = process.env.PORT || 3000;
 
 const TURN_USERNAME = '07354b48071e5473f623d7a9';
 const TURN_CREDENTIAL = 'p9aioMeZ5mqY2lhl';
-
 const SUPABASE_URL = 'https://anndslyocbqgpbwshwqa.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFubmRzbHlvY2JxZ3Bid3Nod3FhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjA2NDUwMiwiZXhwIjoyMTA3NjQwNTAyfQ.N1GUvfL7H1OoJ47HGWjhTjUyqxNXJscd6RJpmMnocGg';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { realtime: { transport: ws } });
@@ -362,6 +361,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => { onlineUsers.delete(socket.id); io.emit('online', Array.from(onlineUsers.values())); });
 });
 
+// ====== API ======
 app.get('/api/turn', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     res.json({ iceServers: [
@@ -426,69 +426,397 @@ app.get('/api/me', async (req, res) => {
     });
 });
 
-// ====== API МАГАЗИНА ======
-app.post('/api/daily', async (req, res) => { /* ... */ });
-app.post('/api/shop/buy', async (req, res) => { /* ... */ });
-app.post('/api/shop/set', async (req, res) => { /* ... */ });
-app.post('/api/status/set', async (req, res) => { /* ... */ });
-
-// ====== СИСТЕМНЫЕ ======
-app.post('/api/ping', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = await readUsers();
-    const user = data.users.find(u => u.login === req.session.user.login);
-    if (!user) return res.status(404).json({ error: 'user not found' });
-    user.lastPing = new Date().toISOString();
-    await writeUsers(data);
-    res.json({ ok: true });
-});
-
-app.post('/api/abuse/exit', (req, res) => {
-    if (!req.session.user) return res.status(401).json({error:'no'});
-    const login = req.session.user.login;
-    io.emit('abuse:kicked', { login });
-    req.session.destroy();
-    res.json({ ok: true });
-});
-
-// ====== ЛИЧНЫЕ ЧАТЫ ======
-app.get('/api/dm/chats', async (req, res) => { /* ... */ });
-app.post('/api/dm/open', async (req, res) => { /* ... */ });
-app.post('/api/dm/create-group', async (req, res) => { /* ... */ });
-app.get('/api/dm/messages/:chatId', async (req, res) => { /* ... */ });
-app.post('/api/dm/send', async (req, res) => { /* ... */ });
-app.delete('/api/dm/message/:id', async (req, res) => { /* ... */ });
-
-// ====== АДМИН-API ======
-app.get('/api/admin/dm-all', async (req, res) => { /* ... */ });
-app.get('/api/admin/dm-chat/:chatId', async (req, res) => { /* ... */ });
-
-app.get('/api/online', (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); res.json(Array.from(onlineUsers.values())); });
-app.get('/api/users', async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); const data = await readUsers(); res.json(data.users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null, coins: u.coins || 0, badge: u.role === 'admin' ? '👑' : (u.currentBadge || null), color: u.currentColor || null }))); });
-app.get('/api/rating', async (req, res) => { /* ... */ });
-
-// ====== ЦИТАТЫ / ЧАНДЖЛОГ / СООБЩЕНИЯ ======
-app.get('/api/quotes', async (req, res) => { /* ... */ });
-app.post('/api/quotes', async (req, res) => { /* ... */ });
-app.delete('/api/quotes/:id', async (req, res) => { /* ... */ });
-app.get('/api/changelog', async (req, res) => { /* ... */ });
-
-app.post('/api/sys', async (req, res) => { /* ... */ });
-app.post('/api/give-coins', async (req, res) => { /* ... */ });
-app.post('/api/reset-coins', async (req, res) => { /* ... */ });
-app.post('/api/take-coins', async (req, res) => { /* ... */ });
-app.post('/api/moderate', async (req, res) => { /* ... */ });
-
 app.get('/api/online', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     res.json(Array.from(onlineUsers.values()));
 });
-app.get('/api/messages', async (req, res) => { /* ... */ });
-app.post('/api/messages', async (req, res) => { /* ... */ });
-app.post('/api/voice', uploadVoice.single('voice'), async (req, res) => { /* ... */ });
-app.post('/api/image', uploadImage.single('image'), async (req, res) => { /* ... */ });
-app.delete('/api/messages/:id', async (req, res) => { /* ... */ });
-app.post('/api/messages/:id/react', async (req, res) => { /* ... */ });
+
+app.get('/api/users', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers();
+    res.json(data.users.map(u => ({
+        login: u.login, name: u.name, avatar: u.avatar || null,
+        coins: u.coins || 0,
+        badge: u.role === 'admin' ? '👑' : (u.currentBadge || null),
+        color: u.currentColor || null
+    })));
+});
+
+app.get('/api/rating', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers();
+    const rating = data.users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null, coins: u.coins || 0, messages: (u.stats && u.stats.messages) || 0, voices: (u.stats && u.stats.voices) || 0, images: (u.stats && u.stats.images) || 0, reactions: (u.stats && u.stats.reactions) || 0, calls: (u.stats && u.stats.calls) || 0, achievements: (u.achievements || []).length })).sort((a, b) => (b.messages + b.voices * 2 + b.images * 2) - (a.messages + a.voices * 2 + a.images * 2));
+    res.json(rating);
+});
+
+// ====== СООБЩЕНИЯ ======
+app.get('/api/messages', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readMessages();
+    const usersData = await readUsers();
+    const users = usersData.users;
+    const isAdmin = req.session.user.role === 'admin';
+    const filtered = data.messages.filter(m => !m.hidden || isAdmin || m.login === req.session.user.login);
+    res.json(filtered.map(m => {
+        if (m.system) return { ...m, avatar: null, reactions: {} };
+        const u = users.find(x => x.login === m.login);
+        const isAdm = u && (u.role === 'admin');
+        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null, reactions: m.reactions || {} };
+    }));
+});
+
+app.post('/api/messages', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const usersData = await readUsers();
+    const user = usersData.users.find(u => u.login === req.session.user.login);
+    const p = checkPunishments(user);
+    if (p.changed) await writeUsers(usersData);
+    if (p.muted) return res.status(403).json({ error: 'Ты в муте' });
+    const { text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
+    const data = await readMessages();
+    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: text.trim(), time: new Date().toISOString(), reactions: {} };
+    if (user.shadowbanned) msg.hidden = true;
+    data.messages.push(msg);
+    await writeMessages(data);
+    if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    user.stats.messages = (user.stats.messages || 0) + 1;
+    await writeUsers(usersData);
+    const newAch = await checkAchievements(req.session.user.login);
+    res.json({ ...msg, newAchievements: newAch });
+});
+
+app.post('/api/voice', uploadVoice.single('voice'), async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const usersData = await readUsers();
+    const user = usersData.users.find(u => u.login === req.session.user.login);
+    const p = checkPunishments(user);
+    if (p.changed) await writeUsers(usersData);
+    if (p.muted) return res.status(403).json({ error: 'Ты в муте' });
+    if (!req.file) return res.status(400).json({ error: 'no file' });
+    const duration = req.body.duration || 0;
+    const data = await readMessages();
+    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: '▶ Голосовое', voice: '/voice/' + req.file.filename, duration: parseInt(duration) || 0, time: new Date().toISOString(), reactions: {} };
+    data.messages.push(msg);
+    await writeMessages(data);
+    if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    user.stats.voices = (user.stats.voices || 0) + 1;
+    await writeUsers(usersData);
+    await checkAchievements(req.session.user.login);
+    res.json(msg);
+});
+
+app.post('/api/image', uploadImage.single('image'), async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const usersData = await readUsers();
+    const user = usersData.users.find(u => u.login === req.session.user.login);
+    const p = checkPunishments(user);
+    if (p.changed) await writeUsers(usersData);
+    if (p.muted) return res.status(403).json({ error: 'Ты в муте' });
+    if (!req.file) return res.status(400).json({ error: 'no file' });
+    const data = await readMessages();
+    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: '📷 Картинка', image: '/images/' + req.file.filename, time: new Date().toISOString(), reactions: {} };
+    data.messages.push(msg);
+    await writeMessages(data);
+    if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    user.stats.images = (user.stats.images || 0) + 1;
+    await writeUsers(usersData);
+    await checkAchievements(req.session.user.login);
+    res.json(msg);
+});
+
+app.delete('/api/messages/:id', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readMessages();
+    const idx = data.messages.findIndex(m => m.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'not found' });
+    const msg = data.messages[idx];
+    const isOwn = msg.login === req.session.user.login;
+    const isAdmin = req.session.user.role === 'admin';
+    if (msg.system && !isAdmin) return res.status(403).json({ error: 'no permission' });
+    if (!isOwn && !isAdmin) return res.status(403).json({ error: 'no permission' });
+    if (msg.voice) { const p = path.join(VOICE_DIR, path.basename(msg.voice)); if (fs.existsSync(p)) fs.unlinkSync(p); }
+    if (msg.image) { const p = path.join(IMAGES_DIR, path.basename(msg.image)); if (fs.existsSync(p)) fs.unlinkSync(p); }
+    data.messages.splice(idx, 1);
+    await writeMessages(data);
+    res.json({ ok: true });
+});
+
+app.post('/api/messages/:id/react', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const { emoji, action } = req.body;
+    const ALLOWED = ['😂', '🔥', '👍', '💀', '🎉', '💯', '🤡', '❤️'];
+    if (!ALLOWED.includes(emoji)) return res.status(400).json({ error: 'bad emoji' });
+    const data = await readMessages();
+    const msg = data.messages.find(m => m.id === req.params.id);
+    if (!msg) return res.status(404).json({ error: 'not found' });
+    if (msg.system) return res.status(400).json({ error: 'no reactions on system' });
+    if (!msg.reactions) msg.reactions = {};
+    if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+    const myLogin = req.session.user.login;
+    if (action === 'remove') {
+        const i = msg.reactions[emoji].findIndex(l => l === myLogin);
+        if (i !== -1) msg.reactions[emoji].splice(i, 1);
+    } else {
+        Object.keys(msg.reactions).forEach(k => {
+            msg.reactions[k] = msg.reactions[k].filter(l => l !== myLogin);
+            if (msg.reactions[k].length === 0) delete msg.reactions[k];
+        });
+        if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+        msg.reactions[emoji].push(myLogin);
+    }
+    await writeMessages(data);
+    const users = await readUsers();
+    const u = users.users.find(x => x.login === myLogin);
+    if (!u.stats) u.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
+    if (action !== 'remove') u.stats.reactions = (u.stats.reactions || 0) + 1;
+    await writeUsers(users);
+    await checkAchievements(myLogin);
+    const avatar = (users.users.find(x => x.login === msg.login) || {}).avatar || null;
+    res.json({ ...msg, avatar });
+});
+
+// ====== ЛИЧНЫЕ ЧАТЫ ======
+app.get('/api/dm/chats', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const all = await readDmChats();
+    const mine = all.filter(c => Array.isArray(c.members) && c.members.includes(me));
+    const usersData = await readUsers();
+    const dmMsgs = await readDmMessages();
+    const result = mine.map(c => {
+        let name = c.name; let avatar = null;
+        if (c.type === 'private') {
+            const otherLogin = c.members.find(l => l !== me);
+            const other = usersData.users.find(u => u.login === otherLogin);
+            if (other) { name = other.name; avatar = other.avatar || null; }
+        }
+        const chatMsgs = dmMsgs.filter(m => m.chat_id === c.id);
+        const last = chatMsgs[chatMsgs.length - 1];
+        const unread = chatMsgs.filter(m => m.from_login !== me && !(m.read_by || []).includes(me)).length;
+        return { id: c.id, type: c.type, name: name || 'Чат', avatar, members: c.members, lastMessage: last ? (last.text || 'Медиа') : null, lastTime: last ? last.time : c.created_at, unread };
+    }).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
+    res.json(result);
+});
+
+app.post('/api/dm/open', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const { with: other } = req.body;
+    if (!other || other === me) return res.status(400).json({ error: 'bad target' });
+    const id = dmChatIdForPrivate(me, other);
+    const all = await readDmChats();
+    let chat = all.find(c => c.id === id);
+    if (!chat) {
+        chat = { id, type: 'private', name: null, members: [me, other], created_by: me };
+        await writeDmChat(chat);
+    }
+    res.json({ ok: true, chatId: id });
+});
+
+app.post('/api/dm/create-group', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const { name, members } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Нужно название' });
+    if (!Array.isArray(members) || members.length < 1) return res.status(400).json({ error: 'Нужны участники' });
+    const allMembers = [...new Set([me, ...members])];
+    const id = 'grp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const chat = { id, type: 'group', name: name.trim().slice(0, 50), members: allMembers, created_by: me };
+    await writeDmChat(chat);
+    await addSystemMessage(`👥 ${req.session.user.name} создал группу «${chat.name}»`);
+    res.json({ ok: true, chatId: id });
+});
+
+app.get('/api/dm/messages/:chatId', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const chats = await readDmChats();
+    const chat = chats.find(c => c.id === req.params.chatId);
+    if (!chat) return res.status(404).json({ error: 'chat not found' });
+    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
+    const msgs = await readDmMessages(req.params.chatId);
+    const usersData = await readUsers();
+    const users = usersData.users;
+    const enriched = msgs.map(m => {
+        const u = users.find(x => x.login === m.from_login);
+        const isAdm = u && u.role === 'admin';
+        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null };
+    });
+    res.json(enriched);
+});
+
+app.post('/api/dm/send', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const { chatId, text, image, voice, duration } = req.body;
+    const chats = await readDmChats();
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return res.status(404).json({ error: 'chat not found' });
+    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
+    if (!text && !image && !voice) return res.status(400).json({ error: 'empty' });
+    const msg = { id: 'dm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), chat_id: chatId, from_login: me, from_name: req.session.user.name, text: text ? text.trim().slice(0, 2000) : null, image: image || null, voice: voice || null, duration: duration || null, time: new Date().toISOString(), read_by: [me] };
+    await writeDmMessage(msg);
+    res.json(msg);
+});
+
+app.delete('/api/dm/message/:id', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const me = req.session.user.login;
+    const isAdmin = req.session.user.role === 'admin';
+    const all = await readDmMessages();
+    const msg = all.find(m => m.id === req.params.id);
+    if (!msg) return res.status(404).json({ error: 'not found' });
+    if (msg.from_login !== me && !isAdmin) return res.status(403).json({ error: 'no permission' });
+    await deleteDmMessage(req.params.id);
+    res.json({ ok: true });
+});
+
+// ====== ОСТАЛЬНЫЕ API ======
+app.get('/api/quotes', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readQuotes();
+    res.json(data.quotes);
+});
+
+app.post('/api/quotes', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const msgs = await readMessages();
+    const msg = msgs.messages.find(m => m.id === req.body.messageId);
+    if (!msg) return res.status(404).json({ error: 'message not found' });
+    const quotesData = await readQuotes();
+    if (quotesData.quotes.find(q => q.messageId === req.body.messageId)) return res.json({ ok: true, already: true });
+    quotesData.quotes.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), messageId: msg.id, author: msg.name, authorLogin: msg.login, text: msg.text, savedBy: req.session.user.login, savedAt: new Date().toISOString() });
+    await writeQuotes(quotesData);
+    res.json({ ok: true });
+});
+
+app.delete('/api/quotes/:id', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const quotesData = await readQuotes();
+    quotesData.quotes = quotesData.quotes.filter(q => q.id !== req.params.id);
+    await writeQuotes(quotesData);
+    res.json({ ok: true });
+});
+
+app.get('/api/changelog', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const log = await readChangelog();
+    res.json(log.changes.slice().reverse());
+});
+
+app.post('/api/sys', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
+    const msg = await addSystemMessage(text.trim().slice(0, 500));
+    res.json(msg);
+});
+
+app.post('/api/give-coins', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target, amount } = req.body;
+    const num = parseInt(amount);
+    if (!target || !num || num === 0) return res.status(400).json({ error: 'Укажи логин и число' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'Игрок не найден' });
+    ensureCoinFields(user);
+    user.coins += num;
+    if (user.coins < 0) user.coins = 0;
+    await writeUsers(data);
+    const sign = num > 0 ? '+' : '';
+    await addSystemMessage(`💰 ${req.session.user.name} выдал ${sign}${num} монет игроку ${user.name}.`);
+    res.json({ ok: true, target: user.login, coins: user.coins });
+});
+
+app.post('/api/reset-coins', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target } = req.body;
+    const data = await readUsers();
+    if (target) {
+        const user = data.users.find(u => u.login === target);
+        if (!user) return res.status(404).json({ error: 'Игрок не найден' });
+        ensureCoinFields(user); user.coins = 0;
+        await writeUsers(data);
+        await addSystemMessage(`💰 ${req.session.user.name} обнулил монеты игроку ${user.name}.`);
+        return res.json({ ok: true, target: user.login });
+    } else {
+        data.users.forEach(u => { ensureCoinFields(u); u.coins = 0; });
+        await writeUsers(data);
+        await addSystemMessage(`💰 ${req.session.user.name} обнулил монеты ВСЕМ.`);
+        return res.json({ ok: true, all: true });
+    }
+});
+
+app.post('/api/take-coins', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target, amount } = req.body;
+    const num = parseInt(amount);
+    if (!target || !num || num <= 0) return res.status(400).json({ error: 'Укажи логин и число > 0' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'Игрок не найден' });
+    ensureCoinFields(user);
+    const taken = Math.min(num, user.coins);
+    user.coins -= taken;
+    await writeUsers(data);
+    await addSystemMessage(`💰 ${req.session.user.name} забрал ${taken} монет у ${user.name}.`);
+    res.json({ ok: true, target: user.login, taken, coins: user.coins });
+});
+
+app.post('/api/moderate', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { action, target, duration } = req.body;
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    if (user.role === 'admin') return res.status(400).json({ error: 'Нельзя модерировать админа' });
+    const ms = duration ? parseDuration(duration) : undefined;
+    const isForever = duration === 'forever';
+    const until = isForever ? new Date('9999-12-31').toISOString() : (ms ? new Date(Date.now() + ms).toISOString() : null);
+    const durRu = duration ? parseDurationRu(duration) : '';
+    const adminName = req.session.user.nickname || req.session.user.name;
+    switch (action) {
+        case 'mute': user.mutedUntil = until; await addSystemMessage(`🔇 ${user.nickname} замучен на ${durRu}`); break;
+        case 'unmute': user.mutedUntil = null; await addSystemMessage(`🔊 ${user.nickname} размучен`); break;
+        case 'ban': user.bannedUntil = until; await addSystemMessage(`🚫 ${user.nickname} забанен на ${durRu}`); break;
+        case 'unban': user.bannedUntil = null; await addSystemMessage(`✅ ${user.nickname} разбанен`); break;
+        case 'kick': for (const [sid, login] of onlineUsers.entries()) { if (login === target) io.to(sid).emit('kicked'); } await addSystemMessage(`👢 ${user.nickname} кикнут`); break;
+        case 'warn': if (!user.warnings) user.warnings = []; user.warnings.push({ by: req.session.user.login, time: new Date().toISOString() }); if (user.warnings.length === 3) { user.mutedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString(); user.warnings = []; await writeUsers(data); await addSystemMessage(`⚠️ ${user.nickname} получил 3-й варн → автомут`); return res.json({ ok: true, autoMuted: true }); } await addSystemMessage(`⚠️ ${user.nickname} получил предупреждение.`); break;
+        case 'clearWarns': user.warnings = []; await addSystemMessage(`🧹 ${user.nickname}: варны сброшены`); break;
+        default: return res.status(400).json({ error: 'unknown action' });
+    }
+    await writeUsers(data);
+    res.json({ ok: true, action, target, duration: duration || null });
+});
+
+// ====== ПРОФИЛЬ ======
+app.get('/api/profile/:login', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === req.params.login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
+    const p = checkPunishments(user);
+    const isAdmin = isAdminUser(user);
+    res.json({
+        login: user.login, name: user.name, nickname: user.nickname,
+        avatar: user.avatar || null, phrase: user.phrase || '',
+        achievements: user.achievements || [], stats: user.stats || {},
+        warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil,
+        banned: p.banned, bannedUntil: p.bannedUntil,
+        coins: user.coins || 0, colors: user.colors || [], badges: user.badges || [],
+        extraReactions: user.extraReactions || [], currentColor: user.currentColor || null,
+        currentBadge: isAdmin ? '👑' : (user.currentBadge || null),
+        color: user.currentColor || null, badge: isAdmin ? '👑' : (user.currentBadge || null),
+        isAdmin: isAdmin, status: user.status || null, isOwn: user.login === req.session.user.login
+    });
+});
+
+app.post('/api/profile/avatar', uploadAvatar.single('avatar'), async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); if (!req.file) return res.status(400).json({ error: 'no file' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); if (user.avatar) { const old = path.join(AVATARS_DIR, path.basename(user.avatar)); if (fs.existsSync(old)) fs.unlinkSync(old); } user.avatar = '/avatars/' + req.file.filename; await writeUsers(data); res.json({ ok: true, avatar: user.avatar }); });
+app.post('/api/profile/phrase', async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); const { phrase } = req.body; if (typeof phrase !== 'string') return res.status(400).json({ error: 'invalid' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); user.phrase = phrase.trim().slice(0, 200); await writeUsers(data); res.json({ ok: true, phrase: user.phrase }); });
+app.post('/api/profile/credentials', async (req, res) => { /* ... */ });
 
 // ====== АДМИНКА ======
 const COMMANDS_LIST = [
@@ -647,13 +975,50 @@ app.get('/admin/abuse', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin_abuse.html'));
 });
 
-app.post('/api/admin/abuse/fake', async (req, res) => { /* ... */ });
-app.post('/api/admin/abuse/shadowban', async (req, res) => { /* ... */ });
-app.post('/api/admin/abuse/hack', async (req, res) => { /* ... */ });
-app.post('/api/admin/reset/:login', async (req, res) => { /* ... */ });
-app.post('/api/admin/clear-chat', async (req, res) => { /* ... */ });
-app.post('/api/admin/clear-quotes', async (req, res) => { /* ... */ });
-app.post('/api/admin/clear-logins', async (req, res) => { /* ... */ });
+app.post('/api/admin/abuse/fake', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { targetLogin, targetName, text, isSystem } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'empty text' });
+    const usersData = await readUsers();
+    const targetUser = usersData.users.find(u => u.login === targetLogin);
+    const data = await readMessages();
+    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: isSystem ? '__system__' : targetLogin, name: isSystem ? 'СИСТЕМА' : (targetUser ? targetUser.name : (targetName || targetLogin)), text: text.trim(), time: new Date().toISOString(), reactions: {}, system: !!isSystem };
+    data.messages.push(msg);
+    await writeMessages(data);
+    io.emit('chat:refresh');
+    res.json({ ok: true, msg });
+});
+
+app.post('/api/admin/abuse/shadowban', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target } = req.body;
+    const usersData = await readUsers();
+    const user = usersData.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    user.shadowbanned = !user.shadowbanned; 
+    await writeUsers(usersData);
+    await addSystemMessage(`👻 Shadowban для ${user.name}: ${user.shadowbanned ? 'ВКЛ' : 'ВЫКЛ'}`);
+    res.json({ ok: true, shadowbanned: user.shadowbanned });
+});
+
+app.post('/api/admin/abuse/hack', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const { target } = req.body;
+    const usersData = await readUsers();
+    const user = usersData.users.find(u => u.login === target);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
+    user.coins += 999999;
+    user.colors = ['#5865f2','#23a55a','#f23f43','#f0d030','#eb459e','#9b59b6','#e67e22','#ffffff'];
+    user.badges = ['⭐','🔥','💎','🎯','⚡','🌟','🏆'];
+    user.extraReactions = ['🎉','💯','🤡','❤️'];
+    user.stats = { messages: 9999, voices: 999, images: 999, reactions: 9999, calls: 999 };
+    user.achievements = ['first_message','ten_messages','hundred_messages','first_voice','ten_voices','first_image','ten_images','first_reaction','hundred_reactions','first_call','ten_calls','night_owl','early_bird','week_streak'];
+    await writeUsers(usersData);
+    await addSystemMessage(`💀 ${req.session.user.name} применил HACK на ${user.name}.`);
+    io.emit('chat:refresh');
+    res.json({ ok: true, coins: user.coins });
+});
 
 app.post('/api/admin/give-coins', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
@@ -679,6 +1044,39 @@ app.post('/api/admin/change-password', async (req, res) => {
     await writeUsers(data);
     res.json({ ok: true });
 });
+
+app.get('/api/admin/dm-all', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const chats = await readDmChats();
+    const msgs = await readDmMessages();
+    const usersData = await readUsers();
+    const users = usersData.users;
+    const result = chats.map(c => {
+        let name = c.name; let avatar = null;
+        if (c.type === 'private') {
+            const other = c.members.find(l => l !== c.created_by) || c.members[0];
+            const u = users.find(x => x.login === other);
+            name = u ? u.name : other; avatar = u ? u.avatar : null;
+        }
+        const chatMsgs = msgs.filter(m => m.chat_id === c.id);
+        return { id: c.id, type: c.type, name, avatar, members: c.members, count: chatMsgs.length, last: chatMsgs.length ? chatMsgs[chatMsgs.length - 1].time : c.created_at };
+    }).sort((a, b) => new Date(b.last) - new Date(a.last));
+    res.json(result);
+});
+
+app.get('/api/admin/dm-chat/:chatId', async (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+    const msgs = await readDmMessages(req.params.chatId);
+    const usersData = await readUsers();
+    const users = usersData.users;
+    const enriched = msgs.map(m => { const u = users.find(x => x.login === m.from_login); return { ...m, avatar: u && u.avatar ? u.avatar : null }; });
+    res.json(enriched);
+});
+
+app.post('/api/admin/reset/:login', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.params.login); if (!user) return res.status(404).json({ error: 'not found' }); user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 }; user.achievements = []; await writeUsers(data); res.json({ ok: true }); });
+app.post('/api/admin/clear-chat', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('messages').delete().neq('id', ''); res.json({ ok: true }); });
+app.post('/api/admin/clear-quotes', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('quotes').delete().neq('id', ''); res.json({ ok: true }); });
+app.post('/api/admin/clear-logins', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); data.users.forEach(u => { u.lastLogin = null; u.lastPing = null; }); await writeUsers(data); res.json({ ok: true }); });
 
 // ====== РОУТЫ ДЛЯ СТРАНИЦ ======
 app.get('/', (req, res) => {
@@ -719,231 +1117,4 @@ app.get('/changelog', (req, res) => {
     res.sendFile(path.join(__dirname, 'changelog.html')); 
 });
 
-app.get('/api/profile/:login', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = await readUsers();
-    const user = data.users.find(u => u.login === req.params.login);
-    if (!user) return res.status(404).json({ error: 'user not found' });
-    ensureCoinFields(user);
-    const p = checkPunishments(user);
-    const isAdmin = isAdminUser(user);
-    res.json({
-        login: user.login, name: user.name, nickname: user.nickname,
-        avatar: user.avatar || null, phrase: user.phrase || '',
-        achievements: user.achievements || [], stats: user.stats || {},
-        warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil,
-        banned: p.banned, bannedUntil: p.bannedUntil,
-        coins: user.coins || 0,
-        colors: user.colors || [],
-        badges: user.badges || [],
-        extraReactions: user.extraReactions || [],
-        currentColor: user.currentColor || null,
-        currentBadge: isAdmin ? '👑' : (user.currentBadge || null),
-        color: user.currentColor || null,
-        badge: isAdmin ? '👑' : (user.currentBadge || null),
-        isAdmin: isAdmin,
-        status: user.status || null,
-        isOwn: user.login === req.session.user.login
-    });
-});
-
-app.post('/api/profile/avatar', uploadAvatar.single('avatar'), async (req, res) => { /* ... */ });
-app.post('/api/profile/phrase', async (req, res) => { /* ... */ });
-app.post('/api/profile/credentials', async (req, res) => { /* ... */ });
-
-// ====== API СООБЩЕНИЙ (ОБЩИЙ ЧАТ) ======
-app.get('/api/messages', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = await readMessages();
-    const usersData = await readUsers();
-    const users = usersData.users;
-    const isAdmin = req.session.user.role === 'admin';
-    const filtered = data.messages.filter(m => !m.hidden || isAdmin || m.login === req.session.user.login);
-    res.json(filtered.map(m => {
-        if (m.system) return { ...m, avatar: null, reactions: {} };
-        const u = users.find(x => x.login === m.login);
-        const isAdm = u && (u.role === 'admin');
-        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null, reactions: m.reactions || {} };
-    }));
-});
-
-app.post('/api/messages', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const usersData = await readUsers();
-    const user = usersData.users.find(u => u.login === req.session.user.login);
-    const p = checkPunishments(user);
-    if (p.changed) await writeUsers(usersData);
-    if (p.muted) return res.status(403).json({ error: 'Ты в муте' });
-    const { text } = req.body;
-    if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
-    const data = await readMessages();
-    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: text.trim(), time: new Date().toISOString(), reactions: {} };
-    if (user.shadowbanned) msg.hidden = true;
-    data.messages.push(msg);
-    await writeMessages(data);
-    if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
-    user.stats.messages = (user.stats.messages || 0) + 1;
-    await writeUsers(usersData);
-    const newAch = await checkAchievements(req.session.user.login);
-    res.json({ ...msg, newAchievements: newAch });
-});
-
-// ====== API ЛИЧНЫХ ЧАТОВ ======
-app.get('/api/dm/chats', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const me = req.session.user.login;
-    const all = await readDmChats();
-    const mine = all.filter(c => Array.isArray(c.members) && c.members.includes(me));
-    const usersData = await readUsers();
-    const dmMsgs = await readDmMessages();
-    const result = mine.map(c => {
-        let name = c.name; let avatar = null;
-        if (c.type === 'private') {
-            const otherLogin = c.members.find(l => l !== me);
-            const other = usersData.users.find(u => u.login === otherLogin);
-            if (other) { name = other.name; avatar = other.avatar || null; }
-        }
-        const chatMsgs = dmMsgs.filter(m => m.chat_id === c.id);
-        const last = chatMsgs[chatMsgs.length - 1];
-        const unread = chatMsgs.filter(m => m.from_login !== me && !(m.read_by || []).includes(me)).length;
-        return { id: c.id, type: c.type, name: name || 'Чат', avatar, members: c.members, lastMessage: last ? (last.text || 'Медиа') : null, lastTime: last ? last.time : c.created_at, unread };
-    }).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
-    res.json(result);
-});
-
-app.get('/api/dm/messages/:chatId', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const me = req.session.user.login;
-    const chats = await readDmChats();
-    const chat = chats.find(c => c.id === req.params.chatId);
-    if (!chat) return res.status(404).json({ error: 'chat not found' });
-    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
-    const msgs = await readDmMessages(req.params.chatId);
-    const usersData = await readUsers();
-    const users = usersData.users;
-    const enriched = msgs.map(m => {
-        const u = users.find(x => x.login === m.from_login);
-        const isAdm = u && u.role === 'admin';
-        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null };
-    });
-    res.json(enriched);
-});
-
-app.post('/api/dm/send', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const me = req.session.user.login;
-    const { chatId, text, image, voice, duration } = req.body;
-    const chats = await readDmChats();
-    const chat = chats.find(c => c.id === chatId);
-    if (!chat) return res.status(404).json({ error: 'chat not found' });
-    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
-    if (!text && !image && !voice) return res.status(400).json({ error: 'empty' });
-    const msg = { id: 'dm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), chat_id: chatId, from_login: me, from_name: req.session.user.name, text: text ? text.trim().slice(0, 2000) : null, image: image || null, voice: voice || null, duration: duration || null, time: new Date().toISOString(), read_by: [me] };
-    await writeDmMessage(msg);
-    res.json(msg);
-});
-app.get('/api/messages', async (req, res) => {
-    try {
-        if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-        const data = await readMessages();
-        const usersData = await readUsers();
-        const users = usersData.users;
-        const isAdmin = req.session.user.role === 'admin';
-        
-        // Фильтруем скрытые сообщения (shadowban)
-        const filtered = data.messages.filter(m => !m.hidden || isAdmin || m.login === req.session.user.login);
-        
-        res.json(filtered.map(m => {
-            if (m.system) return { ...m, avatar: null, reactions: {} };
-            const u = users.find(x => x.login === m.login);
-            const isAdm = u && (u.role === 'admin');
-            return { 
-                ...m, 
-                avatar: u && u.avatar ? u.avatar : null, 
-                badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), 
-                color: u && u.currentColor ? u.currentColor : null, 
-                status: u && u.status ? u.status : null, 
-                reactions: m.reactions || {} 
-            };
-        }));
-    } catch (err) {
-        console.error('Ошибка в /api/messages:', err);
-        res.status(500).json({ error: 'internal server error' });
-    }
-});
-
-app.post('/api/messages', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const usersData = await readUsers();
-    const user = usersData.users.find(u => u.login === req.session.user.login);
-    const p = checkPunishments(user);
-    if (p.changed) await writeUsers(usersData);
-    if (p.muted) return res.status(403).json({ error: 'Ты в муте' });
-    const { text } = req.body;
-    if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
-    const data = await readMessages();
-    const msg = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), login: req.session.user.login, name: req.session.user.name, text: text.trim(), time: new Date().toISOString(), reactions: {} };
-    if (user.shadowbanned) msg.hidden = true;
-    data.messages.push(msg);
-    await writeMessages(data);
-    if (!user.stats) user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 };
-    user.stats.messages = (user.stats.messages || 0) + 1;
-    await writeUsers(usersData);
-    const newAch = await checkAchievements(req.session.user.login);
-    res.json({ ...msg, newAchievements: newAch });
-});
-// ====== ЛИЧНЫЕ ЧАТЫ ======
-app.get('/api/dm/chats', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const me = req.session.user.login;
-    const all = await readDmChats();
-    const mine = all.filter(c => Array.isArray(c.members) && c.members.includes(me));
-    const usersData = await readUsers();
-    const dmMsgs = await readDmMessages();
-    const result = mine.map(c => {
-        let name = c.name; let avatar = null;
-        if (c.type === 'private') {
-            const otherLogin = c.members.find(l => l !== me);
-            const other = usersData.users.find(u => u.login === otherLogin);
-            if (other) { name = other.name; avatar = other.avatar || null; }
-        }
-        const chatMsgs = dmMsgs.filter(m => m.chat_id === c.id);
-        const last = chatMsgs[chatMsgs.length - 1];
-        const unread = chatMsgs.filter(m => m.from_login !== me && !(m.read_by || []).includes(me)).length;
-        return { id: c.id, type: c.type, name: name || 'Чат', avatar, members: c.members, lastMessage: last ? (last.text || 'Медиа') : null, lastTime: last ? last.time : c.created_at, unread };
-    }).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
-    res.json(result);
-});
-
-app.get('/api/dm/messages/:chatId', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const me = req.session.user.login;
-    const chats = await readDmChats();
-    const chat = chats.find(c => c.id === req.params.chatId);
-    if (!chat) return res.status(404).json({ error: 'chat not found' });
-    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
-    const msgs = await readDmMessages(req.params.chatId);
-    const usersData = await readUsers();
-    const users = usersData.users;
-    const enriched = msgs.map(m => {
-        const u = users.find(x => x.login === m.from_login);
-        const isAdm = u && u.role === 'admin';
-        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null };
-    });
-    res.json(enriched);
-});
-
-app.post('/api/dm/send', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const me = req.session.user.login;
-    const { chatId, text, image, voice, duration } = req.body;
-    const chats = await readDmChats();
-    const chat = chats.find(c => c.id === chatId);
-    if (!chat) return res.status(404).json({ error: 'chat not found' });
-    if (!chat.members.includes(me)) return res.status(403).json({ error: 'not a member' });
-    if (!text && !image && !voice) return res.status(400).json({ error: 'empty' });
-    const msg = { id: 'dm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), chat_id: chatId, from_login: me, from_name: req.session.user.name, text: text ? text.trim().slice(0, 2000) : null, image: image || null, voice: voice || null, duration: duration || null, time: new Date().toISOString(), read_by: [me] };
-    await writeDmMessage(msg);
-    res.json(msg);
-});
 server.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущен на порту ${PORT}`));
