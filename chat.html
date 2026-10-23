@@ -7,11 +7,185 @@
 <link rel="manifest" href="/manifest.json">
 <title>Чат банды</title>
 <style>
-/* ... (стили оставляем как были, они длинные, я их не трогаю) ... */
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#000000;color:#dbdee1;height:100vh;height:100dvh;display:flex;overflow:hidden}
 
-/* А-90 и прочее */
+.servers{width:80px;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:12px;flex-shrink:0;border-right:1px solid #1a1a1a}
+.server-icon{width:48px;height:48px;border-radius:16px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .2s;color:#dbdee1;text-decoration:none}
+.server-icon:hover{border-radius:14px;background:#5865f2;color:white;transform:scale(1.05)}
+.server-icon.active{background:#5865f2;color:white;border-radius:14px;box-shadow:0 0 15px rgba(88,101,242,0.4)}
+.server-icon.admin{background:#f0d030;color:#1e1f22;box-shadow:0 0 15px rgba(240,208,48,0.4)}
+.divider{width:32px;height:2px;background:#2a2a2a;border-radius:1px;margin:4px 0}
+
+.channels{width:280px;background:#0a0a0a;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid #1a1a1a}
+.channels-header{padding:20px;border-bottom:1px solid #1a1a1a;font-weight:800;font-size:18px;color:#f2f3f5;display:flex;align-items:center;gap:8px;flex-shrink:0;letter-spacing:-0.5px}
+.channels-header .add-btn{margin-left:auto;background:#5865f2;border:none;color:white;cursor:pointer;font-size:20px;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:all .2s}
+.channels-header .add-btn:hover{background:#4752c4;transform:scale(1.05)}
+.channels-list{flex:1;overflow-y:auto;padding:12px}
+.channel-group{margin-bottom:16px}
+.channel-group-title{padding:8px 12px;color:#6d6f78;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.channel{padding:12px;border-radius:16px;color:#949ba4;cursor:pointer;display:flex;align-items:center;gap:12px;font-size:15px;margin-bottom:4px;text-decoration:none;transition:all .2s;position:relative;border:1px solid transparent}
+.channel:hover{background:#1a1a1a;color:#dbdee1;transform:translateX(2px)}
+.channel.active{background:#1a1a1a;color:#f2f3f5;border-color:#2a2a2a}
+.channel .hash{color:#80848e;font-size:18px;font-weight:500}
+.channel .ch-avatar{width:40px;height:40px;border-radius:50%;background:#5865f2;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;position:relative}
+.channel .ch-avatar img{width:100%;height:100%;object-fit:cover}
+.channel .ch-avatar::after{content:'';position:absolute;bottom:0;right:0;width:12px;height:12px;background:#23a55a;border:2px solid #1a1a1a;border-radius:50%}
+.channel .ch-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.channel .unread{background:#f23f43;color:white;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;flex-shrink:0}
+.channel .last-msg{font-size:12px;color:#6d6f78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.user-panel{padding:16px;background:#1a1a1a;display:flex;align-items:center;gap:12px;flex-shrink:0;border-top:1px solid #2a2a2a}
+.user-avatar{width:40px;height:40px;border-radius:50%;background:#5865f2;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:white;flex-shrink:0;overflow:hidden}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:15px;font-weight:700;color:#f2f3f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-status{font-size:12px;color:#949ba4;font-weight:500}
+
+.chat{flex:1;display:flex;flex-direction:column;background:#000000;min-width:0}
+.chat-header{padding:16px 24px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:12px;flex-shrink:0;background:#000000}
+.chat-header .hash{color:#80848e;font-size:24px}
+.chat-header h2{font-size:18px;font-weight:800;color:#f2f3f5}
+.chat-header .spacer{flex:1}
+.header-btn{background:#1a1a1a;border:1px solid #2a2a2a;color:#dbdee1;cursor:pointer;padding:8px 16px;border-radius:12px;font-family:inherit;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all .2s}
+.header-btn:hover{background:#2a2a2a;color:#fff;transform:translateY(-1px)}
+
+.messages{flex:1;overflow-y:auto;padding:20px 0}
+.date-divider{display:flex;align-items:center;gap:12px;margin:20px 24px;color:#6d6f78;font-size:12px;font-weight:700}
+.date-divider::before,.date-divider::after{content:"";flex:1;height:1px;background:#1a1a1a}
+.msg{display:flex;gap:16px;padding:6px 24px;margin-top:8px;position:relative;border-radius:12px;transition:background .2s}
+.msg:hover{background:#0a0a0a}
+.msg-avatar{width:44px;height:44px;border-radius:50%;background:#5865f2;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:white;flex-shrink:0;object-fit:cover;cursor:pointer;overflow:hidden}
+.msg-avatar img{width:100%;height:100%;object-fit:cover}
+.msg-body{flex:1;min-width:0}
+.msg-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.msg-author{font-weight:700;font-size:16px;cursor:pointer}
+.msg-author:hover{text-decoration:underline}
+.msg-time{color:#6d6f78;font-size:12px;font-weight:500}
+.msg-badge{font-size:16px}
+.msg-status{color:#949ba4;font-size:13px;font-style:italic;margin-bottom:4px;font-weight:500}
+.msg-text{color:#dbdee1;font-size:16px;line-height:1.5;word-wrap:break-word;white-space:pre-wrap}
+.msg-image{max-width:320px;max-height:320px;border-radius:12px;margin-top:8px;cursor:pointer;display:block;box-shadow:0 4px 12px rgba(0,0,0,0.5)}
+.msg-voice{display:flex;align-items:center;gap:12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:24px;padding:6px 16px 6px 6px;max-width:320px;margin-top:8px}
+.msg-voice button{width:36px;height:36px;border-radius:50%;background:#5865f2;color:white;border:none;cursor:pointer;font-size:14px;transition:all .2s}
+.msg-voice button:hover{background:#4752c4;transform:scale(1.05)}
+.msg-voice audio{display:none}
+.msg-voice .vtime{color:#b5bac1;font-size:14px;font-family:monospace;font-weight:600}
+.reactions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center}
+.react-btn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:4px 10px;cursor:pointer;font-size:15px;display:flex;align-items:center;gap:6px;user-select:none;transition:all .2s}
+.react-btn:hover{background:#2a2a2a;border-color:#5865f2}
+.react-btn.mine{background:rgba(88,101,242,0.15);border-color:#5865f2}
+.react-btn .count{color:#dbdee1;font-size:13px;font-weight:700}
+.react-add,.quote-add{background:transparent;border:1px solid #2a2a2a;border-radius:16px;padding:4px 10px;cursor:pointer;font-size:15px;color:#949ba4;opacity:0;transition:all .2s}
+.msg:hover .react-add,.msg:hover .quote-add{opacity:1}
+.react-add:hover,.quote-add:hover{background:#1a1a1a;color:#fff}
+.emoji-picker{position:absolute;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:8px;display:flex;gap:6px;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,0.6);flex-wrap:wrap;max-width:260px}
+.emoji-picker span{font-size:24px;cursor:pointer;padding:6px 8px;border-radius:8px;transition:background .2s}
+.emoji-picker span:hover{background:#2a2a2a}
+.msg-del{position:absolute;right:24px;top:8px;color:#f23f43;font-size:12px;font-weight:700;cursor:pointer;opacity:0;background:#1a1a1a;padding:4px 10px;border-radius:8px;transition:all .2s}
+.msg:hover .msg-del{opacity:1}
+.msg-del:hover{background:#f23f43;color:white}
+.sys-msg{display:flex;justify-content:center;padding:8px 24px;margin:8px 0}
+.sys-box{background:#1a1a1a;border-left:4px solid #f0d030;border-radius:12px;padding:12px 20px;color:#f0d030;font-size:14px;font-weight:600;max-width:80%;text-align:center;word-wrap:break-word}
+
+.chat-form{padding:16px 24px 24px;position:relative;background:#000000}
+.input-wrap{display:flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:24px;padding:0 8px 0 16px;transition:all .2s}
+.input-wrap:focus-within{border-color:#5865f2;box-shadow:0 0 0 2px rgba(88,101,242,0.2)}
+.chat-input{flex:1;background:transparent;border:none;padding:14px 0;color:#f2f3f5;font-family:inherit;font-size:16px;outline:none;min-width:0}
+.chat-input::placeholder{color:#6d6f78}
+.icon-btn{background:transparent;border:none;color:#949ba4;cursor:pointer;font-size:22px;padding:8px;border-radius:50%;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;flex-shrink:0;transition:all .2s}
+.icon-btn:hover{color:#f2f3f5;background:#2a2a2a}
+.icon-btn img{width:24px;height:24px;object-fit:contain;pointer-events:none;opacity:0.7;transition:opacity .2s}
+.icon-btn:hover img{opacity:1}
+.voice-btn.recording{background:#f23f43;color:white}
+
+.send-btn {
+    background: #5865f2; color: white; border: none; border-radius: 50%; width: 38px; height: 38px; cursor: pointer;
+    font-family: inherit; font-size: 18px; font-weight: 700; flex-shrink: 0; margin-left: 4px; transition: all .2s;
+    display: flex; align-items: center; justify-content: center; padding-left: 3px;
+}
+.send-btn:hover { background: #4752c4; transform: scale(1.05); box-shadow: 0 4px 12px rgba(88,101,242,0.4); }
+
+.cmd-hint{position:absolute;bottom:90px;left:24px;right:24px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;max-height:280px;overflow-y:auto;display:none;z-index:50;box-shadow:0 -4px 24px rgba(0,0,0,0.6)}
+.cmd-hint.active{display:block}
+.hint-item{padding:12px 16px;cursor:pointer;display:flex;gap:16px;align-items:center;border-bottom:1px solid #2a2a2a;transition:background .2s}
+.hint-item:hover{background:#2a2a2a}
+.hint-cmd{color:#5865f2;font-family:monospace;font-size:15px;font-weight:700;flex-shrink:0}
+.hint-desc{color:#b5bac1;font-size:13px}
+.hint-title{color:#6d6f78;font-size:12px;text-transform:uppercase;font-weight:800;padding:12px 16px;background:#0a0a0a}
+
+.rec-indicator{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#f23f43;color:white;padding:10px 20px;border-radius:24px;font-size:15px;font-weight:700;display:none;z-index:150;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(242,63,67,0.4)}
+.rec-indicator.active{display:flex}
+.rec-dot{width:12px;height:12px;background:white;border-radius:50%;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-overlay.active{display:flex}
+.modal{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:24px;width:90%;max-width:480px;max-height:80vh;overflow-y:auto}
+.modal h3{margin:0 0 20px;color:#f2f3f5;font-size:20px;font-weight:800}
+.modal input,.modal select{width:100%;padding:14px;background:#000000;border:1px solid #2a2a2a;border-radius:12px;color:#f2f3f5;font-family:inherit;font-size:15px;margin-bottom:12px;outline:none;transition:border-color .2s}
+.modal input:focus{outline:none;border-color:#5865f2}
+.user-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;cursor:pointer;transition:background .2s}
+.user-item:hover{background:#2a2a2a}
+.u-avatar{width:40px;height:40px;border-radius:50%;background:#5865f2;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:white;flex-shrink:0;overflow:hidden;object-fit:cover}
+.u-avatar img{width:100%;height:100%;object-fit:cover}
+.u-name{color:#f2f3f5;font-size:15px;font-weight:600;flex:1}
+.u-online{width:12px;height:12px;border-radius:50%;background:#6d6f78}
+.u-online.on{background:#23a55a;box-shadow:0 0 8px rgba(35,165,90,0.5)}
+.modal .cancel{margin-top:20px;width:100%;background:#2a2a2a;color:#dbdee1;padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;transition:background .2s}
+.modal .cancel:hover{background:#3a3a3a}
+.modal .ok{margin-top:12px;width:100%;background:#5865f2;color:#fff;padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;transition:all .2s}
+.modal .ok:hover{background:#4752c4;transform:translateY(-2px);box-shadow:0 4px 12px rgba(88,101,242,0.4)}
+.checkbox-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;cursor:pointer;transition:background .2s}
+.checkbox-row:hover{background:#2a2a2a}
+.checkbox-row input{width:18px;height:18px;margin:0;accent-color:#5865f2}
+
+.cmd-modal{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:250}
+.cmd-modal.active{display:flex}
+.cmd-box{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:24px;width:90%;max-width:420px}
+.cmd-box h3{margin:0 0 20px;color:#f2f3f5;font-size:20px;font-weight:800}
+.cmd-step{margin-bottom:16px}
+.cmd-step label{display:block;color:#949ba4;font-size:13px;font-weight:700;text-transform:uppercase;margin-bottom:8px;letter-spacing:.5px}
+.cmd-step select{width:100%;padding:14px;background:#000000;border:1px solid #2a2a2a;border-radius:12px;color:#f2f3f5;font-family:inherit;font-size:15px;outline:none}
+.cmd-actions{display:flex;gap:12px;margin-top:20px}
+.cmd-actions button{flex:1;padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;color:white;transition:all .2s}
+.cmd-actions .go{background:#5865f2}
+.cmd-actions .go:hover{background:#4752c4}
+.cmd-actions .cancel-btn{background:#2a2a2a}
+.cmd-actions .cancel-btn:hover{background:#3a3a3a}
+
+.call-screen{position:fixed;inset:0;background:#0a0a0a;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:24px}
+.call-screen.active{display:flex}
+.call-avatar{width:160px;height:160px;border-radius:50%;background:#5865f2;color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:64px;object-fit:cover;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5)}
+.call-avatar img{width:100%;height:100%;object-fit:cover}
+.call-name{color:#f2f3f5;font-size:28px;font-weight:800}
+.call-status{color:#949ba4;font-size:16px;font-weight:600}
+.call-actions{display:flex;gap:24px}
+.call-btn{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:28px;transition:all .2s}
+.call-btn:hover{transform:scale(1.05)}
+.call-btn.accept{background:#23a55a;color:white;box-shadow:0 8px 24px rgba(35,165,90,0.4)}
+.call-btn.reject{background:#f23f43;color:white;box-shadow:0 8px 24px rgba(242,63,67,0.4)}
+.call-btn.mute{background:#2a2a2a;color:white}
+.call-btn.mute.muted{background:#f23f43}
+
+.ach-toast{position:fixed;top:24px;right:24px;background:#1a1a1a;border:2px solid #5865f2;border-radius:16px;padding:16px 24px;color:#f2f3f5;font-weight:700;z-index:500;display:flex;align-items:center;gap:16px;box-shadow:0 12px 32px rgba(88,101,242,0.3);animation:slideIn .3s forwards}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.ach-toast .icon{font-size:32px}
+.ach-toast .txt{font-size:14px;color:#b5bac1;font-weight:500;margin-top:4px}
+.coin-toast{position:fixed;top:90px;right:24px;background:#1a1a1a;color:#f0d030;border:2px solid #f0d030;border-radius:16px;padding:14px 24px;font-weight:800;z-index:500;box-shadow:0 8px 24px rgba(240,208,48,0.3);animation:slideIn .3s forwards}
+.img-viewer{position:fixed;inset:0;background:rgba(0,0,0,0.95);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:300;cursor:pointer}
+.img-viewer.active{display:flex}
+.img-viewer img{max-width:90%;max-height:90%;border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.8)}
+.pun-tag{padding:4px 12px;border-radius:12px;font-size:12px;font-weight:800}
+.pun-tag.warn{background:rgba(240,208,48,0.15);color:#f0d030;border:1px solid rgba(240,208,48,0.3)}
+.pun-tag.mute{background:rgba(240,160,48,0.15);color:#f0a030;border:1px solid rgba(240,160,48,0.3)}
+.mute-banner{background:rgba(240,160,48,0.15);color:#f0a030;padding:12px 24px;text-align:center;font-size:14px;font-weight:700;border-bottom:1px solid rgba(240,160,48,0.3)}
+.empty-chat{text-align:center;padding:60px 24px;color:#6d6f78;font-size:16px;font-style:italic}
+
+.typing-indicator { padding: 0 24px 10px; font-size: 13px; color: #949ba4; font-style: italic; min-height: 20px; transition: opacity 0.3s; }
+.typing-dots::after { content: '...'; animation: blinkDots 1.5s infinite; }
+@keyframes blinkDots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
+
+/* А-90 ОВЕРЛЕЙ */
 .a90-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: none; flex-direction: column; align-items: center; padding: 40px; backdrop-filter: blur(10px); user-select: none; }
 .a90-overlay.active { display: flex; }
 .a90-header { text-align: center; margin-bottom: 30px; pointer-events: none; }
@@ -30,8 +204,66 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 .a90-jumpscare img { width: 100vw; height: 100vh; object-fit: cover; }
 @keyframes scareShake { 0% { transform: scale(0.5) translate(0, 0); opacity: 0; } 10% { transform: scale(1.2) translate(10px, -10px); opacity: 1; } 20% { transform: scale(1.1) translate(-15px, 15px); } 30% { transform: scale(1.3) translate(15px, -15px); } 40% { transform: scale(1.2) translate(-10px, 10px); } 50% { transform: scale(1.3) translate(5px, -5px); } 60% { transform: scale(1.1) translate(-5px, 5px); } 100% { transform: scale(1) translate(0, 0); opacity: 1; } }
 
+.mobile-nav { display: none; }
+.mobile-messages-header { display: none; }
+.chat-header .back-btn { display: none; }
+
 @media (max-width: 768px) {
-    /* ... стили для мобилки ... */
+    body { background: #000000; color: #f2f3f5; }
+    .servers { display: none; }
+    .channels { width: 100%; background: #000000; border-right: none; padding-bottom: 80px; }
+    .channels-header { display: none; }
+    .mobile-messages-header { display: block; padding: 16px 16px 12px; background: #000000; flex-shrink: 0; }
+    .mobile-title { font-size: 30px; font-weight: 800; color: #ffffff; margin-bottom: 14px; letter-spacing: -1px; }
+    .mobile-actions { display: flex; gap: 10px; align-items: center; }
+    .mobile-icon-btn { width: 44px; height: 44px; background: #1a1a1a; border: none; border-radius: 50%; color: #f2f3f5; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .mobile-icon-btn.plus { background: #5865f2; color: white; border-radius: 12px; }
+    .mobile-add-friends { flex: 1; height: 44px; background: #1a1a1a; border: none; border-radius: 12px; color: #f2f3f5; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    
+    .channel-group { margin-bottom: 12px; }
+    .channel-group-title { padding: 10px 20px 6px; font-size: 13px; color: #80848e; text-transform: none; letter-spacing: 0; font-weight: 500; }
+    .channel { padding: 10px 16px; border-radius: 16px; margin: 0 12px 2px; gap: 14px; background: transparent; min-height: 72px; align-items: center; border: none; }
+    .channel:hover, .channel.active { background: #1a1a1a; }
+    .channel .ch-avatar { width: 56px; height: 56px; font-size: 20px; font-weight: 700; border-radius: 50%; }
+    .channel .ch-avatar::after { width: 16px; height: 16px; border-width: 3px; }
+    .channel .ch-name { font-size: 17px; font-weight: 600; color: #ffffff; }
+    .channel .unread { font-size: 13px; padding: 2px 9px; border-radius: 12px; background: #f23f43; min-width: 22px; text-align: center; }
+    .user-panel { display: none; }
+    body.mobile-chat-open .channels { display: none; }
+    body.mobile-chat-open .chat { display: flex; }
+    body:not(.mobile-chat-open) .chat { display: none; }
+    .chat { width: 100%; background: #000000; }
+    .chat-header { padding: 12px 12px; background: #000000; border-bottom: 1px solid #1a1a1a; gap: 8px; }
+    .chat-header .back-btn { display: flex; background: transparent; border: none; color: #f2f3f5; font-size: 26px; cursor: pointer; padding: 4px 10px; border-radius: 50%; }
+    .chat-header .hash { font-size: 20px; color: #80848e; }
+    .chat-header h2 { font-size: 17px; font-weight: 700; }
+    .header-btn { padding: 8px 10px; font-size: 13px; color: #b5bac1; background: transparent; border: none; }
+    .messages { background: #000000; padding: 12px 0 90px 0; }
+    .msg { padding: 4px 14px; gap: 12px; margin-top: 8px; }
+    .msg:hover { background: #1a1a1a; }
+    .msg-avatar { width: 40px; height: 40px; font-size: 16px; }
+    .msg-author { font-size: 15px; }
+    .msg-text { font-size: 15px; color: #dbdee1; }
+    .msg-image { max-width: 100%; border-radius: 12px; }
+    .chat-form { position: fixed; left: 0; right: 0; bottom: 68px; padding: 4px 12px 12px; background: #000000; z-index: 90; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)); }
+    body.mobile-chat-open .chat-form { bottom: 0; }
+    body.mobile-chat-open .messages { padding-bottom: 80px; }
+    .input-wrap { padding: 4px 8px 4px 14px; background: #1a1a1a; border-radius: 24px; gap: 8px; }
+    .chat-input { padding: 10px 0; font-size: 16px; color: #ffffff; }
+    .chat-input::placeholder { color: #6d6f78; }
+    .icon-btn { font-size: 22px; color: #b5bac1; padding: 8px; }
+    .send-btn { display: flex; width: 38px; height: 38px; font-size: 18px; margin-left: 2px; }
+    .cmd-hint { bottom: 76px; left: 12px; right: 12px; }
+    
+    .mobile-nav {
+        display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
+        background: #000000; border-top: 1px solid #1a1a1a; z-index: 100;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    body.mobile-chat-open .mobile-nav { display: none; }
+    .mobile-nav .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #80848e; text-decoration: none; font-size: 11px; font-weight: 600; position: relative; }
+    .mobile-nav .nav-item .nav-icon { font-size: 24px; line-height: 1; }
+    .mobile-nav .nav-item.active { color: #5865f2; }
 }
 @media (min-width: 769px) {
     .mobile-messages-header, .mobile-nav, .chat-header .back-btn { display: none !important; }
@@ -124,7 +356,351 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 <script>
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
-// ==== НОВЫЕ ОБРАБОТЧИКИ АБЬЮЗОВ ====
+const messagesEl = document.getElementById('messages');
+const form = document.getElementById('form');
+const textInput = document.getElementById('text');
+const voiceBtn = document.getElementById('voiceBtn');
+const imgBtn = document.getElementById('imgBtn');
+const imgInput = document.getElementById('imgInput');
+const recIndicator = document.getElementById('recIndicator');
+const recTime = document.getElementById('recTime');
+const imgViewer = document.getElementById('imgViewer');
+const imgViewerImg = document.getElementById('imgViewerImg');
+const coinsTag = document.getElementById('coinsTag');
+const cmdHint = document.getElementById('cmdHint');
+
+let audioUnlocked = false;
+document.addEventListener('click', () => {
+    if (!audioUnlocked) {
+        audioUnlocked = true;
+        const a90Siren = document.getElementById('a90Siren');
+        if (a90Siren) {
+            a90Siren.volume = 0;
+            a90Siren.play().then(() => { a90Siren.pause(); a90Siren.currentTime = 0; a90Siren.volume = 1.0; }).catch(()=>{});
+        }
+    }
+}, { once: true });
+
+const BASE_EMOJIS = ['😂','🔥','👍','💀'];
+let myExtraReactions = [];
+let onlineList = [];
+let myLogin = null, isAdmin = false, allUsers = [], meData = null;
+let currentChatId = 'general';
+let myChats = []; 
+
+function fmtTime(iso){return new Date(iso).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});}
+function fmtDate(iso){const d=new Date(iso),t=new Date(),y=new Date();y.setDate(t.getDate()-1);const s=(a,b)=>a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();if(s(d,t))return'Сегодня';if(s(d,y))return'Вчера';return d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+function fmtDur(sec){const m=Math.floor(sec/60),s=sec%60;return m+':'+(s<10?'0':'')+s;}
+function fmtUntil(iso){if(!iso)return'';const d=new Date(iso);if(d.getFullYear()>9000)return'навсегда';return d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function myEmojis(){return BASE_EMOJIS.concat(myExtraReactions||[]);}
+
+async function loadChats(){
+    try{
+        const r = await fetch('/api/dm/chats');
+        if(!r.ok) return;
+        myChats = await r.json();
+    }catch(e){ myChats = []; }
+    renderChannels();
+}
+
+function renderChannels(){
+    const list = document.getElementById('channelsList');
+    let html = '';
+    const generalActive = currentChatId === 'general';
+    html += `<div class="channel-group"><div class="channel-group-title">Общее</div>
+        <div class="channel ${generalActive?'active':''}" onclick="switchChat('general')">
+            <span class="hash">#</span>
+            <span class="ch-name">общий</span>
+        </div>
+    </div>`;
+    if(myChats.length){
+        html += `<div class="channel-group"><div class="channel-group-title">Личные и группы</div>`;
+        myChats.forEach(c=>{
+            const active = currentChatId === c.id;
+            let av;
+            if(c.type === 'private'){
+                const initial = (c.name||'?').charAt(0).toUpperCase();
+                av = c.avatar ? `<div class="ch-avatar"><img src="${c.avatar}" alt=""></div>` : `<div class="ch-avatar">${initial}</div>`;
+            } else {
+                av = `<div class="ch-avatar" style="background:#23a55a">👥</div>`;
+            }
+            const unread = c.unread > 0 ? `<span class="unread">${c.unread}</span>` : '';
+            html += `<div class="channel ${active?'active':''}" onclick="switchChat('${c.id}')">
+                ${av}
+                <div style="flex:1;min-width:0"><div class="ch-name">${esc(c.name)}</div></div>
+                ${unread}
+            </div>`;
+        });
+        html += `</div>`;
+    }
+    list.innerHTML = html;
+}
+
+function switchChat(id){
+    currentChatId = id;
+    forceScrollBottom = true;
+    lastMsgId = null;
+    hasRenderedOnce = false;
+    document.body.classList.add('mobile-chat-open');
+    loadMessages();
+    if(id !== 'general'){ fetch('/api/dm/messages/'+id).then(()=>{}); }
+    loadChats();
+    if(id === 'general'){
+        document.getElementById('chatHash').textContent = '#';
+        document.getElementById('chatTitle').textContent = 'общий';
+    } else {
+        const c = myChats.find(x=>x.id===id);
+        document.getElementById('chatHash').textContent = c && c.type==='group' ? '👥' : '@';
+        document.getElementById('chatTitle').textContent = c ? c.name : '...';
+    }
+}
+function closeMobileChat(){
+    document.body.classList.remove('mobile-chat-open');
+    loadChats();
+}
+
+function renderReactions(msg){
+    const r = msg.reactions || {};
+    let h = '<div class="reactions">';
+    myEmojis().forEach(e=>{
+        const list = r[e] || [];
+        if(list.length){
+            const mine = list.includes(myLogin);
+            h += `<div class="react-btn ${mine?'mine':''}" onclick="toggleReaction('${msg.id}','${e}')"><span>${e}</span><span class="count">${list.length}</span></div>`;
+        }
+    });
+    if(currentChatId === 'general'){
+        h += `<div class="react-add" onclick="showEmojiPicker(event,'${msg.id}')">+</div>`;
+        h += `<div class="quote-add" onclick="saveQuote('${msg.id}')" title="В цитатник">💬</div>`;
+    }
+    h += '</div>';
+    return h;
+}
+
+let forceScrollBottom = false;
+function render(messages){
+    const atBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 100;
+    const need = forceScrollBottom || atBottom;
+    if(!messages || !messages.length){
+        messagesEl.innerHTML = '<div class="empty-chat">Пока пусто. Напиши первым!</div>';
+        forceScrollBottom = false;
+        return;
+    }
+    let html = '', lastDate = null;
+    messages.forEach(m=>{
+        const dk = new Date(m.time).toDateString();
+        if(dk !== lastDate){ html += `<div class="date-divider">${fmtDate(m.time)}</div>`; lastDate = dk; }
+        if(m.system){ html += `<div class="sys-msg"><div class="sys-box">⚙️ СИСТЕМА: ${esc(m.text)}</div></div>`; return; }
+        const initial = (m.name||m.from_name||'?').charAt(0).toUpperCase();
+        const av = m.avatar ? `<div class="msg-avatar" onclick="openProfile('${m.login||m.from_login}')"><img src="${m.avatar}" alt=""></div>` : `<div class="msg-avatar" onclick="openProfile('${m.login||m.from_login}')">${esc(initial)}</div>`;
+        const canDel = ((m.login||m.from_login) === myLogin) || isAdmin;
+        const color = m.color || '#f2f3f5';
+        const badge = m.badge ? `<span class="msg-badge">${m.badge}</span>` : '';
+        const status = m.status ? `<div class="msg-status">${esc(m.status)}</div>` : '';
+        const authorName = m.name || m.from_name || '?';
+        let content = '';
+        if(m.image) content = `<img class="msg-image" src="${m.image}" onclick="openImg('${m.image}')">`;
+        else if(m.voice) content = `<div class="msg-voice"><button onclick="toggleVoice('${m.id}',this)">▶</button><audio id="a-${m.id}" src="${m.voice}" preload="metadata"></audio><span class="vtime">${fmtDur(m.duration||0)}</span></div>`;
+        else content = `<div class="msg-text">${esc(m.text)}</div>`;
+        html += `<div class="msg"><div>${av}</div><div class="msg-body">${status}<div class="msg-head">${badge}<span class="msg-author" style="color:${color}" onclick="openProfile('${m.login||m.from_login}')">${esc(authorName)}</span><span class="msg-time">${fmtTime(m.time)}</span></div>${content}${renderReactions(m)}</div>${canDel?`<span class="msg-del" onclick="delMsg('${m.id}')">удалить</span>`:''}</div>`;
+    });
+    messagesEl.innerHTML = html;
+    forceScrollBottom = false;
+    if(need){
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        requestAnimationFrame(()=>messagesEl.scrollTop = messagesEl.scrollHeight);
+        setTimeout(()=>messagesEl.scrollTop = messagesEl.scrollHeight, 50);
+    }
+}
+
+function openImg(src){imgViewerImg.src=src;imgViewer.classList.add('active');}
+function openProfile(l){if(!l)return;location.href='/profile?user='+encodeURIComponent(l);}
+function toggleVoice(id,btn){const a=document.getElementById('a-'+id);if(!a)return;if(a.paused){document.querySelectorAll('audio').forEach(x=>{if(x.id!=='a-'+id){x.pause();x.currentTime=0;}});document.querySelectorAll('.msg-voice button').forEach(b=>b.textContent='▶');a.play();btn.textContent='⏸';a.onended=()=>btn.textContent='▶';}else{a.pause();btn.textContent='▶';}}
+
+let lastMsgId = null, hasRenderedOnce = false;
+async function loadMessages(){
+    if(currentChatId === 'general'){
+        const r = await fetch('/api/messages'); if(!r.ok) return;
+        const msgs = await r.json();
+        const last = msgs.length ? msgs[msgs.length-1].id : null;
+        if(hasRenderedOnce && last === lastMsgId) return;
+        render(msgs);
+        lastMsgId = last; hasRenderedOnce = true;
+    } else {
+        const r = await fetch('/api/dm/messages/'+currentChatId); if(!r.ok) return;
+        const msgs = await r.json();
+        const last = msgs.length ? msgs[msgs.length-1].id : null;
+        if(hasRenderedOnce && last === lastMsgId) return;
+        render(msgs);
+        lastMsgId = last; hasRenderedOnce = true;
+        loadChats();
+    }
+}
+async function loadOnline(){ try{const r=await fetch('/api/online');if(!r.ok)return;onlineList=await r.json();}catch(e){} }
+async function forceReload(){forceScrollBottom=true;lastMsgId=null;await loadMessages();}
+
+const socket = io({reconnection:true,reconnectionDelay:1000,reconnectionAttempts:Infinity});
+
+let typingTimeout = null;
+let typingClearTimer = null;
+
+textInput.addEventListener('input', () => {
+    if (!textInput.value.trim()) return;
+    socket.emit('typing', { chatId: currentChatId });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => { /* пусто */ }, 1000);
+});
+
+socket.on('user:typing', ({ login, name, chatId }) => {
+    if (!myLogin) return; 
+    if (chatId !== currentChatId || login === myLogin) return;
+    const ind = document.getElementById('typingIndicator');
+    if (!ind) return; 
+    ind.innerHTML = `${esc(name)} печатает<span class="typing-dots"></span>`;
+    clearTimeout(typingClearTimer);
+    typingClearTimer = setTimeout(() => { ind.innerHTML = ''; }, 3000);
+});
+
+form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const t = textInput.value; if(!t.trim()) return;
+    if(t.startsWith('/') && currentChatId === 'general'){
+        textInput.value=''; cmdHint.classList.remove('active');
+        const tr = t.trim();
+        if(tr.startsWith('/sys ')) await sendSys(tr.slice(5));
+        else if(tr.startsWith('/give ')) await giveCoins(tr);
+        else if(tr.startsWith('/resetcoins')) await resetCoins(tr);
+        else if(tr.startsWith('/takecoins ')) await takeCoins(tr);
+        else handleCommand(tr);
+        return;
+    }
+    textInput.value='';
+    if(currentChatId === 'general'){
+        const r = await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
+        const data = await r.json();
+        if(data.error === 'Ты в муте'){alert('Ты в муте');return;}
+        showNewAch(data.newAchievements);
+    } else {
+        await fetch('/api/dm/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:currentChatId, text:t})});
+        const chat = myChats.find(c=>c.id===currentChatId);
+        if(chat) chat.members.filter(l=>l!==myLogin).forEach(l=>socket.emit('dm:notify',{to:l}));
+    }
+    forceReload();
+});
+
+const ALL_COMMANDS = [
+    {cmd:'/mute',desc:'Замутить'},{cmd:'/unmute',desc:'Снять мут'},
+    {cmd:'/warn',desc:'Предупреждение (3=автомут)'},{cmd:'/clearwarns',desc:'Сбросить варны'},
+    {cmd:'/ban',desc:'Забанить'},{cmd:'/unban',desc:'Снять бан'},
+    {cmd:'/kick',desc:'Кикнуть'},{cmd:'/give логин число',desc:'Выдать монеты'},
+    {cmd:'/resetcoins',desc:'Обнулить монеты всем'},{cmd:'/resetcoins логин',desc:'Обнулить игроку'},
+    {cmd:'/takecoins логин число',desc:'Забрать монеты'},{cmd:'/sys текст',desc:'Написать от СИСТЕМЫ'}
+];
+function updateCmdHint(){
+    const v = textInput.value;
+    if(!v.startsWith('/')){cmdHint.classList.remove('active');cmdHint.innerHTML='';return;}
+    const q = v.toLowerCase();
+    let matches = ALL_COMMANDS.filter(c=>c.cmd.toLowerCase().startsWith(q));
+    if(!isAdmin) matches = [];
+    if(!matches.length){cmdHint.classList.remove('active');cmdHint.innerHTML='';return;}
+    let h = '<div class="hint-title">Команды</div>';
+    matches.forEach(c=>{ h += `<div class="hint-item" onclick="pickCommand('${c.cmd.split(' ')[0]}')"><span class="hint-cmd">${c.cmd}</span><span class="hint-desc">${c.desc}</span></div>`; });
+    cmdHint.innerHTML = h; cmdHint.classList.add('active');
+}
+function pickCommand(c){textInput.value=c+' ';textInput.focus();cmdHint.classList.remove('active');cmdHint.innerHTML='';}
+textInput.addEventListener('input', updateCmdHint);
+textInput.addEventListener('keydown', e=>{if(e.key==='Escape'){cmdHint.classList.remove('active');cmdHint.innerHTML='';}});
+document.addEventListener('click', e=>{if(!cmdHint.contains(e.target)&&e.target!==textInput)cmdHint.classList.remove('active');});
+
+async function giveCoins(txt){ if(!isAdmin)return alert('Только админ'); const p = txt.split(/\s+/); if(p.length<3)return alert('/give логин число'); const r = await fetch('/api/give-coins',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:p[1],amount:p[2]})}); const d = await r.json(); if(d.ok){showCoin(`💰 ${p[1]}: ${d.coins}`);forceReload();}else alert(d.error); }
+async function resetCoins(txt){ if(!isAdmin)return alert('Только админ'); const p = txt.split(/\s+/); const target = p[1]||null; if(!confirm(target?`Обнулить ${target}?`:'Обнулить ВСЕМ?'))return; const r = await fetch('/api/reset-coins',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target})}); const d = await r.json(); if(d.ok){showCoin('💰 Обнулено');forceReload();}else alert(d.error); }
+async function takeCoins(txt){ if(!isAdmin)return alert('Только админ'); const p = txt.split(/\s+/); if(p.length<3)return alert('/takecoins логин число'); if(!confirm(`Забрать ${p[2]} у ${p[1]}?`))return; const r = await fetch('/api/take-coins',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:p[1],amount:p[2]})}); const d = await r.json(); if(d.ok){showCoin(`💰 Забрано ${d.taken}. Осталось ${d.coins}`);forceReload();}else alert(d.error); }
+function showCoin(t){const e=document.createElement('div');e.className='coin-toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),3000);}
+
+async function delMsg(id){ if(currentChatId === 'general'){await fetch('/api/messages/'+id,{method:'DELETE'});} else {await fetch('/api/dm/message/'+id,{method:'DELETE'});} forceReload(); }
+async function toggleReaction(id,e){ if(currentChatId !== 'general'){alert('Реакции пока только в общем чате');return;} await fetch('/api/messages/'+id+'/react',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji:e,action:'toggle'})}); forceReload(); }
+async function saveQuote(id){const r=await fetch('/api/quotes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messageId:id})});if(r.ok)alert('Сохранено');}
+function showEmojiPicker(ev,id){ ev.stopPropagation(); document.querySelectorAll('.emoji-picker').forEach(x=>x.remove()); const p=document.createElement('div');p.className='emoji-picker'; p.innerHTML=myEmojis().map(e=>`<span onclick="pickEmoji('${id}','${e}')">${e}</span>`).join(''); const r=ev.target.getBoundingClientRect(); p.style.left=r.left+'px';p.style.top=(r.bottom+8)+'px'; document.body.appendChild(p); setTimeout(()=>{document.addEventListener('click',function cl(){p.remove();document.removeEventListener('click',cl);});},10); }
+async function pickEmoji(id,e){await fetch('/api/messages/'+id+'/react',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji:e,action:'toggle'})});document.querySelectorAll('.emoji-picker').forEach(x=>x.remove());forceReload();}
+
+const ACH_NAMES = {first_message:'Первое слово 💬',ten_messages:'Разговорчивый 🗣️',hundred_messages:'Флудер 📢',first_voice:'Голос 🎤',ten_voices:'Болтун 🔊',first_image:'Фотограф 📷',ten_images:'Галерея 🖼️',first_reaction:'Реакция 😂',hundred_reactions:'Реактор ⚡',first_call:'Дозвонился 📞',ten_calls:'Телефонист ☎️',night_owl:'Ночной житель 🌙',early_bird:'Ранняя пташка 🐦',week_streak:'Неделя в чате 🔥'};
+function showNewAch(list){ if(!list||!list.length)return; list.forEach((k,i)=>setTimeout(()=>{ const t=document.createElement('div');t.className='ach-toast'; t.innerHTML=`<div class="icon">🏆</div><div><div>Ачивка: ${ACH_NAMES[k]||k}</div><div class="txt">Ты получил новую ачивку!</div></div>`; document.body.appendChild(t);setTimeout(()=>t.remove(),4000); },i*600)); }
+async function sendSys(t){if(!isAdmin)return;if(!t.trim())return;const r=await fetch('/api/sys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});if(r.ok)forceReload();}
+
+const COMMANDS = { '/mute':{title:'🔇 Замутить',duration:true,action:'mute'}, '/unmute':{title:'🔊 Размутить',duration:false,action:'unmute'}, '/ban':{title:'🚫 Забанить',duration:true,action:'ban'}, '/unban':{title:'✅ Разбанить',duration:false,action:'unban'}, '/warn':{title:'⚠️ Предупреждение',duration:false,action:'warn'}, '/kick':{title:'👢 Кикнуть',duration:false,action:'kick'}, '/clearwarns':{title:'🧹 Сбросить варны',duration:false,action:'clearWarns'} };
+let pendingCmd = null;
+function handleCommand(t){ const c = t.split(' ')[0].toLowerCase(); if(!COMMANDS[c])return alert('Неизвестная команда'); if(!isAdmin)return alert('Только админ'); openCmdModal(c); }
+async function openCmdModal(c){ pendingCmd = COMMANDS[c]; document.getElementById('cmdTitle').textContent = pendingCmd.title; document.getElementById('stepDuration').style.display = pendingCmd.duration?'block':'none'; const r = await fetch('/api/users'); allUsers = await r.json(); const s = document.getElementById('cmdUser'); s.innerHTML = allUsers.filter(u=>u.login!==myLogin).map(u=>`<option value="${u.login}">${esc(u.name)} (@${u.login})</option>`).join(''); document.getElementById('cmdModal').classList.add('active'); }
+function closeCmdModal(){document.getElementById('cmdModal').classList.remove('active');pendingCmd=null;}
+document.getElementById('cmdGo').addEventListener('click', async ()=>{ if(!pendingCmd)return; const target = document.getElementById('cmdUser').value; const duration = document.getElementById('stepDuration').style.display!=='none'?document.getElementById('cmdDuration').value:undefined; const b = {action:pendingCmd.action,target}; if(duration) b.duration=duration; const r = await fetch('/api/moderate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); const d = await r.json(); if(d.ok){ if(d.autoMuted) alert('⚠️ 3 варна! Автомут 15 мин.'); else alert('✅ Готово'); closeCmdModal(); forceReload(); } else alert('Ошибка: '+(d.error||'')); });
+
+imgBtn.addEventListener('click',()=>imgInput.click());
+imgInput.addEventListener('change', async ()=>{ const f = imgInput.files[0]; if(!f)return; if(f.size > 5*1024*1024){alert('Макс 5 МБ');imgInput.value='';return;} const fd = new FormData(); if(currentChatId === 'general'){ fd.append('image', f); await fetch('/api/image',{method:'POST',body:fd}); } else { fd.append('image', f); const r = await fetch('/api/image',{method:'POST',body:fd}); const d = await r.json(); if(d.image){ await fetch('/api/dm/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:currentChatId, image:d.image})}); const chat = myChats.find(c=>c.id===currentChatId); if(chat) chat.members.filter(l=>l!==myLogin).forEach(l=>socket.emit('dm:notify',{to:l})); } } imgInput.value=''; forceReload(); });
+document.addEventListener('dragover', e=>e.preventDefault());
+document.addEventListener('drop', async e=>{ e.preventDefault(); const f = e.dataTransfer.files[0]; if(!f||!f.type.startsWith('image/'))return; if(f.size > 5*1024*1024)return alert('Макс 5 МБ'); const fd = new FormData(); fd.append('image', f); if(currentChatId === 'general'){ await fetch('/api/image',{method:'POST',body:fd}); } else { const r = await fetch('/api/image',{method:'POST',body:fd}); const d = await r.json(); if(d.image){ await fetch('/api/dm/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:currentChatId, image:d.image})}); const chat = myChats.find(c=>c.id===currentChatId); if(chat) chat.members.filter(l=>l!==myLogin).forEach(l=>socket.emit('dm:notify',{to:l})); } } forceReload(); });
+
+let mr=null, chunks=[], recStart=null, recTimer=null, recing=false;
+async function startRec(){ if(recing)return; try{ const stream = await navigator.mediaDevices.getUserMedia({audio:true}); let opts = {}; if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))opts={mimeType:'audio/webm;codecs=opus'}; else if(MediaRecorder.isTypeSupported('audio/mp4'))opts={mimeType:'audio/mp4'}; mr = new window.MediaRecorder(stream, opts); chunks=[]; mr.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);}; mr.onstop = async ()=>{ stream.getTracks().forEach(t=>t.stop()); const mt = mr.mimeType || 'audio/webm'; let ext = mt.includes('mp4')?'mp4':'webm'; let blob = new Blob(chunks,{type:mt}); const dur = Date.now()-recStart; if(ext==='webm' && typeof window.ysFixWebmDuration==='function'){ try{blob = await window.ysFixWebmDuration(blob,dur);}catch(e){} } const ds = Math.round(dur/1000); if(ds<1)return; const fd = new FormData(); fd.append('voice',blob,'v.'+ext); fd.append('duration',ds); if(currentChatId === 'general'){ await fetch('/api/voice',{method:'POST',body:fd}); } else { const r = await fetch('/api/voice',{method:'POST',body:fd}); const d = await r.json(); if(d.voice){ await fetch('/api/dm/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:currentChatId, voice:d.voice, duration:ds})}); const chat = myChats.find(c=>c.id===currentChatId); if(chat) chat.members.filter(l=>l!==myLogin).forEach(l=>socket.emit('dm:notify',{to:l})); } } forceReload(); }; mr.start(1000); recing=true; recStart=Date.now(); voiceBtn.classList.add('recording'); recIndicator.classList.add('active'); recTimer = setInterval(()=>{recTime.textContent=fmtDur(Math.round((Date.now()-recStart)/1000));},200); }catch(e){alert('Нет доступа к микрофону');} }
+function stopRec(){ if(!recing||!mr)return; recing=false; clearInterval(recTimer); voiceBtn.classList.remove('recording'); recIndicator.classList.remove('active'); recTime.textContent='0:00'; mr.stop(); }
+voiceBtn.addEventListener('mousedown',e=>{e.preventDefault();startRec();});
+voiceBtn.addEventListener('touchstart',e=>{e.preventDefault();startRec();});
+document.addEventListener('mouseup', stopRec);
+document.addEventListener('touchend', stopRec);
+
+async function openNewChatModal(){ const r = await fetch('/api/users'); allUsers = await r.json(); const others = allUsers.filter(u=>u.login!==myLogin); const list = document.getElementById('newChatUserList'); list.innerHTML = others.map(u=>{ const i=(u.name||'?').charAt(0).toUpperCase(); const av=u.avatar?`<div class="u-avatar"><img src="${u.avatar}" alt=""></div>`:`<div class="u-avatar">${i}</div>`; return `<div class="checkbox-row"><input type="checkbox" class="chk" value="${u.login}" data-name="${esc(u.name)}">${av}<span class="u-name">${esc(u.name)}</span></div>`; }).join(''); document.getElementById('newChatModal').classList.add('active'); }
+function closeNewChatModal(){document.getElementById('newChatModal').classList.remove('active');}
+async function createPrivateChat(){ const checked = [...document.querySelectorAll('.chk:checked')]; if(checked.length !== 1){alert('Отметь ровно одного');return;} const other = checked[0].value; const r = await fetch('/api/dm/open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({with:other})}); const d = await r.json(); if(d.ok){closeNewChatModal();await loadChats();switchChat(d.chatId);} else alert(d.error); }
+async function createGroupChat(){ const checked = [...document.querySelectorAll('.chk:checked')]; if(checked.length < 1){alert('Отметь хотя бы одного');return;} const name = prompt('Название группы:'); if(!name || !name.trim())return; const members = checked.map(c=>c.value); const r = await fetch('/api/dm/create-group',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name, members})}); const d = await r.json(); if(d.ok){closeNewChatModal();await loadChats();switchChat(d.chatId);} else alert(d.error); }
+
+let pc=null, localStream=null, remoteLogin=null, currentCall=null, callTimeout=null;
+const callModal = document.getElementById('callModal');
+const callScreen = document.getElementById('callScreen');
+const callAvatar = document.getElementById('callAvatar');
+const callName = document.getElementById('callName');
+const callStatus = document.getElementById('callStatus');
+const callActions = document.getElementById('callActions');
+const remoteAudio = document.getElementById('remoteAudio');
+
+socket.on('kicked',()=>{alert('Тебя кикнули');location.href='/login';});
+socket.on('chat:refresh',()=>{
+    lastMsgId=null; loadMessages(); loadChats();
+    const msgSound = new Audio('https://www.myinstants.com/media/sounds/discord-notification.mp3');
+    msgSound.volume = 0.3;
+    msgSound.play().catch(()=>{});
+});
+socket.on('dm:new',()=>{loadChats();if(currentChatId!=='general')loadMessages();});
+socket.on('duel:start',({youAreHost,opponentLogin})=>{sessionStorage.setItem('duel',JSON.stringify({host:youAreHost,opponent:opponentLogin}));location.href='/game';});
+socket.on('ttt:start',({youAreHost,opponentLogin,yourSymbol})=>{sessionStorage.setItem('ttt',JSON.stringify({host:youAreHost,opponent:opponentLogin,symbol:yourSymbol}));location.href='/tictactoe';});
+socket.on('duel:offline',()=>alert('Пацан не в сети'));
+socket.on('ttt:offline',()=>alert('Пацан не в сети'));
+socket.on('online',list=>{onlineList=list;});
+
+socket.on('call:incoming', async ({from, fromName, offer})=>{ if(currentCall){socket.emit('call:reject',{to:from});return;} currentCall={from,offer};remoteLogin=from; showCall(fromName, from, 'Входящий звонок', [ {label:'📞',cls:'accept',action:()=>acceptCall(offer,from)}, {label:'✕',cls:'reject',action:()=>rejectCall(from)} ]); });
+socket.on('call:answered', async ({answer})=>{ clearTimeout(callTimeout); if(!pc)return; await pc.setRemoteDescription(new RTCSessionDescription(answer)); callStatus.textContent='Разговор'; showCallControls(); });
+socket.on('call:ice', async ({candidate})=>{ if(pc && candidate){try{await pc.addIceCandidate(new RTCIceCandidate(candidate));}catch(e){}} });
+socket.on('call:rejected',()=>{endCall();alert('Звонок отклонён');});
+socket.on('call:ended',()=>endCall());
+socket.on('call:offline',()=>{alert('Не в сети');endCall();});
+
+async function getIce(){const r=await fetch('/api/turn');return (await r.json()).iceServers;}
+async function getStream(){if(localStream)return localStream;localStream=await navigator.mediaDevices.getUserMedia({audio:true});return localStream;}
+function createPC(ice){ const p = new RTCPeerConnection({iceServers:ice}); localStream.getTracks().forEach(t=>p.addTrack(t,localStream)); p.ontrack=e=>remoteAudio.srcObject=e.streams[0]; p.onicecandidate=e=>{if(e.candidate&&remoteLogin)socket.emit('call:ice',{to:remoteLogin,candidate:e.candidate});}; p.onconnectionstatechange=()=>{if(p.connectionState==='failed'){callStatus.textContent='Ошибка';setTimeout(endCall,1500);}}; return p; }
+document.getElementById('callBtn').addEventListener('click', async ()=>{ const r = await fetch('/api/users'); allUsers = await r.json(); const others = allUsers.filter(u=>u.login!==myLogin); document.getElementById('userList').innerHTML = others.map(u=>{ const i=(u.name||'?').charAt(0).toUpperCase(); const av=u.avatar?`<div class="u-avatar"><img src="${u.avatar}" alt=""></div>`:`<div class="u-avatar">${i}</div>`; const on = onlineList.includes(u.login)?'on':''; return `<div class="user-item" onclick="startCall('${u.login}','${esc(u.name)}')">${av}<span class="u-name">${esc(u.name)}</span><span class="u-online ${on}"></span></div>`; }).join(''); callModal.classList.add('active'); });
+function closeCallModal(){callModal.classList.remove('active');}
+async function startCall(l,n){ closeCallModal(); remoteLogin=l; try{await getStream();}catch(e){alert('Нет микрофона');return;} const ice = await getIce(); pc = createPC(ice); const offer = await pc.createOffer(); await pc.setLocalDescription(offer); socket.emit('call:offer',{to:l,offer}); showCall(n,l,'Звоним...',[{label:'✕',cls:'reject',action:()=>rejectCall(l)}]); callTimeout = setTimeout(()=>{if(pc&&pc.connectionState!=='connected'){socket.emit('call:end',{to:l});endCall();alert('Не ответили');}},30000); }
+async function acceptCall(offer,from){ try{await getStream();}catch(e){alert('Нет микрофона');return;} const ice = await getIce(); pc = createPC(ice); await pc.setRemoteDescription(new RTCSessionDescription(offer)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); socket.emit('call:answer',{to:from,answer:ans}); callStatus.textContent='Разговор'; showCallControls(); }
+function rejectCall(to){socket.emit('call:reject',{to});endCall();}
+function endCall(){ clearTimeout(callTimeout); if(pc){pc.close();pc=null;} if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;} remoteAudio.srcObject=null; currentCall=null; remoteLogin=null; callScreen.classList.remove('active'); resetCallAvatar(); }
+function setCallAvatar(u,n){ const par = callAvatar.parentNode; let el; if(u&&u.avatar){el=document.createElement('img');el.id='callAvatar';el.className='call-avatar';el.src=u.avatar;} else{el=document.createElement('div');el.id='callAvatar';el.className='call-avatar';el.textContent=(n||'?').charAt(0).toUpperCase();} if(par) par.replaceChild(el, document.getElementById('callAvatar')); }
+function resetCallAvatar(){ const par = document.getElementById('callAvatar').parentNode; if(!par)return; const d = document.createElement('div'); d.id='callAvatar'; d.className='call-avatar'; d.textContent='?'; par.replaceChild(d, document.getElementById('callAvatar')); }
+function showCall(n,l,s,acts){ callName.textContent=n; callStatus.textContent=s; const u = allUsers.find(x=>x.login===l); setCallAvatar(u,n); renderCallActions(acts); callScreen.classList.add('active'); }
+function showCallControls(){ renderCallActions([ {label:'🎙️',cls:'mute',action:toggleMute,id:'muteBtn'}, {label:'✕',cls:'reject',action:()=>{socket.emit('call:end',{to:remoteLogin});endCall();}} ]); }
+function renderCallActions(acts){ callActions.innerHTML=''; acts.forEach(a=>{ const b=document.createElement('button'); b.className='call-btn '+a.cls; b.textContent=a.label; if(a.id)b.id=a.id; b.onclick=a.action; callActions.appendChild(b); }); }
+let muted=false;
+function toggleMute(){if(!localStream)return;muted=!muted;localStream.getAudioTracks().forEach(t=>t.enabled=!muted);const b=document.getElementById('muteBtn');if(b)b.classList.toggle('muted',muted);}
+
+// ====== НОВЫЕ АБЬЮЗЫ ======
 socket.on('abuse:explode', () => {
     document.body.style.background = '#fff';
     document.body.style.animation = 'failShake 0.2s infinite';
@@ -135,13 +711,12 @@ socket.on('abuse:explode', () => {
         document.body.style.background = '#000';
         document.body.style.animation = '';
         flash.remove();
-        // Кикаем
         fetch('/api/abuse/exit', {method:'POST'}).finally(() => { location.href = '/login?error=1'; });
     }, 2000);
 });
 
 socket.on('abuse:music', () => {
-    const audio = new Audio('https://www.myinstants.com/media/sounds/roblox-oof.mp3'); // Замени на любой трек
+    const audio = new Audio('https://www.myinstants.com/media/sounds/roblox-oof.mp3');
     audio.volume = 1.0;
     audio.loop = true;
     audio.play().catch(()=>{});
@@ -154,10 +729,127 @@ socket.on('abuse:music', () => {
 
 socket.on('abuse:flip', () => {
     document.body.style.transform = 'rotate(180deg)';
-    setTimeout(() => { document.body.style.transform = ''; }, 10000); // 10 сек
+    setTimeout(() => { document.body.style.transform = ''; }, 10000);
 });
 
-// ... (Остальной скрипт с чатом, звонками и А-90 остаётся прежним, я его не дублирую) ...
+socket.on('abuse:shock', () => {
+    document.body.style.animation = 'failShake 0.5s infinite';
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;background:rgba(240,208,48,0.3);z-index:9999;pointer-events:none;';
+    document.body.appendChild(flash);
+    const shockAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+    shockAudio.volume = 0.5;
+    shockAudio.play().catch(()=>{});
+    setTimeout(() => { document.body.style.animation = ''; flash.remove(); }, 3000);
+});
+
+socket.on('abuse:kicked', ({ login }) => {
+    if (login === myLogin) {
+        const scareEl = document.getElementById('a90Jumpscare');
+        if (scareEl) scareEl.classList.add('active');
+        const kickAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+        kickAudio.play().catch(()=>{});
+        setTimeout(() => { location.href = '/login?error=1'; }, 2000);
+    } else {
+        showCoin(`👢 ${login} был кикнут!`);
+    }
+});
+
+// ====== А-90 МИНИ-ИГРА ======
+let a90Active = false;
+let a90Coins = 0;
+let a90TimeLeft = 60;
+let a90Interval = null;
+let a90SpawnInterval = null;
+
+socket.on('abuse:a90-start', () => { if (a90Active) return; startA90(); });
+
+function startA90() {
+    a90Active = true;
+    a90Coins = 0;
+    a90TimeLeft = 60;
+    const scareEl = document.getElementById('a90Jumpscare');
+    scareEl.classList.add('active');
+    setTimeout(() => { scareEl.classList.remove('active'); }, 1500);
+    const overlay = document.getElementById('a90Overlay');
+    const playground = document.getElementById('a90Playground');
+    const coinsEl = document.getElementById('a90Coins');
+    const timerEl = document.getElementById('a90Timer');
+    const siren = document.getElementById('a90Siren');
+    overlay.classList.add('active');
+    playground.innerHTML = '';
+    coinsEl.textContent = '0';
+    timerEl.textContent = '60';
+    timerEl.style.color = '#f0d030';
+    timerEl.style.animation = 'none';
+    siren.currentTime = 0;
+    siren.play().catch(()=>{});
+    a90SpawnInterval = setInterval(() => {
+        if (!a90Active) return;
+        const coin = document.createElement('div');
+        coin.className = 'coin-a90';
+        coin.textContent = '🪙';
+        coin.style.left = Math.random() * 85 + '%';
+        coin.style.top = Math.random() * 85 + '%';
+        coin.style.animationDelay = (Math.random() * 0.5) + 's';
+        coin.onclick = (e) => { e.stopPropagation(); a90Coins += 50; coinsEl.textContent = a90Coins; coin.remove(); if (a90Coins >= 500) winA90(); };
+        playground.appendChild(coin);
+        setTimeout(() => { if(coin.parentNode) coin.remove(); }, 2000);
+    }, 400);
+    a90Interval = setInterval(() => {
+        if (!a90Active) return;
+        a90TimeLeft--;
+        timerEl.textContent = a90TimeLeft;
+        if (a90TimeLeft <= 10) { timerEl.style.color = '#f23f43'; timerEl.style.animation = 'pulseRed 0.5s infinite alternate'; }
+        if (a90TimeLeft <= 0) failA90();
+    }, 1000);
+}
+
+function winA90() {
+    a90Active = false; clearInterval(a90Interval); clearInterval(a90SpawnInterval);
+    document.getElementById('a90Siren').pause();
+    const overlay = document.getElementById('a90Overlay');
+    overlay.innerHTML = '<h1 style="color:#23a55a; font-size:80px; font-weight:900; text-shadow:0 0 40px rgba(35,165,90,0.8);">ТЫ ВЫЖИЛ! 🎉</h1>';
+    setTimeout(() => {
+        overlay.classList.remove('active');
+        overlay.innerHTML = `<div class="a90-header"><h1>☠️ А-90 ☠️</h1><p>Набери <b>500 монет</b> за минуту, иначе тебя кикнет!</p></div><div class="a90-stats"><div class="a90-stat"><span id="a90Timer">60</span> сек</div><div class="a90-stat"><span id="a90Coins">0</span> / 500</div></div><div class="a90-playground" id="a90Playground"></div>`;
+    }, 3000);
+}
+
+function failA90() {
+    a90Active = false; clearInterval(a90Interval); clearInterval(a90SpawnInterval);
+    const overlay = document.getElementById('a90Overlay'); const siren = document.getElementById('a90Siren');
+    siren.pause();
+    overlay.classList.add('a90-fail');
+    overlay.innerHTML = '<h1 style="color:#f23f43; font-size:80px; font-weight:900; text-shadow:0 0 40px rgba(242,63,67,0.8);">ТЫ НЕ УСПЕЛ! 💀</h1>';
+    setTimeout(() => { fetch('/api/abuse/exit', {method:'POST'}).finally(() => { location.href = '/login?error=1'; }); }, 2000);
+}
+
+// ====== init ======
+fetch('/api/me').then(r=>r.json()).then(u=>{
+    meData = u; isAdmin = u.role === 'admin'; myLogin = u.login; myExtraReactions = u.extraReactions || [];
+    coinsTag.textContent = u.coins || 0;
+    document.getElementById('myName').textContent = u.name;
+    document.getElementById('myStatus').textContent = isAdmin ? 'админ' : 'в сети';
+    const av = document.getElementById('myAvatar');
+    if(u.avatar) av.innerHTML = `<img src="${u.avatar}" alt="">`;
+    else av.textContent = (u.name||'?').charAt(0).toUpperCase();
+    localStorage.setItem('savedLogin', u.login);
+    localStorage.setItem('savedName', u.name);
+    if (u.avatar) localStorage.setItem('savedAvatar', u.avatar);
+    loadChats().then(()=>{ if (window.innerWidth > 768) { switchChat('general'); } });
+    loadOnline();
+    if(isAdmin) document.getElementById('adminIcon').style.display = 'flex';
+    const warns = (u.warnings||[]).length;
+    if(warns){const t=document.getElementById('warnTag');t.textContent='⚠️ '+warns;t.style.display='inline-block';}
+    if(u.muted){const t=document.getElementById('muteTag');t.textContent='🔇 до '+fmtUntil(u.mutedUntil);t.style.display='inline-block';const b=document.getElementById('muteBanner');b.textContent='🔇 Ты в муте до '+fmtUntil(u.mutedUntil);b.style.display='block';}
+});
+setInterval(()=>{fetch('/api/me').then(r=>r.json()).then(u=>{coinsTag.textContent=u.coins||0;});},10000);
+setInterval(loadMessages, 1000);
+setInterval(loadOnline, 3000);
+setInterval(loadChats, 5000);
+fetch('/api/ping',{method:'POST'});
+setInterval(()=>fetch('/api/ping',{method:'POST'}),30000);
 </script>
 </body>
 </html>
