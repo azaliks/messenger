@@ -316,6 +316,12 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
         background: #000000; 
         flex-shrink: 0; 
     }
+    /* Скрываем мобильные элементы на ПК */
+@media (min-width: 769px) {
+    .mobile-messages-header, .mobile-nav, .chat-header .back-btn { 
+        display: none !important; 
+    }
+}
 </style>
 </head>
 <body>
