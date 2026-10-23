@@ -479,6 +479,10 @@ app.post('/api/reset-coins', async (req, res) => { /* ... */ });
 app.post('/api/take-coins', async (req, res) => { /* ... */ });
 app.post('/api/moderate', async (req, res) => { /* ... */ });
 
+app.get('/api/online', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    res.json(Array.from(onlineUsers.values()));
+});
 app.get('/api/messages', async (req, res) => { /* ... */ });
 app.post('/api/messages', async (req, res) => { /* ... */ });
 app.post('/api/voice', uploadVoice.single('voice'), async (req, res) => { /* ... */ });
@@ -838,20 +842,34 @@ app.post('/api/dm/send', async (req, res) => {
     await writeDmMessage(msg);
     res.json(msg);
 });
-// ====== СООБЩЕНИЯ ОБЩЕГО ЧАТА ======
 app.get('/api/messages', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
-    const data = await readMessages();
-    const usersData = await readUsers();
-    const users = usersData.users;
-    const isAdmin = req.session.user.role === 'admin';
-    const filtered = data.messages.filter(m => !m.hidden || isAdmin || m.login === req.session.user.login);
-    res.json(filtered.map(m => {
-        if (m.system) return { ...m, avatar: null, reactions: {} };
-        const u = users.find(x => x.login === m.login);
-        const isAdm = u && (u.role === 'admin');
-        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null, reactions: m.reactions || {} };
-    }));
+    try {
+        if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+        const data = await readMessages();
+        const usersData = await readUsers();
+        const users = usersData.users;
+        const isAdmin = req.session.user.role === 'admin';
+        
+        // Фильтруем скрытые сообщения (shadowban)
+        const filtered = data.messages.filter(m => !m.hidden || isAdmin || m.login === req.session.user.login);
+        
+        res.json(filtered.map(m => {
+            if (m.system) return { ...m, avatar: null, reactions: {} };
+            const u = users.find(x => x.login === m.login);
+            const isAdm = u && (u.role === 'admin');
+            return { 
+                ...m, 
+                avatar: u && u.avatar ? u.avatar : null, 
+                badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), 
+                color: u && u.currentColor ? u.currentColor : null, 
+                status: u && u.status ? u.status : null, 
+                reactions: m.reactions || {} 
+            };
+        }));
+    } catch (err) {
+        console.error('Ошибка в /api/messages:', err);
+        res.status(500).json({ error: 'internal server error' });
+    }
 });
 
 app.post('/api/messages', async (req, res) => {
