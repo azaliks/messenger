@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админка</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;background:#000000;color:#dbdee1;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+h1{color:#f2f3f5;font-size:32px;font-weight:800;margin-bottom:8px;text-align:center;letter-spacing:-1px}
+.sub{color:#949ba4;font-size:15px;margin-bottom:40px;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;max-width:1200px;width:100%}
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:24px;text-align:center}
+.card h2{color:#f2f3f5;font-size:20px;margin-bottom:12px}
+.card p{color:#949ba4;font-size:14px;margin-bottom:20px}
+.btn{display:inline-block;padding:12px 24px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;text-align:center;cursor:pointer;transition:all .2s;border:none;width:100%}
+.btn.abuse{background:linear-gradient(135deg,#f23f43,#b91c1c);color:white;box-shadow:0 4px 15px rgba(242,63,67,0.4)}
+.btn.abuse:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(242,63,67,0.6)}
+.btn.blue{background:#5865f2;color:white}
+.btn.blue:hover{background:#4752c4;transform:translateY(-2px)}
+.btn.dark{background:#2a2a2a;color:white}
+.btn.dark:hover{background:#3a3a3a}
+.back{color:#00a8fc;text-decoration:none;font-size:15px;font-weight:600;margin-top:30px}
+.back:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<h1>Админка</h1>
+<p class="sub">Управление сервером</p>
+
+<div class="grid">
+    <div class="card">
+        <h2>☠️ Абьюзы</h2>
+        <p>Запуск А-90, тряска экрана и кик игроков.</p>
+        <a href="/admin/abuse" class="btn abuse">Перейти в Абьюзы</a>
+    </div>
+    <div class="card">
+        <h2>👁️ Слежка за ЛС</h2>
+        <p>Просмотр всех личных переписок.</p>
+        <a href="/admin/dms" class="btn blue">Открыть переписки</a>
+    </div>
+    <div class="card">
+        <h2>📋 Журнал</h2>
+        <p>Кто менял логины и пароли.</p>
+        <a href="/changelog" class="btn dark">Открыть журнал</a>
+    </div>
+    <div class="card">
+        <h2>🗑️ Очистка</h2>
+        <p>Удаление сообщений и цитат.</p>
+        <button class="btn dark" onclick="clearChat()">Очистить чат</button>
+        <button class="btn dark" style="margin-top:10px" onclick="clearQuotes()">Очистить цитатник</button>
+    </div>
+</div>
+
+<a href="/chat" class="back">← Вернуться в чат</a>
+
+<script>
+async function clearChat() {
+    if (!confirm('Удалить ВСЕ сообщения?')) return;
+    await fetch('/api/admin/clear-chat', { method: 'POST' });
+    alert('Чат очищен');
+}
+async function clearQuotes() {
+    if (!confirm('Удалить ВСЕ цитаты?')) return;
+    await fetch('/api/admin/clear-quotes', { method: 'POST' });
+    alert('Цитатник очищен');
+}
+</script>
+</body>
+</html>
