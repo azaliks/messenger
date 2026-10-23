@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 3000;
 
 const TURN_USERNAME = '07354b48071e5473f623d7a9';
 const TURN_CREDENTIAL = 'p9aioMeZ5mqY2lhl';
+
 const SUPABASE_URL = 'https://anndslyocbqgpbwshwqa.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFubmRzbHlvY2JxZ3Bid3Nod3FhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjA2NDUwMiwiZXhwIjoyMTA3NjQwNTAyfQ.N1GUvfL7H1OoJ47HGWjhTjUyqxNXJscd6RJpmMnocGg';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { realtime: { transport: ws } });
@@ -342,7 +343,6 @@ io.on('connection', (socket) => {
         const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0];
         if (targetSocketId) io.to(targetSocketId).emit('abuse:kicked', { login: target });
     });
-    // Новые абьюзы
     socket.on('admin:explode', ({ target }) => {
         if (socket.request.session.user.role !== 'admin') return;
         if (target === 'all') io.emit('abuse:explode');
@@ -362,9 +362,295 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => { onlineUsers.delete(socket.id); io.emit('online', Array.from(onlineUsers.values())); });
 });
 
-// ... (API для логина, регистрации, профилей, сообщений, чатов и т.д. — они остались прежними, я не буду их дублировать, так как они занимают много места. В твоём файле они уже есть, просто добавь новые маршруты, которые ниже).
+app.get('/api/turn', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    res.json({ iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: ['turn:global.relay.metered.ca:80','turn:global.relay.metered.ca:80?transport=tcp','turn:global.relay.metered.ca:443','turns:global.relay.metered.ca:443?transport=tcp'], username: TURN_USERNAME, credential: TURN_CREDENTIAL }
+    ]});
+});
 
-// ====== НОВЫЕ API ДЛЯ АДМИНКИ ======
+// ====== АВТОРИЗАЦИЯ ======
+app.get('/login', (req, res) => { res.sendFile(path.join(__dirname, 'login.html')); });
+
+app.post('/login', async (req, res) => {
+    const { login, password } = req.body;
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === login && u.password === password);
+    if (!user) return res.redirect('/login?error=1');
+    const p = checkPunishments(user);
+    if (p.changed) await writeUsers(data);
+    if (p.banned) return res.redirect('/login?error=banned');
+    user.lastLogin = new Date().toISOString();
+    ensureCoinFields(user);
+    await writeUsers(data);
+    req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
+    if (user.role === 'admin') return res.redirect('/admin');
+    res.redirect('/');
+});
+
+app.post('/api/quick-login', async (req, res) => {
+    const { login } = req.body;
+    if (!login) return res.status(400).json({ error: 'no login' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    const p = checkPunishments(user);
+    if (p.banned) return res.status(403).json({ error: 'banned' });
+    user.lastLogin = new Date().toISOString();
+    ensureCoinFields(user);
+    await writeUsers(data);
+    req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
+    res.json({ ok: true, redirect: user.role === 'admin' ? '/admin' : '/chat' });
+});
+
+app.get('/api/me', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
+    await writeUsers(data);
+    const p = checkPunishments(user);
+    const now = Date.now();
+    const dailyReady = !user.lastDaily || now - new Date(user.lastDaily).getTime() > DAILY_COOLDOWN;
+    res.json({
+        login: user.login, name: user.name, nickname: user.nickname, role: user.role,
+        avatar: user.avatar || null, phrase: user.phrase || '',
+        achievements: user.achievements || [], stats: user.stats || {},
+        warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil,
+        coins: user.coins || 0, colors: user.colors || [], badges: user.badges || [],
+        currentColor: user.currentColor || null, currentBadge: user.currentBadge || null,
+        status: user.status || null, extraReactions: user.extraReactions || [],
+        isAdmin: isAdminUser(user), dailyReady: dailyReady
+    });
+});
+
+// ====== API МАГАЗИНА ======
+app.post('/api/daily', async (req, res) => { /* ... */ });
+app.post('/api/shop/buy', async (req, res) => { /* ... */ });
+app.post('/api/shop/set', async (req, res) => { /* ... */ });
+app.post('/api/status/set', async (req, res) => { /* ... */ });
+
+// ====== СИСТЕМНЫЕ ======
+app.post('/api/ping', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === req.session.user.login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    user.lastPing = new Date().toISOString();
+    await writeUsers(data);
+    res.json({ ok: true });
+});
+
+app.post('/api/abuse/exit', (req, res) => {
+    if (!req.session.user) return res.status(401).json({error:'no'});
+    const login = req.session.user.login;
+    io.emit('abuse:kicked', { login });
+    req.session.destroy();
+    res.json({ ok: true });
+});
+
+// ====== ЛИЧНЫЕ ЧАТЫ ======
+app.get('/api/dm/chats', async (req, res) => { /* ... */ });
+app.post('/api/dm/open', async (req, res) => { /* ... */ });
+app.post('/api/dm/create-group', async (req, res) => { /* ... */ });
+app.get('/api/dm/messages/:chatId', async (req, res) => { /* ... */ });
+app.post('/api/dm/send', async (req, res) => { /* ... */ });
+app.delete('/api/dm/message/:id', async (req, res) => { /* ... */ });
+
+// ====== АДМИН-API ======
+app.get('/api/admin/dm-all', async (req, res) => { /* ... */ });
+app.get('/api/admin/dm-chat/:chatId', async (req, res) => { /* ... */ });
+
+app.get('/api/online', (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); res.json(Array.from(onlineUsers.values())); });
+app.get('/api/users', async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); const data = await readUsers(); res.json(data.users.map(u => ({ login: u.login, name: u.name, avatar: u.avatar || null, coins: u.coins || 0, badge: u.role === 'admin' ? '👑' : (u.currentBadge || null), color: u.currentColor || null }))); });
+app.get('/api/rating', async (req, res) => { /* ... */ });
+
+// ====== ЦИТАТЫ / ЧАНДЖЛОГ / СООБЩЕНИЯ ======
+app.get('/api/quotes', async (req, res) => { /* ... */ });
+app.post('/api/quotes', async (req, res) => { /* ... */ });
+app.delete('/api/quotes/:id', async (req, res) => { /* ... */ });
+app.get('/api/changelog', async (req, res) => { /* ... */ });
+
+app.post('/api/sys', async (req, res) => { /* ... */ });
+app.post('/api/give-coins', async (req, res) => { /* ... */ });
+app.post('/api/reset-coins', async (req, res) => { /* ... */ });
+app.post('/api/take-coins', async (req, res) => { /* ... */ });
+app.post('/api/moderate', async (req, res) => { /* ... */ });
+
+app.get('/api/messages', async (req, res) => { /* ... */ });
+app.post('/api/messages', async (req, res) => { /* ... */ });
+app.post('/api/voice', uploadVoice.single('voice'), async (req, res) => { /* ... */ });
+app.post('/api/image', uploadImage.single('image'), async (req, res) => { /* ... */ });
+app.delete('/api/messages/:id', async (req, res) => { /* ... */ });
+app.post('/api/messages/:id/react', async (req, res) => { /* ... */ });
+
+// ====== АДМИНКА ======
+const COMMANDS_LIST = [
+    { cmd: '/mute', desc: 'Замутить' }, { cmd: '/unmute', desc: 'Размутить' },
+    { cmd: '/warn', desc: 'Варн' }, { cmd: '/clearwarns', desc: 'Сброс варнов' },
+    { cmd: '/ban', desc: 'Бан' }, { cmd: '/unban', desc: 'Разбан' },
+    { cmd: '/kick', desc: 'Кик' }, { cmd: '/give логин число', desc: 'Выдать монеты' },
+    { cmd: '/resetcoins', desc: 'Обнулить монеты' }, { cmd: '/takecoins логин число', desc: 'Забрать монеты' },
+    { cmd: '/sys текст', desc: 'Написать от СИСТЕМЫ' }
+];
+
+app.get('/admin', async (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role !== 'admin') return res.status(403).send('Доступ только для админа');
+    
+    const data = await readUsers();
+    const msgs = await readMessages();
+    const quotes = await readQuotes();
+    const now = Date.now();
+    const ONE_MINUTE = 60 * 1000;
+    const totalMessages = msgs.messages.length;
+    const totalVoice = msgs.messages.filter(m => m.voice).length;
+    const totalImages = msgs.messages.filter(m => m.image).length;
+
+    const rows = data.users.map(u => {
+        let status, statusColor;
+        if (!u.lastLogin) { status = 'Не заходил'; statusColor = '#80848e'; }
+        else if (u.lastPing && (now - new Date(u.lastPing).getTime() < ONE_MINUTE)) { status = 'В сети'; statusColor = '#23a55a'; }
+        else { status = 'Заходил'; statusColor = '#949ba4'; }
+        const p = checkPunishments(u);
+        let punish = '';
+        if (p.banned) punish += `<span class="pun ban">🚫 БАН</span>`;
+        if (p.muted) punish += `<span class="pun mute">🔇 МУТ</span>`;
+        const warns = (u.warnings || []).length;
+        if (warns) punish += `<span class="pun warn">⚠️ ${warns}</span>`;
+        const lastTime = u.lastLogin ? new Date(u.lastLogin).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+        const initial = (u.nickname || '?').charAt(0).toUpperCase();
+        const avatarHtml = u.avatar ? `<img src="${u.avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #2a2a2a;">` : `<div class="avatar">${initial}</div>`;
+        const stats = u.stats || {};
+        return `<tr>
+            <td><div class="user-cell">${avatarHtml}<span class="nickname">${u.nickname}</span>${punish}</div></td>
+            <td class="muted">${u.login}</td>
+            <td class="muted" style="color:#f0d030">💰 ${u.coins || 0}</td>
+            <td class="muted">${lastTime}</td>
+            <td><span class="status" style="color:${statusColor};"><span class="dot" style="background:${statusColor};"></span>${status}</span></td>
+            <td class="muted">${stats.messages || 0}</td>
+            <td class="muted">${stats.voices || 0}</td>
+            <td class="muted">${stats.images || 0}</td>
+            <td><button class="reset-btn" onclick="resetStats('${u.login}')">Сброс</button></td>
+        </tr>`;
+    }).join('');
+
+    const cmdRows = COMMANDS_LIST.map(c => `<tr><td class="cmd-name">${c.cmd}</td><td class="muted">${c.desc}</td></tr>`).join('');
+
+    res.send(`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Админка</title><style>
+        * { box-sizing: border-box; }
+        body { font-family: "gg sans","Helvetica Neue",Helvetica,Arial,sans-serif; background:#000000; color:#dbdee1; margin:0; padding:40px 20px; min-height:100vh; display:flex; flex-direction:column; align-items:center; }
+        h1 { color:#f2f3f5; font-size:32px; font-weight:800; text-align:center; margin:0 0 8px; letter-spacing:-1px; }
+        h2 { color:#f2f3f5; font-size:24px; font-weight:700; margin:40px 0 16px; text-align:center; }
+        .sub { text-align:center; color:#949ba4; font-size:15px; margin-bottom:32px; }
+        
+        .stats-grid { max-width:1200px; width:100%; margin:0 auto 24px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; }
+        .stat-card { background:#1a1a1a; border:1px solid #2a2a2a; padding:20px; border-radius:16px; text-align:center; transition:all .2s; }
+        .stat-card:hover { border-color:#5865f2; transform:translateY(-2px); }
+        .stat-card .num { font-size:32px; font-weight:800; color:#5865f2; }
+        .stat-card .lbl { color:#949ba4; font-size:13px; margin-top:4px; font-weight:600; }
+        
+        .actions { max-width:1200px; width:100%; margin:0 auto 24px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+        .action-btn { padding:12px 24px; border-radius:12px; border:none; cursor:pointer; font-family:inherit; font-size:15px; font-weight:700; color:white; text-decoration:none; display:inline-block; text-align:center; transition:all .2s; }
+        .action-btn.danger { background:#f23f43; }
+        .action-btn.danger:hover { background:#d63031; transform:translateY(-2px); box-shadow:0 4px 12px rgba(242,63,67,0.4); }
+        .action-btn.gold { background:#f0d030; color:#1e1f22; }
+        .action-btn.gold:hover { background:#d4b62a; transform:translateY(-2px); }
+        .action-btn.abuse { background:linear-gradient(135deg,#9b59b6,#8e44ad); box-shadow:0 4px 15px rgba(155,89,182,0.4); }
+        .action-btn.abuse:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(155,89,182,0.6); }
+        .action-btn.blue { background:#5865f2; }
+        .action-btn.blue:hover { background:#4752c4; transform:translateY(-2px); }
+        
+        .container { max-width:1200px; width:100%; margin:0 auto; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:16px; overflow-x:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+        table { border-collapse:collapse; width:100%; min-width: 800px; }
+        th, td { padding:16px; text-align:left; font-size:14px; }
+        th { background:#0a0a0a; color:#949ba4; font-size:12px; font-weight:800; text-transform:uppercase; border-bottom:1px solid #2a2a2a; }
+        tr { border-bottom:1px solid #2a2a2a; transition:background .2s; }
+        tr:last-child { border-bottom:none; }
+        tr:hover td { background:#2a2a2a; }
+        
+        .user-cell { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+        .avatar { width:40px; height:40px; border-radius:50%; background:#5865f2; color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; flex-shrink:0; }
+        .nickname { color:#f2f3f5; font-weight:700; font-size:15px; }
+        .pun { padding:4px 10px; border-radius:8px; font-size:11px; font-weight:800; }
+        .pun.ban { background:rgba(242,63,67,0.15); color:#f23f43; border:1px solid rgba(242,63,67,0.3); }
+        .pun.mute { background:rgba(240,160,48,0.15); color:#f0a030; border:1px solid rgba(240,160,48,0.3); }
+        .pun.warn { background:rgba(240,208,48,0.15); color:#f0d030; border:1px solid rgba(240,208,48,0.3); }
+        .muted { color:#b5bac1; }
+        .status { display:inline-flex; align-items:center; gap:8px; font-weight:600; }
+        .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+        
+        .reset-btn { background:#2a2a2a; color:#fff; border:1px solid #3a3a3a; border-radius:8px; padding:6px 12px; cursor:pointer; font-size:12px; font-weight:600; transition:all .2s; }
+        .reset-btn:hover { background:#3a3a3a; border-color:#5865f2; }
+        
+        .footer { text-align:center; margin-top:40px; display:flex; gap:20px; justify-content:center; flex-wrap:wrap; }
+        .footer a { color:#00a8fc; text-decoration:none; font-size:15px; font-weight:600; transition:color .2s; }
+        .footer a:hover { color:#fff; }
+    </style></head><body>
+    
+    <h1>Админка</h1>
+    <p class="sub">Полная статистика и управление</p>
+    
+    <div class="stats-grid">
+        <div class="stat-card"><div class="num">${totalMessages}</div><div class="lbl">Сообщений</div></div>
+        <div class="stat-card"><div class="num">${totalVoice}</div><div class="lbl">Голосовых</div></div>
+        <div class="stat-card"><div class="num">${totalImages}</div><div class="lbl">Картинок</div></div>
+        <div class="stat-card"><div class="num">${quotes.quotes.length}</div><div class="lbl">В цитатнике</div></div>
+    </div>
+
+    <div class="actions">
+        <a href="/admin/abuse" class="action-btn abuse">☠️ АДМИН АБЬЮЗЫ</a>
+        <a href="/admin/dms" class="action-btn blue">👁️ Слежка за ЛС</a>
+        <a href="/changelog" class="action-btn blue" style="background:#2a2a2a">📋 Журнал изменений</a>
+    </div>
+    <div class="actions">
+        <button class="action-btn danger" onclick="clearChat()">🗑️ Очистить чат</button>
+        <button class="action-btn danger" onclick="clearQuotes()">🗑️ Очистить цитатник</button>
+        <button class="action-btn danger" onclick="clearLogins()">🗑️ Сбросить входы</button>
+        <button class="action-btn gold" onclick="resetAllCoins()">💰 Обнулить монеты</button>
+    </div>
+
+    <div class="container"><table>
+        <tr><th>Кличка</th><th>Логин</th><th>Монеты</th><th>Последний вход</th><th>Статус</th><th>Сообщ.</th><th>Голос.</th><th>Карт.</th><th></th></tr>
+        ${rows}
+    </table></div>
+    
+    <h2>📖 Список команд</h2>
+    <div class="container"><table>
+        <tr><th>Команда</th><th>Описание</th></tr>
+        ${cmdRows}
+    </table></div>
+
+    <div class="footer"><a href="/chat">← Вернуться в чат</a></div>
+
+    <script>
+        fetch('/api/ping', { method: 'POST' });
+        setInterval(() => { fetch('/api/ping', { method: 'POST' }); }, 30000);
+        async function resetStats(login) { if (!confirm('Сбросить статистику ' + login + '?')) return; const r = await fetch('/api/admin/reset/' + login, { method: 'POST' }); if (r.ok) location.reload(); else alert('Ошибка'); }
+        async function clearChat() { if (!confirm('Удалить ВСЕ сообщения?')) return; const r = await fetch('/api/admin/clear-chat', { method: 'POST' }); if (r.ok) alert('Чат очищен'); else alert('Ошибка'); }
+        async function clearQuotes() { if (!confirm('Удалить ВСЕ цитаты?')) return; const r = await fetch('/api/admin/clear-quotes', { method: 'POST' }); if (r.ok) alert('Цитатник очищен'); else alert('Ошибка'); }
+        async function clearLogins() { if (!confirm('Сбросить даты последнего входа?')) return; const r = await fetch('/api/admin/clear-logins', { method: 'POST' }); if (r.ok) { alert('Журнал входов очищен'); location.reload(); } else alert('Ошибка'); }
+        async function resetAllCoins() { if (!confirm('Обнулить монеты ВСЕМ игрокам?')) return; const r = await fetch('/api/reset-coins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }); if (r.ok) { alert('Все монеты обнулены'); location.reload(); } else alert('Ошибка'); }
+    </script>
+    </body></html>`);
+});
+
+app.get('/admin/abuse', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа');
+    res.sendFile(path.join(__dirname, 'admin_abuse.html'));
+});
+
+app.post('/api/admin/abuse/fake', async (req, res) => { /* ... */ });
+app.post('/api/admin/abuse/shadowban', async (req, res) => { /* ... */ });
+app.post('/api/admin/abuse/hack', async (req, res) => { /* ... */ });
+app.post('/api/admin/reset/:login', async (req, res) => { /* ... */ });
+app.post('/api/admin/clear-chat', async (req, res) => { /* ... */ });
+app.post('/api/admin/clear-quotes', async (req, res) => { /* ... */ });
+app.post('/api/admin/clear-logins', async (req, res) => { /* ... */ });
+
 app.post('/api/admin/give-coins', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
     const { target, amount } = req.body;
@@ -390,15 +676,12 @@ app.post('/api/admin/change-password', async (req, res) => {
     res.json({ ok: true });
 });
 
-// ... (Остальные маршруты как были)
 // ====== РОУТЫ ДЛЯ СТРАНИЦ ======
 app.get('/', (req, res) => {
     if (!req.session.user) return res.redirect('/login');
     if (req.session.user.role === 'admin') return res.redirect('/admin');
     res.redirect('/chat');
 });
-
-app.get('/login', (req, res) => { res.sendFile(path.join(__dirname, 'login.html')); });
 app.get('/chat', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'chat.html')); });
 app.get('/profile', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'profile.html')); });
 app.get('/rating', (req, res) => { if (!req.session.user) return res.redirect('/login'); res.sendFile(path.join(__dirname, 'rating.html')); });
@@ -431,4 +714,37 @@ app.get('/changelog', (req, res) => {
     if (req.session.user.role !== 'admin') return res.status(403).send('Только для админа'); 
     res.sendFile(path.join(__dirname, 'changelog.html')); 
 });
+
+app.get('/api/profile/:login', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
+    const data = await readUsers();
+    const user = data.users.find(u => u.login === req.params.login);
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    ensureCoinFields(user);
+    const p = checkPunishments(user);
+    const isAdmin = isAdminUser(user);
+    res.json({
+        login: user.login, name: user.name, nickname: user.nickname,
+        avatar: user.avatar || null, phrase: user.phrase || '',
+        achievements: user.achievements || [], stats: user.stats || {},
+        warnings: user.warnings || [], muted: p.muted, mutedUntil: p.mutedUntil,
+        banned: p.banned, bannedUntil: p.bannedUntil,
+        coins: user.coins || 0,
+        colors: user.colors || [],
+        badges: user.badges || [],
+        extraReactions: user.extraReactions || [],
+        currentColor: user.currentColor || null,
+        currentBadge: isAdmin ? '👑' : (user.currentBadge || null),
+        color: user.currentColor || null,
+        badge: isAdmin ? '👑' : (user.currentBadge || null),
+        isAdmin: isAdmin,
+        status: user.status || null,
+        isOwn: user.login === req.session.user.login
+    });
+});
+
+app.post('/api/profile/avatar', uploadAvatar.single('avatar'), async (req, res) => { /* ... */ });
+app.post('/api/profile/phrase', async (req, res) => { /* ... */ });
+app.post('/api/profile/credentials', async (req, res) => { /* ... */ });
+
 server.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущен на порту ${PORT}`));
