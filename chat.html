@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="/manifest.json">
 <title>Чат банды</title>
@@ -292,10 +292,17 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 
     .cmd-hint { bottom: 76px; left: 12px; right: 12px; }
 
-    /* Нижняя навигация */
+     /* Нижняя навигация */
     .mobile-nav {
-        display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
-        background: #000000; border-top: 1px solid #1a1a1a; z-index: 100;
+        display: flex; 
+        position: fixed; 
+        bottom: 0; 
+        left: 0; 
+        right: 0; 
+        height: 68px;
+        background: #000000; 
+        border-top: 1px solid #1a1a1a; 
+        z-index: 9999; /* ВЫСОКИЙ Z-INDEX, чтобы быть поверх всего */
         padding-bottom: env(safe-area-inset-bottom, 0);
     }
     body.mobile-chat-open .mobile-nav { display: none; }
@@ -303,10 +310,12 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
     .mobile-nav .nav-item .nav-icon { font-size: 24px; line-height: 1; }
     .mobile-nav .nav-item.active { color: #5865f2; }
 }
-/* Скрываем мобильные элементы на ПК */
-.mobile-messages-header { display: none; }
-.mobile-nav { display: none; }
-.chat-header .back-btn { display: none; }
+    .mobile-messages-header { 
+        display: block !important; /* ПРИНУДИТЕЛЬНО ПОКАЗЫВАЕМ */
+        padding: 16px 16px 12px; 
+        background: #000000; 
+        flex-shrink: 0; 
+    }
 </style>
 </head>
 <body>
