@@ -549,7 +549,7 @@ let typingClearTimer = null;
 
 textInput.addEventListener('input', () => {
     if (!textInput.value.trim()) return;
-    socket.emit('typing', { chatId: currentChatId });
+    socket.emit('typing', { chatId: currentChatId, isAnon: isAnonMode });
     clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => { /* пусто */ }, 1000);
 });

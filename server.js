@@ -85,7 +85,7 @@ io.on('connection', (socket) => {
     socket.on('ttt:leave', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('ttt:opponentLeft', { byName: user.name }); });
 
     socket.on('dm:notify', ({ to }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('dm:new', { from: user.login }); });
-    socket.on('typing', ({ chatId }) => { socket.broadcast.emit('user:typing', { login: user.login, name: user.name, chatId }); });
+    socket.on('typing', ({ chatId, isAnon }) => { socket.broadcast.emit('user:typing', { login: isAnon ? '__anon__' : user.login, name: isAnon ? 'Аноним' : user.name, chatId }); });
 
     socket.on('call:offer', ({ to, offer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:incoming', { from: user.login, fromName: user.name, offer }); else socket.emit('call:offline', { to }); });
     socket.on('call:answer', ({ to, answer }) => { const t = [...onlineUsers.entries()].find(([, l]) => l === to)?.[0]; if (t) io.to(t).emit('call:answered', { answer }); });
@@ -180,12 +180,13 @@ app.get('/api/messages', async (req, res) => {
     const filtered = data.messages.filter(m => !m.hidden || isAdmin || m.login === req.session.user.login);
     res.json(filtered.map(m => {
         if (m.system) return { ...m, avatar: null, reactions: {} };
+        if (m.login === '__anon__' || m.isAnon) {
+            const realAuthor = usersData.users.find(x => x.login === m.anon_author_login);
+            return { ...m, avatar: null, badge: '🕵️‍♂️', color: '#80848e', status: null, reactions: m.reactions || {}, realLogin: isAdmin ? (m.anon_author_login || m.login) : null };
+        }
         const u = users.find(x => x.login === m.login);
         const isAdm = u && (u.role === 'admin');
-       if (m.login === '__anon__' || m.isAnon) {
-    return { ...m, avatar: null, badge: '🕵️‍♂️', color: '#80848e', status: null, reactions: m.reactions || {} };
-}
-return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null, reactions: m.reactions || {} };
+        return { ...m, avatar: u && u.avatar ? u.avatar : null, badge: isAdm ? '👑' : (u && u.currentBadge ? u.currentBadge : null), color: u && u.currentColor ? u.currentColor : null, status: u && u.status ? u.status : null, reactions: m.reactions || {} };
     }));
 });
 
@@ -200,15 +201,16 @@ app.post('/api/messages', async (req, res) => {
     if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
     const data = await readMessages();
     const isAnon = req.body.anon === true;
-const msg = { 
-    id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), 
-    login: isAnon ? '__anon__' : req.session.user.login, 
-    name: isAnon ? 'Аноним' : req.session.user.name, 
-    text: text.trim(), 
-    time: new Date().toISOString(), 
-    reactions: {},
-    isAnon: isAnon // Сохраняем флаг
-};
+    const msg = { 
+        id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), 
+        login: isAnon ? '__anon__' : req.session.user.login, 
+        name: isAnon ? 'Аноним' : req.session.user.name, 
+        text: text.trim(), 
+        time: new Date().toISOString(), 
+        reactions: {},
+        isAnon: isAnon,
+        anon_author_login: isAnon ? req.session.user.login : null
+    };
     if (user.shadowbanned) msg.hidden = true;
     data.messages.push(msg);
     await writeMessages(data);
@@ -264,7 +266,7 @@ app.delete('/api/messages/:id', async (req, res) => {
     const idx = data.messages.findIndex(m => m.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'not found' });
     const msg = data.messages[idx];
-    const isOwn = msg.login === req.session.user.login;
+    const isOwn = msg.login === req.session.user.login || (msg.isAnon && msg.anon_author_login === req.session.user.login);
     const isAdmin = req.session.user.role === 'admin';
     if (msg.system && !isAdmin) return res.status(403).json({ error: 'no permission' });
     if (!isOwn && !isAdmin) return res.status(403).json({ error: 'no permission' });
@@ -570,7 +572,6 @@ app.get('/admin/abuse', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin_abuse.html'));
 });
 
-// ====== API АБЬЮЗОВ ======
 app.post('/api/admin/abuse/fake', async (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
     const { targetLogin, targetName, text, isSystem } = req.body;
@@ -616,56 +617,15 @@ app.post('/api/admin/abuse/hack', async (req, res) => {
     res.json({ ok: true, coins: user.coins });
 });
 
-app.post('/api/admin/give-coins', async (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
-    const { target, amount } = req.body;
-    const num = parseInt(amount);
-    const data = await readUsers();
-    const user = data.users.find(u => u.login === target);
-    if (!user) return res.status(404).json({ error: 'not found' });
-    ensureCoinFields(user);
-    user.coins += num;
-    await writeUsers(data);
-    res.json({ ok: true });
-});
-
-app.post('/api/admin/change-password', async (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
-    const { target, newPassword } = req.body;
-    if (!newPassword || newPassword.length < 3) return res.status(400).json({ error: 'Пароль минимум 3 символа' });
-    const data = await readUsers();
-    const user = data.users.find(u => u.login === target);
-    if (!user) return res.status(404).json({ error: 'not found' });
-    user.password = newPassword;
-    await writeUsers(data);
-    res.json({ ok: true });
-});
-
+app.post('/api/admin/give-coins', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const { target, amount } = req.body; const num = parseInt(amount); const data = await readUsers(); const user = data.users.find(u => u.login === target); if (!user) return res.status(404).json({ error: 'not found' }); ensureCoinFields(user); user.coins += num; await writeUsers(data); res.json({ ok: true }); });
+app.post('/api/admin/change-password', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const { target, newPassword } = req.body; if (!newPassword || newPassword.length < 3) return res.status(400).json({ error: 'Пароль минимум 3' }); const data = await readUsers(); const user = data.users.find(u => u.login === target); if (!user) return res.status(404).json({ error: 'not found' }); user.password = newPassword; await writeUsers(data); res.json({ ok: true }); });
 app.post('/api/admin/reset/:login', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.params.login); if (!user) return res.status(404).json({ error: 'not found' }); user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 }; user.achievements = []; await writeUsers(data); res.json({ ok: true }); });
 app.post('/api/admin/clear-chat', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('messages').delete().neq('id', ''); res.json({ ok: true }); });
 app.post('/api/admin/clear-quotes', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('quotes').delete().neq('id', ''); res.json({ ok: true }); });
 app.post('/api/admin/clear-logins', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); data.users.forEach(u => { u.lastLogin = null; u.lastPing = null; }); await writeUsers(data); res.json({ ok: true }); });
 
-// ====== ЛС ДЛЯ АДМИНКИ ======
-app.get('/api/admin/dm-all', async (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
-    const chats = await readDmChats(); const msgs = await readDmMessages(); const usersData = await readUsers(); const users = usersData.users;
-    const result = chats.map(c => {
-        let name = c.name; let avatar = null;
-        if (c.type === 'private') { const other = c.members.find(l => l !== c.created_by) || c.members[0]; const u = users.find(x => x.login === other); name = u ? u.name : other; avatar = u ? u.avatar : null; }
-        const chatMsgs = msgs.filter(m => m.chat_id === c.id);
-        return { id: c.id, type: c.type, name, avatar, members: c.members, count: chatMsgs.length, last: chatMsgs.length ? chatMsgs[chatMsgs.length - 1].time : c.created_at };
-    }).sort((a, b) => new Date(b.last) - new Date(a.last));
-    res.json(result);
-});
-
-app.get('/api/admin/dm-chat/:chatId', async (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
-    const msgs = await readDmMessages(req.params.chatId);
-    const usersData = await readUsers(); const users = usersData.users;
-    const enriched = msgs.map(m => { const u = users.find(x => x.login === m.from_login); return { ...m, avatar: u && u.avatar ? u.avatar : null }; });
-    res.json(enriched);
-});
+app.get('/api/admin/dm-all', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const chats = await readDmChats(); const msgs = await readDmMessages(); const usersData = await readUsers(); const users = usersData.users; const result = chats.map(c => { let name = c.name; let avatar = null; if (c.type === 'private') { const other = c.members.find(l => l !== c.created_by) || c.members[0]; const u = users.find(x => x.login === other); name = u ? u.name : other; avatar = u ? u.avatar : null; } const chatMsgs = msgs.filter(m => m.chat_id === c.id); return { id: c.id, type: c.type, name, avatar, members: c.members, count: chatMsgs.length, last: chatMsgs.length ? chatMsgs[chatMsgs.length - 1].time : c.created_at }; }).sort((a, b) => new Date(b.last) - new Date(a.last)); res.json(result); });
+app.get('/api/admin/dm-chat/:chatId', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const msgs = await readDmMessages(req.params.chatId); const usersData = await readUsers(); const users = usersData.users; const enriched = msgs.map(m => { const u = users.find(x => x.login === m.from_login); return { ...m, avatar: u && u.avatar ? u.avatar : null }; }); res.json(enriched); });
 
 // ====== ПРОФИЛЬ ======
 app.get('/api/profile/:login', async (req, res) => {
