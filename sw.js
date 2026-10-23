@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pacan-chat-v1';
+const CACHE_NAME = 'pacan-chat-v3'; // Меняем версию, чтобы сбросить старый кэш
 const urlsToCache = [
   '/',
   '/chat',
@@ -7,12 +7,12 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Принудительно активируем новый Service Worker
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(urlsToCache).catch(() => {});
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -26,8 +26,8 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// СТРАТЕГИЯ: Сначала сеть, потом кэш (Network First)
 self.addEventListener('fetch', (event) => {
-  // Не кешируем API-запросы и сокеты
   if (event.request.url.includes('/api/') ||
       event.request.url.includes('/socket.io/') ||
       event.request.url.includes('/avatars/') ||
@@ -35,7 +35,20 @@ self.addEventListener('fetch', (event) => {
       event.request.url.includes('/images/')) {
     return;
   }
+  
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request)
+      .then((response) => {
+        // Если сеть ответила, кладём свежую версию в кэш
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
+        });
+        return response;
+      })
+      .catch(() => {
+        // Если сети нет, отдаём из кэша
+        return caches.match(event.request);
+      })
   );
 });
