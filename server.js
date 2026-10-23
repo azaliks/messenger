@@ -55,7 +55,7 @@ async function checkAchievements(login) { const users = await readUsers(); const
 
 const DAILY_REWARD = 10; const DAILY_COOLDOWN = 24 * 60 * 60 * 1000; const DUEL_REWARD = 20; const COLOR_PRICE = 50; const BADGE_PRICE = 30; const STATUS_PRICE = 10; const REACTION_PRICE = 20; const FORBIDDEN_STATUS_WORDS = ['админ', 'admin', 'azaliks', 'система', 'system'];
 
-function ensureCoinFields(user) { if (typeof user.coins !== 'number') user.coins = 0; if (!user.lastDaily) user.lastDaily = null; if (!user.lastDuelReward) user.lastDuelReward = null; if (!Array.isArray(user.colors)) user.colors = []; if (!Array.isArray(user.badges)) user.badges = []; if (!user.currentColor) user.currentColor = null; if (!user.currentBadge) user.currentBadge = null; if (!user.status) user.status = null; if (!Array.isArray(user.extraReactions)) user.extraReactions = []; if (typeof user.isAdmin === 'undefined') user.isAdmin = (user.role === 'admin'); }
+function ensureCoinFields(user) { if (typeof user.coins !== 'number') user.coins = 0; if (!user.lastDaily) user.lastDaily = null; if (!user.lastDuelReward) user.lastDuelReward = null; if (!user.lastRoulette) user.lastRoulette = null; if (!Array.isArray(user.colors)) user.colors = []; if (!Array.isArray(user.badges)) user.badges = []; if (!user.currentColor) user.currentColor = null; if (!user.currentBadge) user.currentBadge = null; if (!user.status) user.status = null; if (!Array.isArray(user.extraReactions)) user.extraReactions = []; if (typeof user.isAdmin === 'undefined') user.isAdmin = (user.role === 'admin'); }
 function isForbiddenStatus(text) { if (!text) return false; const low = text.toLowerCase(); return FORBIDDEN_STATUS_WORDS.some(w => low.includes(w)); }
 function isAdminUser(user) { return user && (user.role === 'admin' || user.isAdmin === true); }
 
@@ -198,6 +198,27 @@ app.post('/api/messages', async (req, res) => {
     if (p.changed) await writeUsers(usersData);
     if (p.muted) return res.status(403).json({ error: 'Ты в муте' });
     const { text } = req.body;
+        // ==== РУЛЕТКА ====
+    if (text.trim() === '/roulette') {
+        const now = Date.now();
+        if (user.lastRoulette && now - new Date(user.lastRoulette).getTime() < 60000) {
+            return res.status(400).json({ error: 'Подожди минуту перед следующей рулеткой' });
+        }
+        user.lastRoulette = new Date().toISOString();
+        
+        const win = Math.random() > 0.5;
+        const amount = 20;
+        if (win) { user.coins += amount; } else { user.coins = Math.max(0, user.coins - amount); }
+        await writeUsers(usersData);
+
+        const resMsg = win 
+            ? `🎉 ${user.name} крутанул рулетку и выиграл ${amount} монет! (Баланс: ${user.coins})` 
+            : `😢 ${user.name} крутанул рулетку и проиграл ${amount} монет... (Баланс: ${user.coins})`;
+        
+        await addSystemMessage(resMsg);
+        io.emit('chat:refresh');
+        return res.json({ ok: true });
+    }
     if (!text || !text.trim()) return res.status(400).json({ error: 'empty' });
     const data = await readMessages();
     const isAnon = req.body.anon === true;
@@ -470,6 +491,7 @@ app.post('/api/give-coins', async (req, res) => {
     const user = data.users.find(u => u.login === target);
     if (!user) return res.status(404).json({ error: 'Игрок не найден' });
     ensureCoinFields(user);
+    user.lastRoulette = null;
     user.coins += num;
     if (user.coins < 0) user.coins = 0;
     await writeUsers(data);
