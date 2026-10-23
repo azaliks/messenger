@@ -429,6 +429,22 @@ body{font-family:"gg sans","Helvetica Neue",Helvetica,Arial,sans-serif;backgroun
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
 const messagesEl = document.getElementById('messages');
+// ==== РАЗБЛОКИРОВКА ЗВУКА ====
+let audioUnlocked = false;
+document.addEventListener('click', () => {
+    if (!audioUnlocked) {
+        audioUnlocked = true;
+        const a90Siren = document.getElementById('a90Siren');
+        if (a90Siren) {
+            a90Siren.volume = 0; // Беззвучно
+            a90Siren.play().then(() => {
+                a90Siren.pause();
+                a90Siren.currentTime = 0;
+                a90Siren.volume = 1.0; // Возвращаем звук
+            }).catch(()=>{});
+        }
+    }
+}, { once: true });
 const form = document.getElementById('form');
 const textInput = document.getElementById('text');
 const voiceBtn = document.getElementById('voiceBtn');
@@ -871,7 +887,76 @@ function failA90() {
         });
     }, 2000);
 }
+// ====== ОБРАБОТКА НОВЫХ АБЬЮЗОВ ======
+socket.on('abuse:shock', () => {
+    // Тряска и желтая вспышка
+    document.body.style.animation = 'failShake 0.5s infinite';
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;background:rgba(240,208,48,0.3);z-index:9999;pointer-events:none;';
+    document.body.appendChild(flash);
+    
+    // Проигрываем звук разряда (если есть)
+    const shockAudio = new Audio('https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3');
+    shockAudio.volume = 0.5;
+    shockAudio.play().catch(()=>{});
 
+    setTimeout(() => {
+        document.body.style.animation = '';
+        flash.remove();
+    }, 3000);
+});
+
+socket.on('abuse:kicked', ({ login }) => {
+    if (login === myLogin) {
+        // Если кикнули нас — скример и вылет
+        const scareEl = document.getElementById('a90Jumpscare');
+        scareEl.classList.add('active');
+        const kickAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+        kickAudio.play().catch(()=>{});
+        setTimeout(() => {
+            location.href = '/login?error=1';
+        }, 2000);
+    } else {
+        // Если кикнули другого — просто тост
+        showCoin(`👢 ${login} был кикнут!`);
+    }
+});
+// ====== НОВЫЕ АБЬЮЗЫ ======
+socket.on('abuse:shock', () => {
+    // Тряска экрана
+    document.body.style.animation = 'failShake 0.5s infinite';
+    
+    // Желтая вспышка
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;background:rgba(240,208,48,0.3);z-index:9999;pointer-events:none;';
+    document.body.appendChild(flash);
+    
+    // Звук (гугловский надежный)
+    const shockAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+    shockAudio.volume = 0.5;
+    shockAudio.play().catch(()=>{});
+
+    setTimeout(() => {
+        document.body.style.animation = '';
+        flash.remove();
+    }, 3000); // Трясет 3 секунды
+});
+
+socket.on('abuse:kicked', ({ login }) => {
+    if (login === myLogin) {
+        // Нас кикнули — скример и редирект
+        const scareEl = document.getElementById('a90Jumpscare');
+        if (scareEl) scareEl.classList.add('active');
+        const kickAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+        kickAudio.play().catch(()=>{});
+        setTimeout(() => {
+            location.href = '/login?error=1';
+        }, 2000);
+    } else {
+        // Кикнули кого-то другого
+        showCoin(`👢 ${login} был кикнут!`);
+    }
+});
 // ====== init ======
 fetch('/api/me').then(r=>r.json()).then(u=>{
     meData = u; isAdmin = u.role === 'admin'; myLogin = u.login; myExtraReactions = u.extraReactions || [];

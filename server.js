@@ -385,6 +385,32 @@ io.on('connection', (socket) => {
             io.to(targetSocketId).emit('abuse:kicked', { login: target });
         }
     });
+        // ==== ТОК (ТРЯСКА) ====
+    socket.on('admin:shock', ({ target }) => {
+        const u = socket.request.session && socket.request.session.user;
+        if (!u || u.role !== 'admin') return;
+        
+        if (target === 'all') {
+            io.emit('abuse:shock');
+        } else {
+            const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0];
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('abuse:shock');
+                socket.emit('abuse:shock'); // Чтобы админ тоже увидел
+            }
+        }
+    });
+
+    // ==== МГНОВЕННЫЙ КИК ====
+    socket.on('admin:kick', ({ target }) => {
+        const u = socket.request.session && socket.request.session.user;
+        if (!u || u.role !== 'admin') return;
+        
+        const targetSocketId = [...onlineUsers.entries()].find(([, login]) => login === target)?.[0];
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('abuse:kicked', { login: target });
+        }
+    });
     socket.on('disconnect', () => { onlineUsers.delete(socket.id); io.emit('online', Array.from(onlineUsers.values())); });
 });
 
