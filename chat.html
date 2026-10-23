@@ -375,11 +375,11 @@ let audioUnlocked = false;
 document.addEventListener('click', () => {
     if (!audioUnlocked) {
         audioUnlocked = true;
-        const a90Siren = document.getElementById('a90Siren');
-        if (a90Siren) {
-            a90Siren.volume = 0;
-            a90Siren.play().then(() => { a90Siren.pause(); a90Siren.currentTime = 0; a90Siren.volume = 1.0; }).catch(()=>{});
-        }
+        // Просто создаем пустой аудиоконтекст, чтобы браузер разрешил звук
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if (ctx.state === 'suspended') ctx.resume();
+        } catch (e) {}
     }
 }, { once: true });
 
@@ -719,7 +719,9 @@ socket.on('abuse:explode', () => {
 });
 
 socket.on('abuse:music', () => {
+    if (window.currentAbuseMusic) { window.currentAbuseMusic.pause(); }
     const audio = new Audio('https://www.myinstants.com/media/sounds/roblox-oof.mp3');
+    window.currentAbuseMusic = audio;
     audio.volume = 1.0;
     audio.loop = true;
     audio.play().catch(()=>{});
