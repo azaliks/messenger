@@ -46,7 +46,7 @@ button[type="submit"]:hover { background: #4752c4; transform: translateY(-2px); 
                 </div>
             </div>
             <div class="saved-actions">
-                <button class="btn-sm" onclick="continueAsSaved()">Войти как <span id="btnLogin"></span></button>
+                <button class="btn-sm" onclick="continueWithPassword()">Ввести пароль для <span id="btnLogin"></span></button>
                 <button class="btn-sm gray" onclick="logoutSaved()">Выйти</button>
             </div>
         </div>
@@ -56,9 +56,9 @@ button[type="submit"]:hover { background: #4752c4; transform: translateY(-2px); 
             <p class="sub">Вход только для своих</p>
             <form method="POST" action="/login">
                 <label for="login">Логин</label>
-                <input type="text" id="login" name="login" placeholder="Введи логин" required>
+                <input type="text" id="login" name="login" placeholder="Введи логин" autocomplete="username" required>
                 <label for="password">Пароль</label>
-                <input type="password" id="password" name="password" placeholder="Введи пароль" required>
+                <input type="password" id="password" name="password" placeholder="Введи пароль" autocomplete="current-password" required>
                 <button type="submit">Войти</button>
                 <p class="error" id="err"></p>
             </form>
@@ -73,7 +73,8 @@ const savedAvatar = localStorage.getItem('savedAvatar');
 
 if (saved) {
     document.getElementById('savedProfile').classList.add('active');
-    document.getElementById('loginForm').classList.add('form-hidden');
+    document.getElementById('loginForm').classList.remove('form-hidden');
+    document.getElementById('login').value = saved;
     document.getElementById('savedName').textContent = savedName;
     document.getElementById('savedLogin').textContent = '@' + saved;
     document.getElementById('btnLogin').textContent = '@' + saved;
@@ -84,17 +85,10 @@ if (saved) {
     document.getElementById('loginForm').classList.remove('form-hidden');
 }
 
-async function continueAsSaved() {
-    const saved = localStorage.getItem('savedLogin');
-    if (!saved) return location.reload();
-    try {
-        const res = await fetch('/api/quick-login', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: saved })
-        });
-        const data = await res.json();
-        if (data.ok) window.location.href = data.redirect;
-        else { localStorage.removeItem('savedLogin'); location.reload(); }
-    } catch (e) { alert('Ошибка сети'); }
+function continueWithPassword() {
+    document.getElementById('loginForm').classList.remove('form-hidden');
+    document.getElementById('login').value = localStorage.getItem('savedLogin') || '';
+    document.getElementById('password').focus();
 }
 function logoutSaved() {
     localStorage.removeItem('savedLogin'); localStorage.removeItem('savedName'); localStorage.removeItem('savedAvatar'); location.reload();
