@@ -150,20 +150,23 @@ android {
 
         
     }
+        def releaseSigningReady = System.getenv('ANDROID_KEYSTORE_PATH') && System.getenv('ANDROID_KEYSTORE_PASSWORD') && System.getenv('ANDROID_KEY_ALIAS') && System.getenv('ANDROID_KEY_PASSWORD')
         signingConfigs {
-        release {
-            storeFile file("../android.keystore")
-            storePassword "pacan2025"
-            keyAlias "android"
-            keyPassword "pacan2025"
+            release {
+                if (releaseSigningReady) {
+                    storeFile file(System.getenv('ANDROID_KEYSTORE_PATH'))
+                    storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                    keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                    keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+                }
+            }
         }
-    }
-    buildTypes {
-    release {
-        minifyEnabled true
-        signingConfig signingConfigs.release
-    }
-}
+        buildTypes {
+            release {
+                minifyEnabled true
+                if (releaseSigningReady) signingConfig signingConfigs.release
+            }
+        }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8

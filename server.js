@@ -7,16 +7,20 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { createClient } = require('@supabase/supabase-js');
 const ws = require('ws');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
-const TURN_USERNAME = '07354b48071e5473f623d7a9';
-const TURN_CREDENTIAL = 'p9aioMeZ5mqY2lhl';
-const SUPABASE_URL = 'https://anndslyocbqgpbwshwqa.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFubmRzbHlvY2JxZ3Bid3Nod3FhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjA2NDUwMiwiZXhwIjoyMTA3NjQwNTAyfQ.N1GUvfL7H1OoJ47HGWjhTjUyqxNXJscd6RJpmMnocGg';
+const TURN_USERNAME = process.env.TURN_USERNAME || '';
+const TURN_CREDENTIAL = process.env.TURN_CREDENTIAL || '';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable');
+if (!SESSION_SECRET || SESSION_SECRET.length < 32) throw new Error('SESSION_SECRET must be set and contain at least 32 characters');
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { realtime: { transport: ws } });
 
 const AVATARS_DIR = path.join(__dirname, 'avatars');
@@ -24,9 +28,9 @@ const VOICE_DIR = path.join(__dirname, 'voice');
 const IMAGES_DIR = path.join(__dirname, 'images');
 [AVATARS_DIR, VOICE_DIR, IMAGES_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
-const uploadAvatar = multer({ storage: multer.diskStorage({ destination: (req, file, cb) => cb(null, AVATARS_DIR), filename: (req, file, cb) => cb(null, req.session.user.login + '-' + Date.now() + path.extname(file.originalname).toLowerCase()) }) });
-const uploadVoice = multer({ storage: multer.diskStorage({ destination: (req, file, cb) => cb(null, VOICE_DIR), filename: (req, file, cb) => cb(null, 'voice-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + (path.extname(file.originalname) || '.webm')) }) });
-const uploadImage = multer({ storage: multer.diskStorage({ destination: (req, file, cb) => cb(null, IMAGES_DIR), filename: (req, file, cb) => cb(null, 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + path.extname(file.originalname).toLowerCase()) }), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (req, file, cb) => cb(null, ['image/jpeg','image/png','image/gif','image/webp'].includes(file.mimetype)) });
+const uploadAvatar = multer({ storage: multer.diskStorage({ destination: (req, file, cb) => cb(null, AVATARS_DIR), filename: (req, file, cb) => cb(null, req.session.user.login + '-' + crypto.randomBytes(8).toString('hex') + path.extname(file.originalname).toLowerCase()) }), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (req, file, cb) => cb(null, ['image/jpeg','image/png','image/gif','image/webp'].includes(file.mimetype)) });
+const uploadVoice = multer({ storage: multer.diskStorage({ destination: (req, file, cb) => cb(null, VOICE_DIR), filename: (req, file, cb) => cb(null, 'voice-' + crypto.randomBytes(12).toString('hex') + (path.extname(file.originalname).toLowerCase() || '.webm')) }), limits: { fileSize: 15 * 1024 * 1024 }, fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith('audio/') || file.mimetype === 'video/mp4') });
+const uploadImage = multer({ storage: multer.diskStorage({ destination: (req, file, cb) => cb(null, IMAGES_DIR), filename: (req, file, cb) => cb(null, 'img-' + crypto.randomBytes(12).toString('hex') + path.extname(file.originalname).toLowerCase()) }), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (req, file, cb) => cb(null, ['image/jpeg','image/png','image/gif','image/webp'].includes(file.mimetype)) });
 
 // ====== SUPABASE CRUD ======
 async function readUsers() { const { data, error } = await supabase.from('users').select('data'); if (error) { console.error('readUsers error:', error); return { users: [] }; } return { users: data.map(r => r.data) }; }
@@ -47,6 +51,40 @@ async function writeChangelog(d) { const { data: existing } = await supabase.fro
 
 async function addSystemMessage(text) { const data = await readMessages(); const msg = { id: 'sys-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), login: '__system__', name: 'СИСТЕМА', text: text, time: new Date().toISOString(), reactions: {}, system: true }; data.messages.push(msg); await writeMessages(data); return msg; }
 
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16);
+    const hash = crypto.scryptSync(password, salt, 64);
+    return { algorithm: 'scrypt', salt: salt.toString('hex'), hash: hash.toString('hex') };
+}
+function verifyPassword(password, stored) {
+    if (typeof password !== 'string' || !stored) return false;
+    if (typeof stored === 'string') return stored === password;
+    if (stored.algorithm !== 'scrypt' || !stored.salt || !stored.hash) return false;
+    try {
+        const expected = Buffer.from(stored.hash, 'hex');
+        const actual = crypto.scryptSync(password, Buffer.from(stored.salt, 'hex'), expected.length);
+        return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+    } catch (e) { return false; }
+}
+function establishUserSession(req, user) {
+    return new Promise((resolve, reject) => req.session.regenerate(err => {
+        if (err) return reject(err);
+        req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
+        req.session.save(saveError => saveError ? reject(saveError) : resolve());
+    }));
+}
+const loginAttempts = new Map();
+function loginRateLimited(ip) {
+    const now = Date.now(), entry = loginAttempts.get(ip);
+    if (!entry || now - entry.startedAt > 15 * 60 * 1000) { loginAttempts.set(ip, { startedAt: now, count: 0 }); return false; }
+    return entry.count >= 10;
+}
+function recordLoginFailure(ip) {
+    const now = Date.now(); let entry = loginAttempts.get(ip);
+    if (!entry || now - entry.startedAt > 15 * 60 * 1000) entry = { startedAt: now, count: 0 };
+    entry.count += 1; loginAttempts.set(ip, entry);
+}
+
 function checkPunishments(user) { if (!user) return { muted: false, banned: false }; const now = Date.now(); let changed = false; let result = { muted: false, banned: false, mutedUntil: null, bannedUntil: null }; if (user.mutedUntil) { if (new Date(user.mutedUntil).getTime() > now) { result.muted = true; result.mutedUntil = user.mutedUntil; } else { user.mutedUntil = null; changed = true; } } if (user.bannedUntil) { if (new Date(user.bannedUntil).getTime() > now) { result.banned = true; result.bannedUntil = user.bannedUntil; } else { user.bannedUntil = null; changed = true; } } return { ...result, changed }; }
 function parseDuration(str) { const map = { '5m': 5*60*1000, '15m': 15*60*1000, '1h': 60*60*1000, '1d': 24*60*60*1000, '7d': 7*24*60*60*1000, 'forever': null }; return map[str] !== undefined ? map[str] : undefined; }
 function parseDurationRu(str) { const map = { '5m': '5 минут', '15m': '15 минут', '1h': '1 час', '1d': '1 день', '7d': '7 дней', 'forever': 'навсегда' }; return map[str] || str; }
@@ -59,9 +97,14 @@ function ensureCoinFields(user) { if (typeof user.coins !== 'number') user.coins
 function isForbiddenStatus(text) { if (!text) return false; const low = text.toLowerCase(); return FORBIDDEN_STATUS_WORDS.some(w => low.includes(w)); }
 function isAdminUser(user) { return user && (user.role === 'admin' || user.isAdmin === true); }
 
-app.use(express.urlencoded({ extended: true })); app.use(express.json());
-const sessionMiddleware = session({ secret: 'pacan-secret-key', resave: false, saveUninitialized: false });
-app.use(sessionMiddleware); app.use(express.static(__dirname));
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(express.urlencoded({ extended: true, limit: '16kb' }));
+app.use(express.json({ limit: '1mb' }));
+const sessionMiddleware = session({ name: 'messenger.sid', secret: SESSION_SECRET, resave: false, saveUninitialized: false, cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 } });
+app.use(sessionMiddleware);
+// Root static hosting is intentionally disabled: pages are served only by authenticated routes.
+app.get('/store_icon.png', (req, res) => res.sendFile(path.join(__dirname, 'store_icon.png')));
 app.get('/manifest.json', (req, res) => { res.setHeader('Content-Type', 'application/manifest+json'); res.sendFile(path.join(__dirname, 'manifest.json')); });
 app.get('/sw.js', (req, res) => { res.setHeader('Content-Type', 'application/javascript'); res.setHeader('Service-Worker-Allowed', '/'); res.sendFile(path.join(__dirname, 'sw.js')); });
 app.use('/avatars', express.static(AVATARS_DIR)); app.use('/voice', express.static(VOICE_DIR)); app.use('/images', express.static(IMAGES_DIR));
@@ -114,34 +157,29 @@ app.get('/api/turn', (req, res) => {
 app.get('/login', (req, res) => { res.sendFile(path.join(__dirname, 'login.html')); });
 
 app.post('/login', async (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    if (loginRateLimited(ip)) return res.status(429).send('Слишком много попыток входа. Попробуй через 15 минут.');
     const { login, password } = req.body;
     const data = await readUsers();
-    const user = data.users.find(u => u.login === login && u.password === password);
-    if (!user) return res.redirect('/login?error=1');
+    const user = data.users.find(u => u.login === login && verifyPassword(password, u.password));
+    if (!user) { recordLoginFailure(ip); return res.redirect('/login?error=1'); }
+    loginAttempts.delete(ip);
+    if (typeof user.password === 'string') user.password = hashPassword(password);
     const p = checkPunishments(user);
     if (p.changed) await writeUsers(data);
     if (p.banned) return res.redirect('/login?error=banned');
     user.lastLogin = new Date().toISOString();
     ensureCoinFields(user);
     await writeUsers(data);
-    req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
+    try { await establishUserSession(req, user); }
+    catch (e) { console.error('Session creation failed:', e); return res.status(500).send('Не удалось создать сессию'); }
     if (user.role === 'admin') return res.redirect('/admin');
     res.redirect('/');
 });
 
-app.post('/api/quick-login', async (req, res) => {
-    const { login } = req.body;
-    if (!login) return res.status(400).json({ error: 'no login' });
-    const data = await readUsers();
-    const user = data.users.find(u => u.login === login);
-    if (!user) return res.status(404).json({ error: 'user not found' });
-    const p = checkPunishments(user);
-    if (p.banned) return res.status(403).json({ error: 'banned' });
-    user.lastLogin = new Date().toISOString();
-    ensureCoinFields(user);
-    await writeUsers(data);
-    req.session.user = { login: user.login, name: user.name, nickname: user.nickname, role: user.role };
-    res.json({ ok: true, redirect: user.role === 'admin' ? '/admin' : '/chat' });
+app.post('/api/quick-login', (req, res) => {
+    // Username-only login allowed account impersonation; password is now mandatory.
+    res.status(410).json({ error: 'quick login disabled; password required' });
 });
 
 app.get('/api/me', async (req, res) => {
@@ -242,7 +280,7 @@ app.post('/api/messages', async (req, res) => {
     res.json({ ...msg, newAchievements: newAch });
 });
 
-app.post('/api/voice', uploadVoice.single('voice'), async (req, res) => {
+app.post('/api/voice', (req, res, next) => req.session.user ? next() : res.status(401).json({ error: 'not logged in' }), uploadVoice.single('voice'), async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const usersData = await readUsers();
     const user = usersData.users.find(u => u.login === req.session.user.login);
@@ -262,7 +300,7 @@ app.post('/api/voice', uploadVoice.single('voice'), async (req, res) => {
     res.json(msg);
 });
 
-app.post('/api/image', uploadImage.single('image'), async (req, res) => {
+app.post('/api/image', (req, res, next) => req.session.user ? next() : res.status(401).json({ error: 'not logged in' }), uploadImage.single('image'), async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
     const usersData = await readUsers();
     const user = usersData.users.find(u => u.login === req.session.user.login);
@@ -640,7 +678,7 @@ app.post('/api/admin/abuse/hack', async (req, res) => {
 });
 
 app.post('/api/admin/give-coins', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const { target, amount } = req.body; const num = parseInt(amount); const data = await readUsers(); const user = data.users.find(u => u.login === target); if (!user) return res.status(404).json({ error: 'not found' }); ensureCoinFields(user); user.coins += num; await writeUsers(data); res.json({ ok: true }); });
-app.post('/api/admin/change-password', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const { target, newPassword } = req.body; if (!newPassword || newPassword.length < 3) return res.status(400).json({ error: 'Пароль минимум 3' }); const data = await readUsers(); const user = data.users.find(u => u.login === target); if (!user) return res.status(404).json({ error: 'not found' }); user.password = newPassword; await writeUsers(data); res.json({ ok: true }); });
+app.post('/api/admin/change-password', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const { target, newPassword } = req.body; if (typeof newPassword !== 'string' || newPassword.length < 8) return res.status(400).json({ error: 'Пароль должен содержать минимум 8 символов' }); const data = await readUsers(); const user = data.users.find(u => u.login === target); if (!user) return res.status(404).json({ error: 'not found' }); user.password = hashPassword(newPassword); await writeUsers(data); res.json({ ok: true }); });
 app.post('/api/admin/reset/:login', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.params.login); if (!user) return res.status(404).json({ error: 'not found' }); user.stats = { messages: 0, voices: 0, images: 0, reactions: 0, calls: 0 }; user.achievements = []; await writeUsers(data); res.json({ ok: true }); });
 app.post('/api/admin/clear-chat', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('messages').delete().neq('id', ''); res.json({ ok: true }); });
 app.post('/api/admin/clear-quotes', async (req, res) => { if (!req.session.user || req.session.user.role !== 'admin') return res.status(403).json({ error: 'admin only' }); await supabase.from('quotes').delete().neq('id', ''); res.json({ ok: true }); });
@@ -672,7 +710,7 @@ app.get('/api/profile/:login', async (req, res) => {
     });
 });
 
-app.post('/api/profile/avatar', uploadAvatar.single('avatar'), async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); if (!req.file) return res.status(400).json({ error: 'no file' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); if (user.avatar) { const old = path.join(AVATARS_DIR, path.basename(user.avatar)); if (fs.existsSync(old)) fs.unlinkSync(old); } user.avatar = '/avatars/' + req.file.filename; await writeUsers(data); res.json({ ok: true, avatar: user.avatar }); });
+app.post('/api/profile/avatar', (req, res, next) => req.session.user ? next() : res.status(401).json({ error: 'not logged in' }), uploadAvatar.single('avatar'), async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); if (!req.file) return res.status(400).json({ error: 'no file' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); if (user.avatar) { const old = path.join(AVATARS_DIR, path.basename(user.avatar)); if (fs.existsSync(old)) fs.unlinkSync(old); } user.avatar = '/avatars/' + req.file.filename; await writeUsers(data); res.json({ ok: true, avatar: user.avatar }); });
 app.post('/api/profile/phrase', async (req, res) => { if (!req.session.user) return res.status(401).json({ error: 'no' }); const { phrase } = req.body; if (typeof phrase !== 'string') return res.status(400).json({ error: 'invalid' }); const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login); user.phrase = phrase.trim().slice(0, 200); await writeUsers(data); res.json({ ok: true, phrase: user.phrase }); });
 app.post('/api/profile/credentials', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'not logged in' });
@@ -680,7 +718,7 @@ app.post('/api/profile/credentials', async (req, res) => {
     if (!newLogin && !newPassword) return res.status(400).json({ error: 'no' });
     const data = await readUsers(); const user = data.users.find(u => u.login === req.session.user.login);
     if (!user) return res.status(404).json({ error: 'no' });
-    const oldLogin = user.login; const oldPassword = user.password; const changes = [];
+    const oldLogin = user.login; const changes = [];
     if (newLogin && newLogin.trim() && newLogin !== oldLogin) {
         const trimmed = newLogin.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
         if (trimmed.length < 3) return res.status(400).json({ error: 'Логин минимум 3' });
@@ -691,7 +729,11 @@ app.post('/api/profile/credentials', async (req, res) => {
         const msgs = await readMessages(); msgs.messages.forEach(m => { if (m.login === oldLogin) m.login = trimmed; }); await writeMessages(msgs);
         const quotes = await readQuotes(); quotes.quotes.forEach(q => { if (q.authorLogin === oldLogin) q.authorLogin = trimmed; }); await writeQuotes(quotes);
     }
-    if (newPassword && newPassword !== oldPassword) { if (newPassword.length < 3) return res.status(400).json({ error: 'Пароль минимум 3' }); user.password = newPassword; changes.push({ field: 'password', from: oldPassword, to: newPassword }); }
+    if (newPassword) {
+        if (typeof newPassword !== 'string' || newPassword.length < 8) return res.status(400).json({ error: 'Пароль должен содержать минимум 8 символов' });
+        user.password = hashPassword(newPassword);
+        changes.push({ field: 'password' });
+    }
     if (changes.length === 0) return res.json({ ok: true, changes: [] });
     await writeUsers(data);
     const log = await readChangelog(); changes.forEach(c => { log.changes.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), user: user.login, oldLogin, field: c.field, from: c.from, to: c.to, time: new Date().toISOString() }); }); await writeChangelog(log);
